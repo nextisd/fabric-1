@@ -2,7 +2,7 @@
 **Note:** This is a **read-only mirror** of the formal [Gerrit](https://gerrit.hyperledger.org/r/#/admin/projects/fabric) repository,
 where active development is ongoing. Issue tracking is handled in [Jira](https://jira.hyperledger.org/secure/RapidBoard.jspa?projectKey=FAB&rapidView=5&view=planning)
 
-## Incubation Notice test by maffa73
+## Incubation Notice
 
 This project is a Hyperledger project in _Incubation_. It was proposed to the
 community and documented [here](https://goo.gl/RYQZ5N). Information on what
