@@ -51,18 +51,23 @@ var restLogger = logging.MustGetLogger("rest")
 // underlying ServerOpenchain object. serverDevops is a variable that holds
 // the pointer to the underlying Devops object. This is necessary due to
 // how the gocraft/web package implements context initialization.
+// @@ serverOpenchain과 DevopsServer 객체를 가리키는 포인터를 변수로 받음.
+// @@ gocraft/web package가 context initialization을 하는데 필요.
 var serverOpenchain *ServerOpenchain
 var serverDevops pb.DevopsServer
 
 // ServerOpenchainREST defines the Openchain REST service object. It exposes
 // the methods available on the ServerOpenchain service and the Devops service
 // through a REST API.
+// @@ ServerOpenchainREST : Openchain의 REST 서비스 객체를 정의.
+// @@ ServerOpenchain서비스와 Devops서비스의 메소드를 통해 REST API제공
 type ServerOpenchainREST struct {
 	server *ServerOpenchain
 	devops pb.DevopsServer
 }
 
 // restResult defines the response payload for a general REST interface request.
+// @@ restResult : 일반적인 REST I/F 요청에 대한 응답 payload를 정의
 type restResult struct {
 	OK    string `json:",omitempty"`
 	Error string `json:",omitempty"`
@@ -70,11 +75,13 @@ type restResult struct {
 
 // tcertsResult defines the response payload for the GetTransactionCert REST
 // interface request.
+// @ tcertsResult : GetTransactionCert 요청의 응답 payload를 정의
 type tcertsResult struct {
 	OK []string
 }
 
 // rpcRequest defines the JSON RPC 2.0 request payload for the /chaincode endpoint.
+// @@ rpcRequest : /chaincode endpoint의JSON RPC 2.0 요청 payload를 정의
 type rpcRequest struct {
 	Jsonrpc *string           `json:"jsonrpc,omitempty"`
 	Method  *string           `json:"method,omitempty"`
@@ -82,11 +89,14 @@ type rpcRequest struct {
 	ID      *rpcID            `json:"id,omitempty"`
 }
 
+// @@ rpc요청에 따라 부여되는 ID에 대한 정의
 type rpcID struct {
 	StringValue *string
 	IntValue    *int64
 }
 
+// @@ RPC요청의 JSON 포맷을 go로 변환
+// @@ json 바이트 어레이를 go 객체 데이터로 decode
 func (id *rpcID) UnmarshalJSON(b []byte) error {
 	var err error
 	s, n := "", int64(0)
@@ -102,6 +112,8 @@ func (id *rpcID) UnmarshalJSON(b []byte) error {
 	return fmt.Errorf("cannot unmarshal %s into Go value of type int64 or string", string(b))
 }
 
+// @@ RPC응답을 위해 go에서 JSON으로 변환
+// @@ go 객체 데이터를 json 바이트 어레이로 encode
 func (id *rpcID) MarshalJSON() ([]byte, error) {
 	if id.StringValue != nil {
 		return json.Marshal(id.StringValue)
@@ -113,6 +125,7 @@ func (id *rpcID) MarshalJSON() ([]byte, error) {
 }
 
 // rpcResponse defines the JSON RPC 2.0 response payload for the /chaincode endpoint.
+// @@ rpcResponse : /chaincode endpoint의JSON RPC 2.0 응답 payload를 정의, rpcRequest에 대응
 type rpcResponse struct {
 	Jsonrpc string     `json:"jsonrpc,omitempty"`
 	Result  *rpcResult `json:"result,omitempty"`
@@ -121,6 +134,7 @@ type rpcResponse struct {
 }
 
 // rpcResult defines the structure for an rpc sucess/error result message.
+// @@ rpcResult : rpc 성공 및 실패 결과 메세지에 대한 구조를 정의, rpcResponse의 sub
 type rpcResult struct {
 	Status  string    `json:"status,omitempty"`
 	Message string    `json:"message,omitempty"`
@@ -128,6 +142,7 @@ type rpcResult struct {
 }
 
 // rpcError defines the structure for an rpc error.
+// @@ rpcError : rpc 결과 중 에러 상황에 대한 데이터 구조를 정의, rpcResult의 sub
 type rpcError struct {
 	// A Number that indicates the error type that occurred. This MUST be an integer.
 	Code int64 `json:"code,omitempty"`
@@ -141,6 +156,7 @@ type rpcError struct {
 }
 
 // JSON RPC 2.0 errors and messages.
+// @@ JSON RPC 2.0의 에러와 메세지 리스트
 var (
 	// Pre-defined errors and messages.
 	ParseError     = &rpcError{Code: -32700, Message: "Parse error", Data: "Invalid JSON was received by the server. An error occurred on the server while parsing the JSON text."}
@@ -158,6 +174,7 @@ var (
 
 // SetOpenchainServer is a middleware function that sets the pointer to the
 // underlying ServerOpenchain object and the undeflying Devops object.
+// @@ SetOpenchainServer : ServerOpenchain객체와 Devops객체를 가리키는 포인터를 설정하는 미들웨어 펑션
 func (s *ServerOpenchainREST) SetOpenchainServer(rw web.ResponseWriter, req *web.Request, next web.NextMiddlewareFunc) {
 	s.server = serverOpenchain
 	s.devops = serverDevops
@@ -168,6 +185,8 @@ func (s *ServerOpenchainREST) SetOpenchainServer(rw web.ResponseWriter, req *web
 // SetResponseType is a middleware function that sets the appropriate response
 // headers. Currently, it is setting the "Content-Type" to "application/json" as
 // well as the necessary headers in order to enable CORS for Swagger usage.
+// @@ SetResponseType : 응답 헤더를 설정하는 미들웨어 펑션이다.
+// @@ 현재는, Swagger 사용을 위한 'CORS'를 가능하게 하는 헤더 및 json의 'Content-Type'을 설정하도록 되어 있다.
 func (s *ServerOpenchainREST) SetResponseType(rw web.ResponseWriter, req *web.Request, next web.NextMiddlewareFunc) {
 	rw.Header().Set("Content-Type", "application/json")
 
@@ -180,6 +199,7 @@ func (s *ServerOpenchainREST) SetResponseType(rw web.ResponseWriter, req *web.Re
 
 // getRESTFilePath is a helper function to retrieve the local storage directory
 // of client login tokens.
+// @@ getRESTFilePath : 클라이언트의 로그인 토큰이 존재하는 로컬 저장소 디렉토리를 찾는 펑션
 func getRESTFilePath() string {
 	localStore := viper.GetString("peer.fileSystemPath")
 	if !strings.HasSuffix(localStore, "/") {
@@ -191,6 +211,7 @@ func getRESTFilePath() string {
 
 // isEnrollmentIDValid returns true if the given enrollmentID matches the valid
 // pattern defined in the configuration.
+// @@ isEnrollmentIDValid : 주어진 enrollmentID가 유효하다면 true를 리턴
 func isEnrollmentIDValid(enrollmentID string) (bool, error) {
 	pattern := viper.GetString("rest.validPatterns.enrollmentID")
 	if pattern == "" {
@@ -202,6 +223,8 @@ func isEnrollmentIDValid(enrollmentID string) (bool, error) {
 // validateEnrollmentIDParameter checks whether the given enrollmentID is
 // valid: if valid, returns true and does nothing; if not, writes the HTTP
 // error response and returns false.
+// @@ validateEnrollmentIDParameter : 주어진 enrollmentID가 유효하다면 true를, 유효하지 않다면
+// @@ HTTP 에러 응답과 함께 false를 리턴한다.
 func validateEnrollmentIDParameter(rw web.ResponseWriter, enrollmentID string) bool {
 	validID, err := isEnrollmentIDValid(enrollmentID)
 	if err != nil {
@@ -222,6 +245,8 @@ func validateEnrollmentIDParameter(rw web.ResponseWriter, enrollmentID string) b
 
 // Register confirms the enrollmentID and secret password of the client with the
 // CA and stores the enrollment certificate and key in the Devops server.
+// Register : CA를 통해 클라이언트의 enrollmentID와 패스워드를 검증하고, enrollment cert와 key를 Devops server에 저장.
+// 저장 경로 - /var/hyperledger/production/client/loginToken_username
 func (s *ServerOpenchainREST) Register(rw web.ResponseWriter, req *web.Request) {
 	restLogger.Info("REST client login...")
 	encoder := json.NewEncoder(rw)
@@ -320,6 +345,7 @@ func (s *ServerOpenchainREST) Register(rw web.ResponseWriter, req *web.Request) 
 
 // GetEnrollmentID checks whether a given user has already registered with the
 // Devops server.
+// @@ GetEnrollmentID : Devops 서버에 기등록된 유저인지 여부를 확인
 func (s *ServerOpenchainREST) GetEnrollmentID(rw web.ResponseWriter, req *web.Request) {
 	// Parse out the user enrollment ID
 	enrollmentID := req.PathParams["id"]
@@ -350,6 +376,9 @@ func (s *ServerOpenchainREST) GetEnrollmentID(rw web.ResponseWriter, req *web.Re
 // Devops server. Once the login token is removed, the specified user will no
 // longer be able to transact without logging in again. On the REST interface,
 // this method may be used as a means of logging out an active client.
+// @@ DeleteEnrollmentID : devops 서버에서 유저의 로그인 토큰을 제거한다. 로그인 토큰이 제거되면, 해당 유저는
+// @@ 재로그인 전까지는 트랜잭션을 발생시킬 수 없다. REST I/F에서는, 활동중인 클라이언트를 로그아웃 시키는 수단으로
+// @@ 활용될 수 있다.
 func (s *ServerOpenchainREST) DeleteEnrollmentID(rw web.ResponseWriter, req *web.Request) {
 	// Parse out the user enrollment ID
 	enrollmentID := req.PathParams["id"]
@@ -410,6 +439,8 @@ func (s *ServerOpenchainREST) DeleteEnrollmentID(rw web.ResponseWriter, req *web
 }
 
 // GetEnrollmentCert retrieves the enrollment certificate for a given user.
+// @@ GetEnrollmentCert : 주어진 사용자의 ecret를 get
+// @@ certDER -> certPEM -> urlencoding(certPEM)
 func (s *ServerOpenchainREST) GetEnrollmentCert(rw web.ResponseWriter, req *web.Request) {
 	// Parse out the user enrollment ID
 	enrollmentID := req.PathParams["id"]
@@ -501,6 +532,8 @@ func (s *ServerOpenchainREST) GetEnrollmentCert(rw web.ResponseWriter, req *web.
 }
 
 // GetTransactionCert retrieves the transaction certificate(s) for a given user.
+// @@ GetTransactionCert : 주어진 사용자의 tcert를 get
+// @@ tcert 갯수가 500개 초과시, 500개까지만 읽어들임
 func (s *ServerOpenchainREST) GetTransactionCert(rw web.ResponseWriter, req *web.Request) {
 	// Parse out the user enrollment ID
 	enrollmentID := req.PathParams["id"]
@@ -636,6 +669,8 @@ func (s *ServerOpenchainREST) GetTransactionCert(rw web.ResponseWriter, req *web
 
 // GetBlockchainInfo returns information about the blockchain ledger such as
 // height, current block hash, and previous block hash.
+// @@ GetBlockchainInfo : 높이나 현재의 블록 해쉬, 이전 블록 해쉬 등 블록체인 렛저 정보를 리턴
+// @@ api.go에 선언된 ServerOpenchain의 메소드가 REST 서비스를 위해서 wrapping되었음
 func (s *ServerOpenchainREST) GetBlockchainInfo(rw web.ResponseWriter, req *web.Request) {
 	info, err := s.server.GetBlockchainInfo(context.Background(), &empty.Empty{})
 
@@ -655,6 +690,8 @@ func (s *ServerOpenchainREST) GetBlockchainInfo(rw web.ResponseWriter, req *web.
 
 // GetBlockByNumber returns the data contained within a specific block in the
 // blockchain. The genesis block is block zero.
+// @@ GetBlockByNumber : 특정 블록의 데이터를 리턴. 제네시스 블록의 경우 0.
+// @@ api.go에 선언된 ServerOpenchain의 메소드가 REST 서비스를 위해서 wrapping되었음
 func (s *ServerOpenchainREST) GetBlockByNumber(rw web.ResponseWriter, req *web.Request) {
 	// Parse out the Block id
 	blockNumber, err := strconv.ParseUint(req.PathParams["id"], 10, 64)
@@ -690,6 +727,8 @@ func (s *ServerOpenchainREST) GetBlockByNumber(rw web.ResponseWriter, req *web.R
 }
 
 // GetTransactionByID returns a transaction matching the specified ID
+// @@ GetTransactionByID : 특정 ID와 매핑되는 트랜잭션을 리턴, 즉 TXID로 TX 조회
+// @@ api.go에 선언된 ServerOpenchain의 메소드가 REST 서비스를 위해서 wrapping되었음
 func (s *ServerOpenchainREST) GetTransactionByID(rw web.ResponseWriter, req *web.Request) {
 	// Parse out the transaction ID
 	txID := req.PathParams["id"]
@@ -722,6 +761,7 @@ func (s *ServerOpenchainREST) GetTransactionByID(rw web.ResponseWriter, req *web
 // blockchain.
 //
 // Deprecated: use the /chaincode endpoint instead (routes to ProcessChaincode)
+// @@ Deploy : 체인코드 패키지를 빌드하고 블록체인상에 배포한다.
 func (s *ServerOpenchainREST) Deploy(rw web.ResponseWriter, req *web.Request) {
 	restLogger.Info("REST deploying chaincode...")
 
@@ -767,6 +807,8 @@ func (s *ServerOpenchainREST) Deploy(rw web.ResponseWriter, req *web.Request) {
 	// the Chaincode path is not left blank. This is necessary as in development
 	// mode, the chaincode is identified by name not by path during the deploy
 	// process.
+	// @@ 만약 피어가 개발 모드라면, 체인코드명이 비어서는 안된다. 만약 피어가 프로덕션 모드라면
+	// @@ 체인코드 패쓰 역시 비어서는 안된다. -> 배포시, 체인코드는 패쓰가 아닌 명으로 식별된다.
 	if viper.GetString("chaincode.mode") == chaincode.DevModeUserRunsChaincode {
 		// Check that the Chaincode name is not blank.
 		if spec.ChaincodeID.Name == "" {
@@ -797,6 +839,7 @@ func (s *ServerOpenchainREST) Deploy(rw web.ResponseWriter, req *web.Request) {
 	}
 
 	// If security is enabled, add client login token
+	// @@ security가 on상태 이면, 클라이언트의 로그인 토큰을 add.
 	if core.SecurityEnabled() {
 		chaincodeUsr := spec.SecureContext
 		if chaincodeUsr == "" {
@@ -870,6 +913,9 @@ func (s *ServerOpenchainREST) Deploy(rw web.ResponseWriter, req *web.Request) {
 // Invoke executes a specified function within a target Chaincode.
 //
 // Deprecated: use the /chaincode endpoint instead (routes to ProcessChaincode)
+// @@ Invoke : 체인코드의 특정 펑션을 실행한다.
+// @@ 체인코드 명과 ID, spec(펑션명???)이 채워져있는지 체크. 실행 결과로 txid 리턴.
+// @@ ChaincodeSpec.CtorMsg???
 func (s *ServerOpenchainREST) Invoke(rw web.ResponseWriter, req *web.Request) {
 	restLogger.Info("REST invoking chaincode...")
 
@@ -1012,6 +1058,7 @@ func (s *ServerOpenchainREST) Invoke(rw web.ResponseWriter, req *web.Request) {
 // Query performs the requested query on the target Chaincode.
 //
 // Deprecated: use the /chaincode endpoint instead (routes to ProcessChaincode)
+// @@ Query : 타겟 체인코드에 대한 쿼리 요청을 수행한다. 응답은 json 포맷.
 func (s *ServerOpenchainREST) Query(rw web.ResponseWriter, req *web.Request) {
 	restLogger.Info("REST querying chaincode...")
 
@@ -1164,6 +1211,8 @@ func (s *ServerOpenchainREST) Query(rw web.ResponseWriter, req *web.Request) {
 }
 
 // ProcessChaincode implements JSON RPC 2.0 specification for chaincode deploy, invoke, and query.
+// @@ ProcessChaincode : 체인코드 deploy, invoke, query를 위한 JSON RPC 2.0 스펙을 적용
+// @@ Deprecated
 func (s *ServerOpenchainREST) ProcessChaincode(rw web.ResponseWriter, req *web.Request) {
 	restLogger.Info("REST processing chaincode request...")
 
@@ -1355,6 +1404,8 @@ func (s *ServerOpenchainREST) ProcessChaincode(rw web.ResponseWriter, req *web.R
 }
 
 // processChaincodeDeploy triggers chaincode deploy and returns a result or an error
+// @@ processChaincodeDeploy : 체인코드 배포를 트리거하고, 결과값을 리턴
+// @@ Deprecated
 func (s *ServerOpenchainREST) processChaincodeDeploy(spec *pb.ChaincodeSpec) rpcResult {
 	restLogger.Info("REST deploying chaincode...")
 
@@ -1503,6 +1554,8 @@ func (s *ServerOpenchainREST) processChaincodeDeploy(spec *pb.ChaincodeSpec) rpc
 }
 
 // processChaincodeInvokeOrQuery triggers chaincode invoke or query and returns a result or an error
+// @@ processChaincodeInvokeOrQuery : 체인코드 inoke 또는 query를 트리거하고 그 결과를 리턴.
+// @@  Deprecated
 func (s *ServerOpenchainREST) processChaincodeInvokeOrQuery(method string, spec *pb.ChaincodeInvocationSpec) rpcResult {
 	restLogger.Infof("REST %s chaincode...", method)
 
@@ -1673,6 +1726,8 @@ func (s *ServerOpenchainREST) processChaincodeInvokeOrQuery(method string, spec 
 }
 
 // GetPeers returns a list of all peer nodes currently connected to the target peer, including itself
+// @@ GetPeers : 타겟 peer에 현 시점에 연결되어 있는 모든 피어 노드의 리스트를 리턴.
+// @@ api.go에 선언된 ServerOpenchain의 메소드가 REST 서비스를 위해서 wrapping되었음
 func (s *ServerOpenchainREST) GetPeers(rw web.ResponseWriter, req *web.Request) {
 	peers, err := s.server.GetPeers(context.Background(), &empty.Empty{})
 	currentPeer, err1 := s.server.GetPeerEndpoint(context.Background(), &empty.Empty{})
@@ -1712,11 +1767,14 @@ func (s *ServerOpenchainREST) GetPeers(rw web.ResponseWriter, req *web.Request) 
 
 // NotFound returns a custom landing page when a given hyperledger end point
 // had not been defined.
+// @@ NotFound : 하이퍼렛저 REST서비스의 endpoint가 정의되지 않은 경우에 대한 처리
 func (s *ServerOpenchainREST) NotFound(rw web.ResponseWriter, r *web.Request) {
 	rw.WriteHeader(http.StatusNotFound)
 	json.NewEncoder(rw).Encode(restResult{Error: "Openchain endpoint not found."})
 }
 
+// @@ REST router를 생성한다.
+// @@ 라우팅은 크게 사용자 등록, 체인코드 동작, 블록체인 관련 조회로 구성
 func buildOpenchainRESTRouter() *web.Router {
 	router := web.New(ServerOpenchainREST{})
 
@@ -1749,6 +1807,7 @@ func buildOpenchainRESTRouter() *web.Router {
 
 // StartOpenchainRESTServer initializes the REST service and adds the required
 // middleware and routes.
+// @@ StartOpenchainRESTServer : REST 서비스를 개시하고, 필요한 미들웨어와 라우터를 추가한다.
 func StartOpenchainRESTServer(server *ServerOpenchain, devops *core.Devops) {
 	// Initialize the REST service object
 	restLogger.Infof("Initializing the REST service on %s, TLS is %s.", viper.GetString("rest.address"), (map[bool]string{true: "enabled", false: "disabled"})[comm.TLSEnabled()])
