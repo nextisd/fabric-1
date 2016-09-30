@@ -19,12 +19,14 @@ package rest
 import "encoding/json"
 
 // isJSON is a helper function to determine if a given string is proper JSON.
+// @@ 입력 문자열이 JSON포맷인지 여부를 확인
 func isJSON(s string) bool {
 	var js map[string]interface{}
 	return json.Unmarshal([]byte(s), &js) == nil
 }
 
 // formatRPCError formats the ERROR response to aid in JSON RPC 2.0 implementation
+// @@ formatRPCError : RPC ERROR response를 JSON RPC 2.0 프로토콜에 맞춰서 포맷팅
 func formatRPCError(code int64, msg string, data string) rpcResult {
 	err := &rpcError{Code: code, Message: msg, Data: data}
 	error := rpcResult{Status: "Error", Error: err}
@@ -33,6 +35,7 @@ func formatRPCError(code int64, msg string, data string) rpcResult {
 }
 
 // formatRPCOK formats the OK response to aid in JSON RPC 2.0 implementation
+// @@ formatRPCOK : RPC OK response를 JSON RPC 2.0 프로토콜에 맞춰서 포맷팅
 func formatRPCOK(msg string) rpcResult {
 	result := rpcResult{Status: "OK", Message: msg}
 
@@ -41,6 +44,8 @@ func formatRPCOK(msg string) rpcResult {
 
 // formatRPCResponse consumes either an RPC ERROR or OK rpcResult and formats it
 // in accordance with the JSON RPC 2.0 specification.
+// @@ formatRPCResponse : ERROR 또는 OK의 rpc 결과를 JSON RPC 2.0 프로토콜에 맞춰서 포맷팅
+// @@ rpcResult 타입을 다시 rpcResponse형으로 변환하여 요청 rpcID에 응답을 리턴.
 func formatRPCResponse(res rpcResult, id *rpcID) rpcResponse {
 	var response rpcResponse
 
