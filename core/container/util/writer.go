@@ -42,6 +42,8 @@ var includeFileTypes = map[string]bool{
 
 // These filetypes are excluded while creating the tar package sent to Docker
 // Generated .class and other temporary files can be excluded
+// 이 파일타입은 도커에 전송할 tar package 생성에서 제외됨.
+// 생성된 .class 파일과 기타 임시 생성파일들도 제외할수 있음.
 var javaExcludeFileTypes = map[string]bool{
 	".class": true,
 }
@@ -51,6 +53,7 @@ func WriteFolderToTarPackage(tw *tar.Writer, srcPath string, excludeDir string, 
 	vmLogger.Infof("rootDirectory = %s", rootDirectory)
 
 	//append "/" if necessary
+	//필요시 "/" 추가
 	if excludeDir != "" && strings.LastIndex(excludeDir, "/") < len(excludeDir)-1 {
 		excludeDir = excludeDir + "/"
 	}
@@ -59,6 +62,7 @@ func WriteFolderToTarPackage(tw *tar.Writer, srcPath string, excludeDir string, 
 	walkFn := func(path string, info os.FileInfo, err error) error {
 
 		// If path includes .git, ignore
+		// 경로에 .git이 포함되어 있을경우 무시함
 		if strings.Contains(path, ".git") {
 			return nil
 		}
@@ -68,11 +72,13 @@ func WriteFolderToTarPackage(tw *tar.Writer, srcPath string, excludeDir string, 
 		}
 
 		//exclude any files with excludeDir prefix. They should already be in the tar
+		//excludeDir prefix가 붙은 파일은 제외
 		if excludeDir != "" && strings.Index(path, excludeDir) == rootDirLen+1 {
 			//1 for "/"
 			return nil
 		}
 		// Because of scoping we can reference the external rootDirectory variable
+		// scoping을 통해서 외부 rootDirectory 변수를 참조할 수 있음
 		if len(path[rootDirLen:]) == 0 {
 			return nil
 		}
@@ -80,12 +86,14 @@ func WriteFolderToTarPackage(tw *tar.Writer, srcPath string, excludeDir string, 
 
 		if includeFileTypeMap != nil {
 			// we only want 'fileTypes' source files at this point
+			// 이 시점에는 'fileTypes' 소스 파일만 필요함
 			if _, ok := includeFileTypeMap[ext]; ok != true {
 				return nil
 			}
 		}
 
 		//exclude the given file types
+		//지정된 file type들은 제외
 		if excludeFileTypeMap != nil {
 			if exclude, ok := excludeFileTypeMap[ext]; ok && exclude {
 				return nil
@@ -110,6 +118,7 @@ func WriteFolderToTarPackage(tw *tar.Writer, srcPath string, excludeDir string, 
 }
 
 //WriteGopathSrc tars up files under gopath src
+//WriteGopathSrc 함수는 gopath 경로의 소스 코드들을 tar로 묶음
 func WriteGopathSrc(tw *tar.Writer, excludeDir string) error {
 	gopath := os.Getenv("GOPATH")
 	// Only take the first element of GOPATH
@@ -124,6 +133,7 @@ func WriteGopathSrc(tw *tar.Writer, excludeDir string) error {
 	}
 
 	// Add the certificates to tar
+	// 인증서를 tar에 추가함
 	if viper.GetBool("peer.tls.enabled") {
 		err := WriteFileToPackage(viper.GetString("peer.tls.cert.file"), "src/certs/cert.pem", tw)
 		if err != nil {
@@ -132,6 +142,7 @@ func WriteGopathSrc(tw *tar.Writer, excludeDir string) error {
 	}
 
 	// Write the tar file out
+	// tar 파일을 작성
 	if err := tw.Close(); err != nil {
 		return err
 	}
@@ -140,6 +151,7 @@ func WriteGopathSrc(tw *tar.Writer, excludeDir string) error {
 }
 
 //Package Java project to tar file from the source path
+//srcPath상의 java project를 tar 파일로 패키징
 func WriteJavaProjectToPackage(tw *tar.Writer, srcPath string) error {
 
 	vmLogger.Debugf("Packaging Java project from path %s", srcPath)
@@ -149,7 +161,7 @@ func WriteJavaProjectToPackage(tw *tar.Writer, srcPath string) error {
 		vmLogger.Errorf("Error writing folder to tar package %s", err)
 		return err
 	}
-	// Write the tar file out
+	// tar 파일을 작성
 	if err := tw.Close(); err != nil {
 		return err
 	}
@@ -158,6 +170,7 @@ func WriteJavaProjectToPackage(tw *tar.Writer, srcPath string) error {
 }
 
 //WriteFileToPackage writes a file to the tarball
+//WriteFileToPackage함수는 tarball 파일을 작성함
 func WriteFileToPackage(localpath string, packagepath string, tw *tar.Writer) error {
 	fd, err := os.Open(localpath)
 	if err != nil {
@@ -171,6 +184,7 @@ func WriteFileToPackage(localpath string, packagepath string, tw *tar.Writer) er
 }
 
 //WriteStreamToPackage writes bytes (from a file reader) to the tarball
+//WriteStreamToPackage함수는 file reader.io 로부터의 byte stream을 tarball에 작성함
 func WriteStreamToPackage(is io.Reader, localpath string, packagepath string, tw *tar.Writer) error {
 	info, err := os.Stat(localpath)
 	if err != nil {
@@ -182,6 +196,7 @@ func WriteStreamToPackage(is io.Reader, localpath string, packagepath string, tw
 	}
 
 	//Let's take the variance out of the tar, make headers identical by using zero time
+	//zeroTime을통해 tar 파일의 header정보를 고유하게 생성함.
 	oldname := header.Name
 	var zeroTime time.Time
 	header.AccessTime = zeroTime

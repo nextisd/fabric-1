@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// system chaincode 용 vm controller.
 package inproccontroller
 
 import (
@@ -43,6 +44,7 @@ var (
 )
 
 //Register registers system chaincode with given path. The deploy should be called to initialize
+//Register함수는 주어진 경로에 시스템 체인코드를 등록함. 초기화를 위해 deploy를 호출해야함.
 func Register(path string, cc shim.Chaincode) error {
 	tmp := typeRegistry[path]
 	if tmp != nil {
@@ -54,10 +56,12 @@ func Register(path string, cc shim.Chaincode) error {
 }
 
 //InprocVM is a vm. It is identified by a executable name
+//InprocVM은 excutable name으로 구별되는 vm임.
 type InprocVM struct {
 	id string
 }
 
+// 체인코드 인스턴스 생성
 func (vm *InprocVM) getInstance(ctxt context.Context, ipctemplate *inprocContainer, ccid ccintf.CCID, args []string, env []string) (*inprocContainer, error) {
 	ipc := instRegistry[ccid.ChaincodeSpec.ChaincodeID.Name]
 	if ipc != nil {
@@ -71,6 +75,7 @@ func (vm *InprocVM) getInstance(ctxt context.Context, ipctemplate *inprocContain
 }
 
 //Deploy verifies chaincode is registered and creates an instance for it. Currently only one instance can be created
+//Deploy함수는 체인코드 등록여부검증 및 해당 체인코드의 인스턴스를 생성함. 현재는 한개의 인스턴스만 생성 가능.
 func (vm *InprocVM) Deploy(ctxt context.Context, ccid ccintf.CCID, args []string, env []string, attachstdin bool, attachstdout bool, reader io.Reader) error {
 	path := ccid.ChaincodeSpec.ChaincodeID.Path
 
@@ -86,6 +91,7 @@ func (vm *InprocVM) Deploy(ctxt context.Context, ccid ccintf.CCID, args []string
 	_, err := vm.getInstance(ctxt, ipctemplate, ccid, args, env)
 
 	//FUTURE ... here is where we might check code for safety
+	//추후에... 여기서 코드 체크 필요.
 	inprocLogger.Debugf("registered : %s", path)
 
 	return err
@@ -106,6 +112,7 @@ func (ipc *inprocContainer) launchInProc(ctxt context.Context, id string, args [
 		if env == nil {
 			env = ipc.env
 		}
+		// shim.StartInProc() : 시스템 체인코드 bootstrap entry point, chaincode용 API는 아님
 		err := shim.StartInProc(env, args, ipc.chaincode, ccRcvPeerSend, peerRcvCCSend)
 		if err != nil {
 			err = fmt.Errorf("chaincode-support ended with err: %s", err)
@@ -143,6 +150,7 @@ func (ipc *inprocContainer) launchInProc(ctxt context.Context, id string, args [
 }
 
 //Start starts a previously registered system codechain
+//Start함수는 사전에 등록된 시스템 체인코드를 실행함.
 func (vm *InprocVM) Start(ctxt context.Context, ccid ccintf.CCID, args []string, env []string, attachstdin bool, attachstdout bool, reader io.Reader) error {
 	path := ccid.ChaincodeSpec.ChaincodeID.Path
 
@@ -184,6 +192,7 @@ func (vm *InprocVM) Start(ctxt context.Context, ccid ccintf.CCID, args []string,
 }
 
 //Stop stops a system codechain
+//Stop함수는 시스템 체인코드를 정지시킴
 func (vm *InprocVM) Stop(ctxt context.Context, ccid ccintf.CCID, timeout uint, dontkill bool, dontremove bool) error {
 	path := ccid.ChaincodeSpec.ChaincodeID.Path
 
@@ -216,6 +225,7 @@ func (vm *InprocVM) Destroy(ctxt context.Context, ccid ccintf.CCID, force bool, 
 }
 
 //GetVMName ignores the peer and network name as it just needs to be unique in process
+//GetVMName함수는 프로세스 내에서 unique 해야 하므로 피어와 네트워크명을 무시함
 func (vm *InprocVM) GetVMName(ccid ccintf.CCID) (string, error) {
 	return ccid.ChaincodeSpec.ChaincodeID.Name, nil
 }

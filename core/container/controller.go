@@ -29,6 +29,7 @@ import (
 )
 
 //abstract virtual image for supporting arbitrary virual machines
+//임의의 가상 머신을 지원하기 위한 가상 이미지 abstraction
 type vm interface {
 	Deploy(ctxt context.Context, ccid ccintf.CCID, args []string, env []string, attachstdin bool, attachstdout bool, reader io.Reader) error
 	Start(ctxt context.Context, ccid ccintf.CCID, args []string, env []string, attachstdin bool, attachstdout bool, reader io.Reader) error
@@ -46,6 +47,10 @@ type refCountedLock struct {
 //   . abstract construction of different types of VMs (we only care about Docker for now)
 //   . manage lifecycle of VM (start with build, start, stop ...
 //     eventually probably need fine grained management)
+//VMController - VM들을 관리
+//   . VM 유형 생성(현재는 Docker만)
+//   . VM lifecycle 관리( build, start, stop 등으로 시작해서 세밀한 관리가 필요함)
+//   .
 type VMController struct {
 	sync.RWMutex
 	// Handlers for each chaincode
@@ -53,15 +58,19 @@ type VMController struct {
 }
 
 //singleton...acess through NewVMController
+//singleton 객체, NewVMController로 액세스함
 var vmcontroller *VMController
 
 //constants for supported containers
+//지원하는 컨테이너용 상수
 const (
 	DOCKER = "Docker"
 	SYSTEM = "System"
 )
 
 //NewVMController - creates/returns singleton
+//NerVMController - singleton 객체를 생성하고 리턴
+//singleton pattern : 여러차례 객체 생성이 호출되더라도 프로그램내에서는 하나의 객체만 생성해서 유지됨
 func init() {
 	vmcontroller = new(VMController)
 	vmcontroller.containerLocks = make(map[string]*refCountedLock)
@@ -83,8 +92,10 @@ func (vmc *VMController) newVM(typ string) vm {
 	return v
 }
 
+//컨테이너를 sync.RWMutex lock 처리
 func (vmc *VMController) lockContainer(id string) {
 	//get the container lock under global lock
+	//global lock 상태에서 컨테이너 lock을 획득
 	vmcontroller.Lock()
 	var refLck *refCountedLock
 	var ok bool
@@ -101,6 +112,7 @@ func (vmc *VMController) lockContainer(id string) {
 	vmLogger.Debugf("got container (%s) lock", id)
 }
 
+//컨테이너의 sync.RWMutex lock 해제(unlock)
 func (vmc *VMController) unlockContainer(id string) {
 	vmcontroller.Lock()
 	if refLck, ok := vmcontroller.containerLocks[id]; ok {
@@ -122,6 +134,8 @@ func (vmc *VMController) unlockContainer(id string) {
 //The context should be passed and tested at each layer till we stop
 //note that we'd stop on the first method on the stack that does not
 //take context
+//VMCReqIntf 인터페이스 - 모든 request 들은 이 인터페이스를 구현해야함
+//context는 각각의 레이어 구간마다 테스트가 필요함
 type VMCReqIntf interface {
 	do(ctxt context.Context, v vm) VMCResp
 	getCCID() ccintf.CCID
@@ -129,12 +143,15 @@ type VMCReqIntf interface {
 
 //VMCResp - response from requests. resp field is a anon interface.
 //It can hold any response. err should be tested first
+//VMCResp - 요청에 대한 응답 구조체. Resp는 anon interface(anonymous)
+//따라서 모든 응답을 처리할 수 있음. Err는 가장 먼저 테스트 되어야함.
 type VMCResp struct {
 	Err  error
 	Resp interface{}
 }
 
 //CreateImageReq - properties for creating an container image
+//CreateImageReq - 컨테이너 이미지 생성을 위한 속성값 구조체
 type CreateImageReq struct {
 	ccintf.CCID
 	Reader       io.Reader
@@ -161,6 +178,7 @@ func (bp CreateImageReq) getCCID() ccintf.CCID {
 }
 
 //StartImageReq - properties for starting a container.
+//StartImageReq - 컨테이너 구동을 위한 속성값 구조체
 type StartImageReq struct {
 	ccintf.CCID
 	Reader       io.Reader
@@ -187,12 +205,15 @@ func (si StartImageReq) getCCID() ccintf.CCID {
 }
 
 //StopImageReq - properties for stopping a container.
+//StopImageReq - 컨테이너 구동 정지를 위한 속성값 구조체
 type StopImageReq struct {
 	ccintf.CCID
 	Timeout uint
 	//by default we will kill the container after stopping
+	//default : 컨테이너 stop후 kill 처리
 	Dontkill bool
 	//by default we will remove the container after killing
+	//default : 컨테이너 kill후 remove 처리
 	Dontremove bool
 }
 
@@ -244,6 +265,22 @@ func (di DestroyImageReq) getCCID() ccintf.CCID {
 //context can be cancelled. VMCProcess will try to cancel calling functions if it can
 //For instance docker clients api's such as BuildImage are not cancelable.
 //In all cases VMCProcess will wait for the called go routine to return
+
+//VMCProcess함수는 아래와 같이 사용되어야 함
+//   . context 생성
+//   . 유형별 req(컨테이너 컨트롤 속성 구조체) 생성 (e.g. CreateImageReq)
+//   . 고루틴 내에서 호출
+//   . 고루틴 내에서 응답 처리
+//context는 취소 가능함. VMCProcess는 함수 호출 취소 시도 가능.
+//예를들어 도커 클라이언트 API의 BuildImage 같은 명령은 취소 불가함
+//VMCProcess는 호출된 고루틴의 리턴을 항상 대기하고 있음
+//  KTODO : 체인코드 실행시 VMCProcess()로 VM 이미지를 콘트롤함, chaincode쪽 분석시 추가 연계 분석필요!
+//  KTODO : 필요하면 아래 flow 그림으로 그릴것
+//  Chaincode(peer) deploy/invoke -> VMCProcess(Create/start/stop/destroy vm)	-> newVM(SYSTEM)-inproccontroller -> req.do() -> 채널
+//																	  	-> newVM(DOCKER)-dockercontroller -> req.do()
+//  @param ctxt context.Context : CCHANDLER를 키값으로 context 할당, peer의 체인코드와의 인터페이스 설정
+//  @param vmtype : 체인코드 deploy시 설정한 값, 현재는 Docker/System 두가지 값을 가짐
+//  @param req : container 패키지의 CreateImageReq,StartImageReq,StopImageReq,DestroyImageReq 중 택1
 func VMCProcess(ctxt context.Context, vmtype string, req VMCReqIntf) (interface{}, error) {
 	v := vmcontroller.newVM(vmtype)
 

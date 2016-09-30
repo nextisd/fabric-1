@@ -20,6 +20,8 @@ import (
 	pb "github.com/hyperledger/fabric/protos"
 )
 
+
+
 // PeerChaincodeStream interface for stream between Peer and chaincode instance.
 type inProcStream struct {
 	recv <-chan *pb.ChaincodeMessage

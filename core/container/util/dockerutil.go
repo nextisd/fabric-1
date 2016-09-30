@@ -43,6 +43,8 @@ func NewDockerClient() (client *docker.Client, err error) {
 // Our docker images retrieve $ARCH via "uname -m", which is typically "x86_64" for, well, x86_64.
 // However, GOARCH uses "amd64".  We therefore need to normalize any discrepancies between "uname -m"
 // and GOARCH here.
+// 도커 이미지는 $ARCH 환경변수를 "uname -m"을 통해서 알아냄, 보통 "x86_64" 이지만
+// GOARCH는 "amd64"를 사용함. 그래서 우리는 "uname -m"과 GOARCH간의 불일치를 여기서 정리하였음.
 var archRemap = map[string]string{
 	"amd64": "x86_64",
 }

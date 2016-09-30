@@ -30,6 +30,11 @@ import (
 	"golang.org/x/net/context"
 )
 
+// testing package - Go package 테스트 자동화 지원, "go test" 커맨드로 실행.
+// func TestXxx(t *Testing.T)의 함수로 구현.
+// func BenchmarkXxx(t *Testing.B)는 벤치마크용.
+// 테스트 프로그램이 사전 셋업이나, 후처리등을 필요로 할경우는 testing.M 을 인자로 사용.
+// https://gowalker.org/testing 참조
 func TestMain(m *testing.M) {
 	flag.BoolVar(&runTests, "run-controller-tests", false, "run tests")
 	flag.Parse()

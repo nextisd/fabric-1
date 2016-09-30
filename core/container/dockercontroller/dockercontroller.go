@@ -36,10 +36,12 @@ var (
 )
 
 //DockerVM is a vm. It is identified by an image id
+//  DockerVM은 image id로 구별되는 vm임
 type DockerVM struct {
 	id string
 }
 
+//도커 호스트 config 가져오기
 func getDockerHostConfig() *docker.HostConfig {
 	if hostConfig != nil {
 		return hostConfig
@@ -137,6 +139,7 @@ func (vm *DockerVM) deployImage(client *docker.Client, ccid ccintf.CCID, args []
 //for docker inputbuf is tar reader ready for use by docker.Client
 //the stream from end client to peer could directly be this tar stream
 //talk to docker daemon using docker Client and build the image
+//Deploy() : tar.gz파일 내부의 Dockerfile을 기초로 도커 이미지를 생성
 func (vm *DockerVM) Deploy(ctxt context.Context, ccid ccintf.CCID, args []string, env []string, attachstdin bool, attachstdout bool, reader io.Reader) error {
 	client, err := cutil.NewDockerClient()
 	switch err {
@@ -151,6 +154,7 @@ func (vm *DockerVM) Deploy(ctxt context.Context, ccid ccintf.CCID, args []string
 }
 
 //Start starts a container using a previously created docker image
+//Start함수는 사전에 생성한 docker image로 컨테이너를 구동시킴.
 func (vm *DockerVM) Start(ctxt context.Context, ccid ccintf.CCID, args []string, env []string, attachstdin bool, attachstdout bool, reader io.Reader) error {
 	imageID, _ := vm.GetVMName(ccid)
 	client, err := cutil.NewDockerClient()
@@ -162,6 +166,7 @@ func (vm *DockerVM) Start(ctxt context.Context, ccid ccintf.CCID, args []string,
 	containerID := strings.Replace(imageID, ":", "_", -1)
 
 	//stop,force remove if necessary
+	//컨테이너를 강제로 종료시킴, 필요시 삭제할것.
 	dockerLogger.Debugf("Cleanup container %s", containerID)
 	vm.stopInternal(ctxt, client, containerID, 0, false, false)
 
@@ -169,6 +174,7 @@ func (vm *DockerVM) Start(ctxt context.Context, ccid ccintf.CCID, args []string,
 	err = vm.createContainer(ctxt, client, imageID, containerID, args, env, attachstdin, attachstdout)
 	if err != nil {
 		//if image not found try to create image and retry
+		//image가 없을 경우 신규 생성해서 retry
 		if err == docker.ErrNoSuchImage {
 			if reader != nil {
 				dockerLogger.Debugf("start-could not find image ...attempt to recreate image %s", err)
@@ -192,6 +198,7 @@ func (vm *DockerVM) Start(ctxt context.Context, ccid ccintf.CCID, args []string,
 	}
 
 	// start container with HostConfig was deprecated since v1.10 and removed in v1.2
+	// HostConfig을 통한 컨테이너 구동은 v1.2에서 삭제됨
 	err = client.StartContainer(containerID, nil)
 	if err != nil {
 		dockerLogger.Errorf("start-could not start container %s", err)
@@ -203,6 +210,7 @@ func (vm *DockerVM) Start(ctxt context.Context, ccid ccintf.CCID, args []string,
 }
 
 //Stop stops a running chaincode
+//Stop함수는 실행중인 체인코드를 정지시킴
 func (vm *DockerVM) Stop(ctxt context.Context, ccid ccintf.CCID, timeout uint, dontkill bool, dontremove bool) error {
 	id, _ := vm.GetVMName(ccid)
 	client, err := cutil.NewDockerClient()
@@ -244,6 +252,7 @@ func (vm *DockerVM) stopInternal(ctxt context.Context, client *docker.Client, id
 }
 
 //Destroy destroys an image
+//Destroy함수는 도커 이미지를 삭제
 func (vm *DockerVM) Destroy(ctxt context.Context, ccid ccintf.CCID, force bool, noprune bool) error {
 	id, _ := vm.GetVMName(ccid)
 	client, err := cutil.NewDockerClient()
@@ -266,6 +275,8 @@ func (vm *DockerVM) Destroy(ctxt context.Context, ccid ccintf.CCID, force bool, 
 
 //GetVMName generates the docker image from peer information given the hashcode. This is needed to
 //keep image name's unique in a single host, multi-peer environment (such as a development environment)
+//GetVMName함수는 피어 정보의 해쉬코드값으로 도커 이미지를 생성함.
+//single host, multi-peer 환경에서 이미지 이름을 유니크하게 유지하기 위해 필요함.(e.g. 개발환경)
 func (vm *DockerVM) GetVMName(ccid ccintf.CCID) (string, error) {
 	if ccid.NetworkID != "" {
 		return fmt.Sprintf("%s-%s-%s", ccid.NetworkID, ccid.PeerID, ccid.ChaincodeSpec.ChaincodeID.Name), nil
