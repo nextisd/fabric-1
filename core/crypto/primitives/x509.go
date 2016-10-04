@@ -49,11 +49,13 @@ var (
 )
 
 // DERToX509Certificate converts der to x509
+// DERToX509Certificate는 DER을 X509로 변환
 func DERToX509Certificate(asn1Data []byte) (*x509.Certificate, error) {
 	return x509.ParseCertificate(asn1Data)
 }
 
 // PEMtoCertificate converts pem to x509
+// PEMtoCertificate는 PEM을 X509로 변환
 func PEMtoCertificate(raw []byte) (*x509.Certificate, error) {
 	block, _ := pem.Decode(raw)
 	if block == nil {
@@ -73,6 +75,7 @@ func PEMtoCertificate(raw []byte) (*x509.Certificate, error) {
 }
 
 // PEMtoDER converts pem to der
+// PEMtoDER()는 PEM을 DER로 변환
 func PEMtoDER(raw []byte) ([]byte, error) {
 	block, _ := pem.Decode(raw)
 	if block == nil {
@@ -87,6 +90,7 @@ func PEMtoDER(raw []byte) ([]byte, error) {
 }
 
 // PEMtoCertificateAndDER converts pem to x509 and der
+// PEMtoCertificateAndDER()은 PEM을 X509와 DER로 변환
 func PEMtoCertificateAndDER(raw []byte) (*x509.Certificate, []byte, error) {
 	block, _ := pem.Decode(raw)
 	if block == nil {
@@ -106,6 +110,7 @@ func PEMtoCertificateAndDER(raw []byte) (*x509.Certificate, []byte, error) {
 }
 
 // DERCertToPEM converts der to pem
+// DERCertToPEM()은 DER을 PEM으로 변환
 func DERCertToPEM(der []byte) []byte {
 	return pem.EncodeToMemory(
 		&pem.Block{
@@ -117,6 +122,7 @@ func DERCertToPEM(der []byte) []byte {
 
 // GetCriticalExtension returns a requested critical extension. It also remove it from the list
 // of unhandled critical extensions
+// GetCriticalExtension()은 요청된 중요 extension을 Return한다. 또한 비연결 중요extension 목록에서 삭제한다.
 func GetCriticalExtension(cert *x509.Certificate, oid asn1.ObjectIdentifier) ([]byte, error) {
 	for i, ext := range cert.UnhandledCriticalExtensions {
 		if utils.IntArrayEquals(ext, oid) {
@@ -136,6 +142,7 @@ func GetCriticalExtension(cert *x509.Certificate, oid asn1.ObjectIdentifier) ([]
 }
 
 // NewSelfSignedCert create a self signed certificate
+// NewSelfSignedCert()는 Self서명인증을 생성한다.
 func NewSelfSignedCert() ([]byte, interface{}, error) {
 	privKey, err := NewECDSAKey()
 	if err != nil {
@@ -207,6 +214,7 @@ func NewSelfSignedCert() ([]byte, interface{}, error) {
 }
 
 // CheckCertPKAgainstSK checks certificate's publickey against the passed secret key
+// CheckCertPKAgainstSK()는 통과된 보안키에 대한 인증서의 공개키를 확인한다.
 func CheckCertPKAgainstSK(x509Cert *x509.Certificate, privateKey interface{}) error {
 	switch pub := x509Cert.PublicKey.(type) {
 	case *rsa.PublicKey:
@@ -234,6 +242,7 @@ func CheckCertPKAgainstSK(x509Cert *x509.Certificate, privateKey interface{}) er
 }
 
 // CheckCertAgainRoot check the validity of the passed certificate against the passed certPool
+// CheckCertAgainRoot()는 통과된 certPool에 대한 통과된 인증의 정합성을 확인한다.
 func CheckCertAgainRoot(x509Cert *x509.Certificate, certPool *x509.CertPool) ([][]*x509.Certificate, error) {
 	opts := x509.VerifyOptions{
 		// TODO		DNSName: "test.example.com",
@@ -244,6 +253,7 @@ func CheckCertAgainRoot(x509Cert *x509.Certificate, certPool *x509.CertPool) ([]
 }
 
 // CheckCertAgainstSKAndRoot checks the passed certificate against the passed secretkey and certPool
+// CheckCertAgainstSKAndRoot()는 통과된 보안키와 certPool에 대한 통과된 인증서를 확인한다.
 func CheckCertAgainstSKAndRoot(x509Cert *x509.Certificate, privateKey interface{}, certPool *x509.CertPool) error {
 	if err := CheckCertPKAgainstSK(x509Cert, privateKey); err != nil {
 		return err

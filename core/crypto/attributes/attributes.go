@@ -14,6 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+/*
+   @brief Package attributes는 속성에 대한 여러 기능을 지원한다.
+          ParseAttributesHeader, ReadAttributeHeader, ReadTCertAttribute, ReadTCertAttributeByPosition
+   @see
+*/
+
 package attributes
 
 import (
@@ -49,7 +55,14 @@ var (
 	HeaderAttributeName = "attributeHeader"
 )
 
-//ParseAttributesHeader parses a string and returns a map with the attributes.
+// Attribute Header Parse 그리고 속성들이 있는 MAP을 Return
+/*
+	@brief ParseAttributesHeader()는 입력된 Attribute Header에 대한 구분분석 후 Map과 처리 결과를 Return
+	@param header : Attribute Header
+	@retval  nil : 비정상
+	@        map : ???  (OUT)
+	@see ???
+*/
 func ParseAttributesHeader(header string) (map[string]int, error) {
 	if !strings.HasPrefix(header, headerPrefix) {
 		return nil, errors.New("Invalid header")
@@ -75,7 +88,8 @@ func ParseAttributesHeader(header string) (map[string]int, error) {
 	return result, nil
 }
 
-//ReadAttributeHeader read the header of the attributes.
+// Attribute Header Read
+// ReadAttributeHeader() : ReadAttributeHeader()는 Attribute Header Read
 func ReadAttributeHeader(tcert *x509.Certificate, headerKey []byte) (map[string]int, bool, error) {
 	var err error
 	var headerRaw []byte
@@ -106,6 +120,7 @@ func ReadAttributeHeader(tcert *x509.Certificate, headerKey []byte) (map[string]
 }
 
 //ReadTCertAttributeByPosition read the attribute stored in the position "position" of the tcert.
+//ReadTCertAttributeByPosition 은 tcert의 'position'에 저장되어 있는 속성을 읽는다.
 func ReadTCertAttributeByPosition(tcert *x509.Certificate, position int) ([]byte, error) {
 	if position <= 0 {
 		return nil, fmt.Errorf("Invalid attribute position. Received [%v]", position)
@@ -120,6 +135,7 @@ func ReadTCertAttributeByPosition(tcert *x509.Certificate, position int) ([]byte
 }
 
 //ReadTCertAttribute read the attribute with name "attributeName" and returns the value and a boolean indicating if the returned value is encrypted or not.
+//ReadTCertAttribute는 "attributeName" 이름에 있는 속성을 읽고 값과 리턴값의 암호화 여부를 알려 주는 boolean을 돌려준다.
 func ReadTCertAttribute(tcert *x509.Certificate, attributeName string, headerKey []byte) ([]byte, bool, error) {
 	header, encrypted, err := ReadAttributeHeader(tcert, headerKey)
 	if err != nil {
@@ -137,23 +153,27 @@ func ReadTCertAttribute(tcert *x509.Certificate, attributeName string, headerKey
 }
 
 //EncryptAttributeValue encrypts "attributeValue" using "attributeKey"
+//EncryptAttributeValue는 "attributeKey"를 기반으로 "attributeValue"를 암호화한다.
 func EncryptAttributeValue(attributeKey []byte, attributeValue []byte) ([]byte, error) {
 	value := append(attributeValue, padding...)
 	return primitives.CBCPKCS7Encrypt(attributeKey, value)
 }
 
 //getAttributeKey returns the attributeKey derived from the preK0 to the attributeName.
+//getAttributeKey는 preK0부터 attributeName까지 얻은 attributeKey를 돌려준다.
 func getAttributeKey(preK0 []byte, attributeName string) []byte {
 	return primitives.HMACTruncated(preK0, []byte(attributeName), 32)
 }
 
 //EncryptAttributeValuePK0 encrypts "attributeValue" using a key derived from preK0.
+//EncryptAttributeValuePK0는 preK0에서 얻은 키를 이용해서 "attributeValue"를 암호화한다.
 func EncryptAttributeValuePK0(preK0 []byte, attributeName string, attributeValue []byte) ([]byte, error) {
 	attributeKey := getAttributeKey(preK0, attributeName)
 	return EncryptAttributeValue(attributeKey, attributeValue)
 }
 
 //DecryptAttributeValue decrypts "encryptedValue" using "attributeKey" and return the decrypted value.
+//DecryptAttributeValue "attributeKey"를 이용하여 복호화하고 복호화한 값을 Return.
 func DecryptAttributeValue(attributeKey []byte, encryptedValue []byte) ([]byte, error) {
 	value, err := primitives.CBCPKCS7Decrypt(attributeKey, encryptedValue)
 	if err != nil {
@@ -173,6 +193,7 @@ func DecryptAttributeValue(attributeKey []byte, encryptedValue []byte) ([]byte, 
 }
 
 //getKAndValueForAttribute derives K for the attribute "attributeName", checks the value padding and returns both key and decrypted value
+//getKAndValueForAttribute는 "attributeName" 속성에 대한 K를 취득하고, Padding값을 검증한 후 KEY와 복호화한 값을 Return.
 func getKAndValueForAttribute(attributeName string, preK0 []byte, cert *x509.Certificate) ([]byte, []byte, error) {
 	headerKey := getAttributeKey(preK0, HeaderAttributeName)
 	value, encrypted, err := ReadTCertAttribute(cert, attributeName, headerKey)
@@ -191,12 +212,14 @@ func getKAndValueForAttribute(attributeName string, preK0 []byte, cert *x509.Cer
 }
 
 //GetKForAttribute derives the K for the attribute "attributeName" and returns the key
+//GetKForAttribute는 "attributeName"  속성에 대한 K를 취득하여 KEY를 Return.
 func GetKForAttribute(attributeName string, preK0 []byte, cert *x509.Certificate) ([]byte, error) {
 	key, _, err := getKAndValueForAttribute(attributeName, preK0, cert)
 	return key, err
 }
 
 //GetValueForAttribute derives the K for the attribute "attributeName" and returns the value
+//GetValueForAttribute "attributeName"  속성에 대한 K를 취득하여 Value를 Return.
 func GetValueForAttribute(attributeName string, preK0 []byte, cert *x509.Certificate) ([]byte, error) {
 	_, value, err := getKAndValueForAttribute(attributeName, preK0, cert)
 	return value, err
@@ -213,6 +236,7 @@ func createAttributesMetadataEntry(attributeName string, preK0 []byte) *pb.Attri
 }
 
 //CreateAttributesMetadataObjectFromCert creates an AttributesMetadata object from certificate "cert", metadata and the attributes keys.
+//CreateAttributesMetadataObjectFromCert은 certificate "cert", metadata와 속성KEY들로 부터 AttributesMetadata Object를 생성한다.
 func CreateAttributesMetadataObjectFromCert(cert *x509.Certificate, metadata []byte, preK0 []byte, attributeKeys []string) *pb.AttributesMetadata {
 	var entries []*pb.AttributesMetadataEntry
 	for _, key := range attributeKeys {
@@ -230,6 +254,7 @@ func CreateAttributesMetadataObjectFromCert(cert *x509.Certificate, metadata []b
 }
 
 //CreateAttributesMetadataFromCert creates the AttributesMetadata from the original metadata and certificate "cert".
+//CreateAttributesMetadataFromCert는 원메타데이터와 certificate "cert"를 기반으로 AttributesMetadata를 생성한다.
 func CreateAttributesMetadataFromCert(cert *x509.Certificate, metadata []byte, preK0 []byte, attributeKeys []string) ([]byte, error) {
 	attributesMetadata := CreateAttributesMetadataObjectFromCert(cert, metadata, preK0, attributeKeys)
 
@@ -237,6 +262,7 @@ func CreateAttributesMetadataFromCert(cert *x509.Certificate, metadata []byte, p
 }
 
 //CreateAttributesMetadata create the AttributesMetadata from the original metadata
+//CreateAttributesMetadata는 원메타데이터를 기반으로 AttributesMetadata를 생성한다.
 func CreateAttributesMetadata(raw []byte, metadata []byte, preK0 []byte, attributeKeys []string) ([]byte, error) {
 	cert, err := primitives.DERToX509Certificate(raw)
 	if err != nil {
@@ -254,6 +280,7 @@ func GetAttributesMetadata(metadata []byte) (*pb.AttributesMetadata, error) {
 }
 
 //BuildAttributesHeader builds a header attribute from a map of attribute names and positions.
+//BuildAttributesHeader는 속성명과 위치를 기반으로 해더속성을 구성한다.
 func BuildAttributesHeader(attributesHeader map[string]int) ([]byte, error) {
 	var header []byte
 	var headerString string

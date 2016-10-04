@@ -27,21 +27,25 @@ var (
 )
 
 // GetDefaultHash returns the default hash function used by the crypto layer
+// GetDefaultHash()는  returns crypto영역에서 사용되는 기본해쉬함수를 Return한다.
 func GetDefaultHash() func() hash.Hash {
 	return defaultHash
 }
 
 // GetHashAlgorithm return the default hash algorithm
+// GetHashAlgorithm()은 기본 Hash알고리즘을 Return한다.
 func GetHashAlgorithm() string {
 	return defaultHashAlgorithm
 }
 
 // NewHash returns a new hash function
+// NewHash()는 신규 Hash함수를 Return한다.
 func NewHash() hash.Hash {
 	return GetDefaultHash()()
 }
 
 // Hash hashes the msh using the predefined hash function
+// Hash()는 사전정의된 Hash함수를 사용하는 msh를 Hash한다.
 func Hash(msg []byte) []byte {
 	hash := NewHash()
 	hash.Write(msg)

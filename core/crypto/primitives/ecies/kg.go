@@ -53,11 +53,17 @@ func (kg *keyGeneratorImpl) Init(params primitives.KeyGeneratorParameters) error
 	return nil
 }
 
+// GenerateKey() :
+// IN)  Nothing
+// OUT  primitives
+//		PrivateKey
+//		error			처리 결과
 func (kg *keyGeneratorImpl) GenerateKey() (primitives.PrivateKey, error) {
 	if kg.params == nil {
 		return nil, fmt.Errorf("Key Generator not initliazed")
 	}
 
+	// Get Private Key
 	privKey, err := eciesGenerateKey(
 		kg.params.rand,
 		kg.params.curve,

@@ -29,11 +29,15 @@ type ECDSASignature struct {
 }
 
 // NewECDSAKey generates a new ECDSA Key
+// NewECDSAKey() : ECDSA Key 생성
+//		IN) Nothing
+//		OUT) PrivateKey,  Error
 func NewECDSAKey() (*ecdsa.PrivateKey, error) {
 	return ecdsa.GenerateKey(GetDefaultCurve(), rand.Reader)
 }
 
 // ECDSASignDirect signs
+// ECDSASignDirect() 서명
 func ECDSASignDirect(signKey interface{}, msg []byte) (*big.Int, *big.Int, error) {
 	temp := signKey.(*ecdsa.PrivateKey)
 	h := Hash(msg)
@@ -46,6 +50,7 @@ func ECDSASignDirect(signKey interface{}, msg []byte) (*big.Int, *big.Int, error
 }
 
 // ECDSASign signs
+// ECDSASign() 서명
 func ECDSASign(signKey interface{}, msg []byte) ([]byte, error) {
 	temp := signKey.(*ecdsa.PrivateKey)
 	h := Hash(msg)
@@ -68,6 +73,7 @@ func ECDSASign(signKey interface{}, msg []byte) ([]byte, error) {
 }
 
 // ECDSAVerify verifies
+// ECDSAVerify() 검증
 func ECDSAVerify(verKey interface{}, msg, signature []byte) (bool, error) {
 	ecdsaSignature := new(ECDSASignature)
 	_, err := asn1.Unmarshal(signature, ecdsaSignature)
@@ -85,6 +91,7 @@ func ECDSAVerify(verKey interface{}, msg, signature []byte) (bool, error) {
 }
 
 // VerifySignCapability tests signing capabilities
+// VerifySignCapability()는  서명 기능들을 테스트한다.
 func VerifySignCapability(tempSK interface{}, certPK interface{}) error {
 	/* TODO: reactive or remove
 	msg := []byte("This is a message to be signed and verified by ECDSA!")

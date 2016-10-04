@@ -18,13 +18,15 @@ syntax = "proto3";
 
 package protos;
 
-//AttributesMetadataEntry is an entry within the metadata that store an attribute name with its respective key.
+// AttributesMetadataEntry는 각각의 키와 같이 속성명을 저장하는 메타데이터간의 항목이다.
+// AttributesMetadataEntry is an entry within the metadata that store an attribute name with its respective key.
 message AttributesMetadataEntry {
     string AttributeName = 1;
     bytes AttributeKey = 2;
 }
 
-//AttributesMetadata holds both the original metadata bytes and the metadata required to access attributes.
+// AttributesMetadata는 접근속성을 필요로 한 메타데이터와 원래의 메타데이터 수 Byte 두가지를 갖는다.  
+// AttributesMetadata holds both the original metadata bytes and the metadata required to access attributes.
 message AttributesMetadata {
     //Original metadata bytes
     bytes Metadata = 1;

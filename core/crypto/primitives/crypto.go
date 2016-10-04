@@ -48,6 +48,7 @@ var (
 type Parameters interface {
 
 	// GetRand returns the random generated associated to this parameters
+	// GetRand()는 이 파라미터들과 연계하여 생성된 난수를 돌려준다
 	GetRand() io.Reader
 }
 
@@ -124,6 +125,7 @@ type KeySerializer interface {
 }
 
 // AsymmetricCipherSPI is a Service Provider Interface for AsymmetricCipher
+// AsymmetricCipher 인터페이스는 AsymmetricCipher를 위한 Service Provider이다.
 type AsymmetricCipherSPI interface {
 
 	// NewAsymmetricCipherFromPrivateKey creates a new AsymmetricCipher for decryption from a secret key
@@ -161,6 +163,7 @@ type AsymmetricCipherSPI interface {
 }
 
 // StreamCipherSPI is a Service Provider Interface for StreamCipher
+// StreamCipherSPI 인터페이스는 StreamCipher를 위한 Service Provider이다.
 type StreamCipherSPI interface {
 	GenerateKey() (SecretKey, error)
 

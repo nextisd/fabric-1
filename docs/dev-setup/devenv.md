@@ -1,80 +1,1 @@
-## Setting up the development environment
-
-### Overview
-The current development environment utilizes Vagrant running an Ubuntu image, which in turn launches Docker containers. Conceptually, the Host launches a VM, which in turn launches Docker containers.
-
-**Host -> VM -> Docker**
-
-This model allows developers to leverage their favorite OS/editors and execute the system in a controlled environment that is consistent amongst the development team.
-
-- Note that your Host should not run within a VM. If you attempt this, the VM within your Host may fail to boot with a message indicating that VT-x is not available.
-
-### Prerequisites
-* [Git client](https://git-scm.com/downloads)
-* [Go](https://golang.org/) - 1.6 or later
-* [Vagrant](https://www.vagrantup.com/) - 1.7.4 or later
-* [VirtualBox](https://www.virtualbox.org/) - 5.0 or later
-* BIOS Enabled Virtualization - Varies based on hardware
-
-- Note: The BIOS Enabled Virtualization may be within the CPU or Security settings of the BIOS
-
-### Steps
-
-#### Set your GOPATH
-Make sure you have properly setup your Host's [GOPATH environment variable](https://github.com/golang/go/wiki/GOPATH). This allows for both building within the Host and the VM.
-
-#### Note to Windows users
-
-If you are running Windows, before running any `git clone` commands, run the following command.
-```
-git config --get core.autocrlf
-```
-If `core.autocrlf` is set to `true`, you must set it to `false` by running
-```
-git config --global core.autocrlf false
-```
-If you continue with `core.autocrlf` set to `true`, the `vagrant up` command will fail with the error `./setup.sh: /bin/bash^M: bad interpreter: No such file or directory`
-
-#### Cloning the Fabric project
-
-Since the Fabric project is a `Go` project, you'll need to clone the Fabric repo to your $GOPATH/src directory. If your $GOPATH has multiple path components, then you will want to use the first one. There's a little bit of setup needed:
-
-```
-cd $GOPATH/src
-mkdir -p github.com/hyperledger
-cd github.com/hyperledger
-```
-
-Recall that we are using `Gerrit` for source control, which has its own internal git repositories. Hence, we will need to [clone from Gerrit](../Gerrit/gerrit.md#Working-with-a-local-clone-of-the-repository). For brevity, the command is as follows:
-```
-git clone ssh://LFID@gerrit.hyperledger.org:29418/fabric && scp -p -P 29418 LFID@gerrit.hyperledger.org:hooks/commit-msg fabric/.git/hooks/
-```
-**Note:** of course, you would want to replace `LFID` with your [Linux Foundation ID](../Gerrit/lf-account.md).
-
-#### Boostrapping the VM using Vagrant
-
-Now you're ready to launch Vagrant.
-
-```
-cd $GOPATH/src/github.com/hyperledger/fabric/devenv
-vagrant up
-```
-
-Go get coffee... this will take a few minutes. Once complete, you should be able to `ssh` into the Vagrant VM just created.
-```
-vagrant ssh
-```
-
-### Building the fabric
-
-Once you have your vagrant development environment established, you can proceed to [build and test](build.md) the fabric. Once inside the VM, you can find the peer project under `$GOPATH/src/github.com/hyperledger/fabric`. It is also mounted as  `/hyperledger`.
-
-### Notes
-
-**NOTE:** any time you change any of the files in your local fabric directory (under `$GOPATH/src/github.com/hyperledger/fabric`), the update will be instantly available within the VM fabric directory.
-
-**NOTE:** If you intend to run the development environment behind an HTTP Proxy, you need to configure the guest so that the provisioning process may complete. You can achieve this via the *vagrant-proxyconf* plugin. Install with `vagrant plugin install vagrant-proxyconf` and then set the VAGRANT_HTTP_PROXY and VAGRANT_HTTPS_PROXY environment variables *before* you execute `vagrant up`. More details are available here: https://github.com/tmatilai/vagrant-proxyconf/
-
-**NOTE:** The first time you run this command it may take quite a while to complete (it could take 30 minutes or more depending on your environment) and at times it may look like it's not doing anything. As long you don't get any error messages just leave it alone, it's all good, it's just cranking.
-
-**NOTE to Windows 10 Users:** There is a known problem with vagrant on Windows 10 (see [mitchellh/vagrant#6754](https://github.com/mitchellh/vagrant/issues/6754)). If the `vagrant up` command fails it may be because you do not have Microsoft Visual C++ Redistributable installed. You can download the missing package at the following address: http://www.microsoft.com/en-us/download/details.aspx?id=8328
+## Setting up the development environment### Overview현재의 개발환경은 Docker 컨테이너를 순차적으로 올리고 Ubuntu이미지를 기동하는 Vagrant를 이용한다. 개념적으로 Host는 VM을 올리고, DOcker컨테이너를 순차적으로 올린다.**Host -> VM -> Docker**이런 모델은 개발자가 자신이 좋아하는 OS / Editor를 활용하고 개발 팀 사이에 일치하는 제어된 환경에서 시스템을 실행할 수 있다- 당신의 호스트가 VM에서 동작 안하는 것에 주의하라. 이 작업을 시도할 경우, 호스트 내의 VM은 VT-x는 사용할 수 없음을 알리는 메시지와 함께 부팅이 실패 할 것이다.### Prerequisites* [Git client](https://git-scm.com/downloads)* [Go](https://golang.org/) - 1.6 or later* [Vagrant](https://www.vagrantup.com/) - 1.7.4 or later* [VirtualBox](https://www.virtualbox.org/) - 5.0 or later* BIOS Enabled Virtualization - Varies based on hardware- 주의: 가상화 가능한 BIOS는 CPU나 BIOS 보안 설정에 있을 것이다 ### Steps#### Set your GOPATHHost의 [GOPATH 환경변수](https://github.com/golang/go/wiki/GOPATH)를 정확하게 설정하라. 이것은 Host와 VM 간의 양방 구성을 가능하게 한다.#### Note to Windows users윈도우상에서는 `git clone` 명령을 실행하기 전에 다음의 명령을 실행하라.```git config --get core.autocrlf```만일 `core.autocrlf`  `true`를 Set하면,  아래의 명령으로 'false'를 SET해야 한다.```git config --global core.autocrlf false```만일 `core.autocrlf` 로 `true` Set을 유지한다면, `vagrant up`명령은 실패할 것이다. (에러: `./setup.sh: /bin/bash^M: bad interpreter: No such file or directory`)#### Cloning the Fabric projectFabric Project가 GO project이므로, $GOPATH/src 디렉토리에 Fabric Repo를 복제할 필요가 있을 것이다. 민일 $GOPATH가 여러 Path요소를 갖는다면, 당신은 처음의 값만 원할 것이다. 거기에는 약간의 설정이 필요하다:```cd $GOPATH/srcmkdir -p github.com/hyperledgercd github.com/hyperledger```우리는 독자적으로 내부에 GIT레퍼지토리를 갖는 소스관리를 위해 'Gerrit'를 사용하고 있다는 것을 기억하라. 그래서 우리는 [Gerrit으로부터 복제](../Gerrit/gerrit.md#Working-with-a-local-clone-of-the-repository)할 필요가 있다. 간단하게 그 명령은 다음과 같다:```git clone ssh://LFID@gerrit.hyperledger.org:29418/fabric && scp -p -P 29418 LFID@gerrit.hyperledger.org:hooks/commit-msg fabric/.git/hooks/```**주의:** 물론, 당신의 [Linux재단 ID](../Gerrit/lf-account.md)와 'LFID'를 바꾸고 싶을 것이다..#### Boostrapping the VM using VagrantNow you're ready to launch Vagrant.```cd $GOPATH/src/github.com/hyperledger/fabric/devenvvagrant up```Go get coffee... this will take a few minutes. Once complete, you should be able to `ssh` into the Vagrant VM just created.```vagrant ssh```### FABRIC 구축(Building the fabric)당신의 Vagrant개발환경이 설치되면 당신은 FABRIC [구축과 테스트](build.md)를 진행할 수 있다. VM내에서 `$GOPATH/src/github.com/hyperledger/fabric`에서 Peer Project를 발견할수 있다. 그것은 또한 `/hyperledger`로 마운트 된다.### 주의사항**주:** 언제든지 당신의 로컬 Fabric 디렉토리(`$GOPATH/src/github.com/hyperledger/fabric`)에 있는 그 어떠한 파일들을 수정하면, 그 변경은 VM Fabric디렉토리내에 즉시 반영될것이다. **주:** 만일 HTTP Proxy로 개발환경을 실행하려하면 프로비저닝 프로세스가 완료할 수 있도록 Guest를 설정해야 한다. 당신은 *vagrant-proxyconf* 플러그인을 통해서 이것을 할 수 있다. `vagrant plugin install vagrant-proxyconf`로 설치하고 `vagrant up`을 실행하기 *전에* 환경변수들 VAGRANT_HTTP_PROXY와 VAGRANT_HTTPS_PROXY를 설정한다. 보다더 상세 사항들은 https://github.com/tmatilai/vagrant-proxyconf/에  있다.**주:** 이 명령 실행 초에는 완료하는데 많은 시간(환경에 따라 30분 이상 소요) 소요될 수 있으며 그때는 마치 아무것도 안하는 것 처럼 보일수 있다. As long you don't get any error messages just leave it alone, it's all good, it's just cranking.**WIN10 사용자 주의:** `vagrant up` 실행시 이상이 발생하면 Microsoft Visual C++재배포가 Install 안되어 있으므로 http://www.microsoft.com/en-us/download/details.aspx?id=8328에서 다운로드하여 설치하시오

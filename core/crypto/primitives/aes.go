@@ -28,6 +28,7 @@ import (
 
 const (
 	// AESKeyLength is the default AES key length
+	// AESKeyLength는 기본 AES KEY 길이이다.
 	AESKeyLength = 32
 
 	// NonceSize is the default NonceSize
@@ -35,11 +36,13 @@ const (
 )
 
 // GenAESKey returns a random AES key of length AESKeyLength
+// GenAESKey() : AESKeyLength 길이의 random AES key Return
 func GenAESKey() ([]byte, error) {
 	return GetRandomBytes(AESKeyLength)
 }
 
 // PKCS7Padding pads as prescribed by the PKCS7 standard
+// PKCS7Padding()은 표준PKCS7에 의해 규정된 pad
 func PKCS7Padding(src []byte) []byte {
 	padding := aes.BlockSize - len(src)%aes.BlockSize
 	padtext := bytes.Repeat([]byte{byte(padding)}, padding)
@@ -47,6 +50,7 @@ func PKCS7Padding(src []byte) []byte {
 }
 
 // PKCS7UnPadding unpads as prescribed by the PKCS7 standard
+// PKCS7UnPadding()은 표준PKCS7에 의해 규정된 unpad
 func PKCS7UnPadding(src []byte) ([]byte, error) {
 	length := len(src)
 	unpadding := int(src[length-1])
@@ -66,11 +70,15 @@ func PKCS7UnPadding(src []byte) ([]byte, error) {
 }
 
 // CBCEncrypt encrypts using CBC mode
+// CBCEncrypt() CBC 모드를 이용한 암호화
+//		IN)  Key , s
 func CBCEncrypt(key, s []byte) ([]byte, error) {
 	// CBC mode works on blocks so plaintexts may need to be padded to the
 	// next whole block. For an example of such padding, see
 	// https://tools.ietf.org/html/rfc5246#section-6.2.3.2. Here we'll
 	// assume that the plaintext is already of the correct length.
+
+	// CBC 모드는 블럭들 상에서 동작하므로 평문들은 다음의 전체 블럭에 Pad시킬 필요가 있다.
 	if len(s)%aes.BlockSize != 0 {
 		return nil, errors.New("plaintext is not a multiple of the block size")
 	}
@@ -81,7 +89,8 @@ func CBCEncrypt(key, s []byte) ([]byte, error) {
 	}
 
 	// The IV needs to be unique, but not secure. Therefore it's common to
-	// include it at the beginning of the ciphertext.
+	// include it at the beginning of the ciphertext(암호문).
+	// IV는 Unique될 필요가 있으나 안전은 아니다. 그래서 보통 암호문의 초반에 포함시킨다.(?)
 	ciphertext := make([]byte, aes.BlockSize+len(s))
 	iv := ciphertext[:aes.BlockSize]
 	if _, err := io.ReadFull(rand.Reader, iv); err != nil {
@@ -98,6 +107,7 @@ func CBCEncrypt(key, s []byte) ([]byte, error) {
 }
 
 // CBCDecrypt decrypts using CBC mode
+// CBCDecrypt()는 CBC모드를 이용하여 복호화함
 func CBCDecrypt(key, src []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {

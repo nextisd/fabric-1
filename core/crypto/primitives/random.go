@@ -19,6 +19,7 @@ package primitives
 import "crypto/rand"
 
 // GetRandomBytes returns len random looking bytes
+// GetRandomBytes()는 입력된 길이만큼의 Tandom 문을 Return한다.
 func GetRandomBytes(len int) ([]byte, error) {
 	key := make([]byte, len)
 
@@ -32,6 +33,7 @@ func GetRandomBytes(len int) ([]byte, error) {
 }
 
 // GetRandomNonce returns a random byte array of length NonceSize
+// GetRandomNonce()는 NonceSize(전의된 값=24)길이의 Random Byte 배열을 Return한다.
 func GetRandomNonce() ([]byte, error) {
 	return GetRandomBytes(NonceSize)
 }

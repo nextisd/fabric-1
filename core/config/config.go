@@ -22,7 +22,6 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 )
 
@@ -36,7 +35,7 @@ func init() {
 
 }
 
-// SetupTestLogging setup the logging during test execution
+// SetupTestLogging : 테스트 실행하는 동안 Logging Setup
 func SetupTestLogging() {
 	level, err := logging.LogLevel(viper.GetString("logging.peer"))
 	if err == nil {
@@ -52,25 +51,25 @@ func SetupTestLogging() {
 	}
 }
 
-// SetupTestConfig setup the config during test execution
+// SetupTestConfig : 테스트하는 동안 Config 설정
 func SetupTestConfig(pathToOpenchainYaml string) {
 	flag.Parse()
 
-	// Now set the configuration file
+	// 설정파일 Set
 	viper.SetEnvPrefix("HYPERLEDGER")
 	viper.AutomaticEnv()
 	replacer := strings.NewReplacer(".", "_")
 	viper.SetEnvKeyReplacer(replacer)
-	viper.SetConfigName("core")              // name of config file (without extension)
-	viper.AddConfigPath(pathToOpenchainYaml) // path to look for the config file in
-	err := viper.ReadInConfig()              // Find and read the config file
-	if err != nil {                          // Handle errors reading the config file
+	viper.SetConfigName("core")              // 설정파일명 (without extension)
+	viper.AddConfigPath(pathToOpenchainYaml) // 설정파일을 찾을 수 있는 Path
+	err := viper.ReadInConfig()              // 설정파일을 찾아서 Read
+	if err != nil {                          // Config파일 Read 이상 발생
 		panic(fmt.Errorf("Fatal error config file: %s \n", err))
 	}
 
 	SetupTestLogging()
 
-	// Set the number of maxprocs
+	// Set the number of maxprocs 최대 Process 수 Set
 	var numProcsDesired = viper.GetInt("peer.gomaxprocs")
 	configLogger.Debugf("setting Number of procs to %d, was %d\n", numProcsDesired, runtime.GOMAXPROCS(2))
 

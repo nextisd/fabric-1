@@ -1,205 +1,1 @@
-## Building the fabric
-
-The following instructions assume that you have already set up your [development environment](devenv.md).
-
-To access your VM, run `vagrant ssh` from within the devenv directory of your locally cloned fabric repository.
-
-```
-cd $GOPATH/src/github.com/hyperledger/fabric/devenv
-vagrant ssh
-```
-
-From within the VM, you can build, run, and test your environment.
-
-```
-cd $GOPATH/src/github.com/hyperledger/fabric
-make peer
-```
-
-To see what commands are available, simply execute the following commands:
-```
-peer help
-```
-
-You should see the following output:
-
-```
-    Usage:
-      peer [command]
-
-    Available Commands:
-      node        node specific commands.
-      network     network specific commands.
-      chaincode   chaincode specific commands.
-      help        Help about any command
-
-    Flags:
-      -h, --help[=false]: help for peer
-          --logging-level="": Default logging level and overrides, see core.yaml for full syntax
-
-
-    Use "peer [command] --help" for more information about a command.
-```
-
-The `peer node start` command will initiate a peer process, with which one can interact by executing other commands. For example, the `peer node status` command will return the status of the running peer. The full list of commands is the following:
-
-```
-      node
-        start       Starts the node.
-        status      Returns status of the node.
-        stop        Stops the running node.
-      network
-        login       Logs in user to CLI.
-        list        Lists all network peers.
-      chaincode
-        deploy      Deploy the specified chaincode to the network.
-        invoke      Invoke the specified chaincode.
-        query       Query using the specified chaincode.
-      help        Help about any command
-```
-
-**Note:** If your GOPATH environment variable contains more than one element, the chaincode must be found in the first one or deployment will fail.
-
-### Running the unit tests
-
-Use the following sequence to run all unit tests
-
-```
-cd $GOPATH/src/github.com/hyperledger/fabric
-make unit-test
-```
-
-To run a specific test use the `-run RE` flag where RE is a regular expression that matches the test case name. To run tests with verbose output use the `-v` flag. For example, to run the `TestGetFoo` test case, change to the directory containing the `foo_test.go` and call/excecute
-
-```
-go test -v -run=TestGetFoo
-```
-
-### Running Node.js Unit Tests
-
-You must also run the Node.js unit tests to insure that the Node.js client SDK is not broken by your changes. To run the Node.js unit tests, follow the instructions [here](https://github.com/hyperledger/fabric/tree/master/sdk/node#unit-tests).
-
-### Running Behave BDD Tests
-[Behave](http://pythonhosted.org/behave/) tests will setup networks of peers with different security and consensus configurations and verify that transactions run properly. To run these tests
-
-```
-cd $GOPATH/src/github.com/hyperledger/fabric
-make behave
-```
-Some of the Behave tests run inside Docker containers. If a test fails and you want to have the logs from the Docker containers, run the tests with this option
-```
-behave -D logs=Y
-```
-
-Note, in order to run behave directly, you must run 'make images' first to build the necessary `peer` and `member services` docker images. These images can also be individually built when `go test` is called with the following parameters:
-
-```
-go test github.com/hyperledger/fabric/core/container -run=BuildImage_Peer
-go test github.com/hyperledger/fabric/core/container -run=BuildImage_Obcca
-```
-
-## Building outside of Vagrant
-It is possible to build the project and run peers outside of Vagrant. Generally speaking, one has to 'translate' the vagrant [setup file](https://github.com/hyperledger/fabric/blob/master/devenv/setup.sh) to the platform of your choice.
-
-### Prerequisites
-* [Git client](https://git-scm.com/downloads)
-* [Go](https://golang.org/) - 1.6 or later
-* [RocksDB](https://github.com/facebook/rocksdb/blob/master/INSTALL.md) version 4.1 and its dependencies
-* [Docker](https://docs.docker.com/engine/installation/)
-* [Pip](https://pip.pypa.io/en/stable/installing/)
-* Set the maximum number of open files to 10000 or greater for your OS
-
-### Docker
-Make sure that the Docker daemon initialization includes the options
-```
--H tcp://0.0.0.0:2375 -H unix:///var/run/docker.sock
-```
-
-Typically, docker runs as a `service` task, with configuration file at `/etc/default/docker`.
-
-Be aware that the Docker bridge (the `CORE_VM_ENDPOINT`) may not come
-up at the IP address currently assumed by the test environment
-(`172.17.0.1`). Use `ifconfig` or `ip addr` to find the docker bridge.
-
-### Building RocksDB
-```
-apt-get install -y libsnappy-dev zlib1g-dev libbz2-dev
-cd /tmp
-git clone https://github.com/facebook/rocksdb.git
-cd rocksdb
-git checkout v4.1
-PORTABLE=1 make shared_lib
-INSTALL_PATH=/usr/local make install-shared
-```
-
-### `pip`, `behave` and `docker-compose`
-```
-pip install --upgrade pip
-pip install behave nose docker-compose
-pip install -I flask==0.10.1 python-dateutil==2.2 pytz==2014.3 pyyaml==3.10 couchdb==1.0 flask-cors==2.0.1 requests==2.4.3
-```
-
-### Building on Z
-To make building on Z easier and faster, [this script](https://github.com/hyperledger/fabric/tree/master/devenv/setupRHELonZ.sh) is provided (which is similar to the [setup file](https://github.com/hyperledger/fabric/blob/master/devenv/setup.sh) provided for vagrant). This script has been tested only on RHEL 7.2 and has some assumptions one might want to re-visit (firewall settings, development as root user, etc.). It is however sufficient for development in a personally-assigned VM instance.
-
-To get started, from a freshly installed OS:
-```
-sudo su
-yum install git
-mkdir -p $HOME/git/src/github.com/hyperledger
-cd $HOME/git/src/github.com/hyperledger
-git clone http://gerrit.hyperledger.org/r/fabric
-source fabric/devenv/setupRHELonZ.sh
-```
-From this point, you can proceed as described above for the Vagrant development environment.
-
-```
-cd $GOPATH/src/github.com/hyperledger/fabric
-make peer unit-test behave
-```
-
-### Building on Power Platform
-
-Development and build on Power (ppc64le) systems is done outside of vagrant as outlined [here](#building-outside-of-vagrant-). For ease of setting up the dev environment on Ubuntu, invoke [this script](https://github.com/hyperledger/fabric/tree/master/devenv/setupUbuntuOnPPC64le.sh) as root. This script has been validated on Ubuntu 16.04 and assumes certain things (like, development system has OS repositories in place, firewall setting etc) and in general can be improvised further.
-
-To get started on Power server installed with Ubuntu, first ensure you have properly setup your Host's [GOPATH environment variable](https://github.com/golang/go/wiki/GOPATH). Then, execute the following commands to build the fabric code:
-
-```
-mkdir -p $GOPATH/src/github.com/hyperledger
-cd $GOPATH/src/github.com/hyperledger
-git clone http://gerrit.hyperledger.org/r/fabric
-sudo ./fabric/devenv/setupUbuntuOnPPC64le.sh
-cd $GOPATH/src/github.com/hyperledger/fabric
-make dist-clean all
-```
-
-### Building natively on OSX
-First, install Docker, as described [here](https://docs.docker.com/engine/installation/mac/).
-The database by default writes to /var/hyperledger. You can override this in the `core.yaml` configuration file, under `peer.fileSystemPath`.
-
-```
-brew install go rocksdb snappy gnu-tar     # For RocksDB version 4.1, you can compile your own, as described earlier
-
-# You will need the following two for every shell you want to use
-eval $(docker-machine env)
-export PATH="/usr/local/opt/gnu-tar/libexec/gnubin:$PATH"
-
-cd $GOPATH/src/github.com/hyperledger/fabric
-make peer
-```
-
-## Configuration
-
-Configuration utilizes the [viper](https://github.com/spf13/viper) and [cobra](https://github.com/spf13/cobra) libraries.
-
-There is a **core.yaml** file that contains the configuration for the peer process. Many of the configuration settings can be overridden on the command line by setting ENV variables that match the configuration setting, but by prefixing with *'CORE_'*. For example, logging level manipulation through the environment is shown below:
-
-    CORE_PEER_LOGGING_LEVEL=CRITICAL peer
-
-## Logging
-
-Logging utilizes the [go-logging](https://github.com/op/go-logging) library. 
-
-The available log levels in order of increasing verbosity are: *CRITICAL | ERROR | WARNING | NOTICE | INFO | DEBUG*
-
-See [specific logging control](https://github.com/hyperledger/fabric/blob/master/docs/Setup/logging-control.md) instructions when running the peer process.
+## FABRIC 설치다음은 이미 [개발환경](devenv.md)에 설치한 것으로 가정한다.VM에 접근하기 위해 Fabric Reposirory에서 Local로 받은 devenv 폴더에서 'vagrant ssh'를 실행```cd $GOPATH/src/github.com/hyperledger/fabric/devenvvagrant ssh```VM하에서 Build 및 run 그리고 테스트를 할 수 있다.```cd $GOPATH/src/github.com/hyperledger/fabricmake peer```사용 가능한 어떤 명령들이 있는지 알기위해 간단하게 다음과 같이 실행해봐라:```peer help```라고 명령을 실행하면 다음과 같은 내용이 출력된다.```    Usage:      peer [command]    Available Commands:      node        node specific commands.      network     network specific commands.      chaincode   chaincode specific commands.      help        Help about any command    Flags:      -h, --help[=false]: help for peer          --logging-level="": Default logging level and overrides, see core.yaml for full syntax    Use "peer [command] --help" for more information about a command.````peer node start`는 다른 명령들을 실행함에 따른 상호작용하는 Peer Process를 초기화한다. 예를들어 `peer node status` 는 실행중인 Peer의 상태를 되돌려준다. peer 명령의 전체 목록은 다음과 같다.:```      node:        - start       Starts the node.        - status      Returns status of the node.        - stop        Stops the running node.      network:        - login       Logs in user to CLI.        - list        Lists all network peers.      chaincode:        - deploy      Deploy the specified chaincode to the network.        - invoke      Invoke the specified chaincode.        - query       Query using the specified chaincode.      help:        Help about any command.```** 주의: ** 만일 GOPATH환경변수에 하나 이상의 element가 있으면 Chaincode는 처음것을 찾거나 실패할 것이다.### 단위테스트 실행모든 단위테스트는 다음의 순서 이용```cd $GOPATH/src/github.com/hyperledger/fabricmake unit-test```특정테스트를 하기 위해 `-run RE` Flag를 사용하라. RE는 Test Case명과 같은 정규식이다. 상세 정보 테스트는 `-v` Flag를 사용하라. 예를들어, 테스트 케이스 `TestGetFoo` 실행은 `foo_test.go`가 있는 폴더로 가서 다음을 실행하라.```go test -v -run=TestGetFoo```### Node.js 단위테스트 실시Node.js Client SDK가 변화된 환경에 이상이 없는지 확인을 위해 Node.js 단위테스트를 해야만 한다. Node.js 단위 테스트 참조[here](https://github.com/hyperledger/fabric/tree/master/sdk/node#unit-tests).### Behave BDD Tests 실행[Behave](http://pythonhosted.org/behave/) 테스트들은 tests 다른 보안 및 협의 정의들과 명확하게 동작하는 거래의 검증에 대한 Peer들의 연계를 설정할 것이다. 테스트 실행은 ```cd $GOPATH/src/github.com/hyperledger/fabricmake behave```몇명 Behave 테스트들은 DOcker컨테이너에서 동작한다. 만일 어떤 테스트가 실패하고 당신이 Docker컨테이너에서 LOG들을 갖고 싶으면 아래의 옵션을 이용하라.```behave -D logs=Y```주의, Behave를 직접 실행하려면 필요한 'peer'와 `member services` Docker 이미지를 만들기 위해 가정 먼저  'make images'를 실행해야 한다. 이런 이미지들은 다음의 인수들과 함께 `go test`가 호출될때 ```go test github.com/hyperledger/fabric/core/container -run=BuildImage_Peergo test github.com/hyperledger/fabric/core/container -run=BuildImage_Obcca```## Building outside of VagrantVagrant외부에서 프로젝트를 올리고 Peer들을 실행할 수 있다. 일반적으로  원한다면 당신이 선택한 플랫폼으로 Vagrant Setup 파일의 변환을 해야만 한다.### 전제조건* [Git client](https://git-scm.com/downloads)* [Go](https://golang.org/) - 1.6 or later* [RocksDB](https://github.com/facebook/rocksdb/blob/master/INSTALL.md) version 4.1 and its dependencies* [Docker](https://docs.docker.com/engine/installation/)* [Pip](https://pip.pypa.io/en/stable/installing/)* Set the maximum number of open files to 10000 or greater for your OS### Docker옵션을 포함해서 Docker 데몬 초기화를 확실히 하라.```-H tcp://0.0.0.0:2375 -H unix:///var/run/docker.sock```일반적으로 Docker는 `/etc/default/docker`에 있는 설청파일을 기반으로 'service' Task로 동작한다.Docker브릿지는 현재 테스트 환경에 있어서 IP 어드레스로 동작 안하는 경우가 있음에 유의할 것.(`172.17.0.1`). Docker브릿지를 찾으려면 `ifconfig`나 `ip addr` 사용하라.### Building RocksDB```apt-get install -y libsnappy-dev zlib1g-dev libbz2-devcd /tmpgit clone https://github.com/facebook/rocksdb.gitcd rocksdbgit checkout v4.1PORTABLE=1 make shared_libINSTALL_PATH=/usr/local make install-shared```### `pip`, `behave` and `docker-compose````pip install --upgrade pippip install behave nose docker-composepip install -I flask==0.10.1 python-dateutil==2.2 pytz==2014.3 pyyaml==3.10 couchdb==1.0 flask-cors==2.0.1 requests==2.4.3```### Building on Z보다 쉽고 빠르게 Z에 Building하는 것은 [이 script](https://github.com/hyperledger/fabric/tree/master/devenv/setupRHELonZ.sh)가  (Vagrant에 제공되는 [setup파일](https://github.com/hyperledger/fabric/blob/master/devenv/setup.sh) provided for vagrant)과 같이) 제공된다. 이 Script는 오직 RHEL7.2에서만 테스트 되었고 반복적으로 참조할 필요가 있다 (방화벽설정, root 유저로 개발 등) . 이는 개인적으로 할당된 VM 인스탄스에서의 개발이 매우 충분하다는 것이다.설치된 OS에서 시작:```sudo suyum install gitmkdir -p $HOME/git/src/github.com/hyperledgercd $HOME/git/src/github.com/hyperledgergit clone http://gerrit.hyperledger.org/r/fabricsource fabric/devenv/setupRHELonZ.sh```이로부터 Vagrant개발환경에 대하여 위에 기술한 것과 같이 진행할 수 있다.```cd $GOPATH/src/github.com/hyperledger/fabricmake peer unit-test behave```### Building on Power Platform개발과 Power시스템 설정은 [설명](#building-outside-of-vagrant-)데로 Vagrant외부에 되어 있다. Ubuntu엣ㅓ 개발환경설정을 쉽세 하려면 이 [스크립트](https://github.com/hyperledger/fabric/tree/master/devenv/setupUbuntuOnPPC64le.sh)를 root권한으로 실행하라. 이스크립트는 Ubuntu 16.04에서 검증되었고 특정한 사항(개발시스템은 내부에 OS레퍼지토리를 갖는다, 방화벽 설정 등과 같이) 들이 가정하고 있으며 일반적으로 보다 즉흥적일 수 있다. Ubuntu에 설치된 Power Server상에 Start하기 위해 먼저 Host의 [GOPATH 환경변수](https://github.com/golang/go/wiki/GOPATH)를 정확하게 살정했다는 것을 보증하라. 그리고 나서 Fabric Code를 Build하기 위해 다음의 명령들을 실행하라:```mkdir -p $GOPATH/src/github.com/hyperledgercd $GOPATH/src/github.com/hyperledgergit clone http://gerrit.hyperledger.org/r/fabricsudo ./fabric/devenv/setupUbuntuOnPPC64le.shcd $GOPATH/src/github.com/hyperledger/fabricmake dist-clean all```### Building natively on OSX먼저 [여기](https://docs.docker.com/engine/installation/mac/)에 설명한것처럼 Docker 설치.  기본 DB는 /var/hyperledger에 저장한다. 당신은 `peer.fileSystemPath` 아래  `core.yaml` 설정 파일에서 내용을 수정할 수 있다The database by default writes to /var/hyperledger. You can override this in the `core.yaml` configuration file, under `peer.fileSystemPath`.```brew install go rocksdb snappy gnu-tar     # For RocksDB version 4.1, you can compile your own, as described earlier# 원하면 모든 Shell에서 다음의 두개는 필요할 것이다.eval $(docker-machine env)export PATH="/usr/local/opt/gnu-tar/libexec/gnubin:$PATH"cd $GOPATH/src/github.com/hyperledger/fabricmake peer```## 설정설정은 [viper](https://github.com/spf13/viper)와 [cobra](https://github.com/spf13/cobra) 라이브러리들을 이용하고 있다. 거기에는 Peer프로세스 설정을 유지하는 **core.yaml**파일이 있다.여러 설정들은 *'CORE_'*로 사전정의 뿐만 아니라 Config 설정값들과 일치하는 ENV변수 설정으로 Command상에서 수정될 수 있다. 예를들어, 환경값을 통한 Logging 레벨 조적은 아래에 나타낸다:    CORE_PEER_LOGGING_LEVEL=CRITICAL peer## LoggingLogging은 [go-logging](https://github.com/op/go-logging) 라이브러리를 이용한다.다양성을 증가시키기 위하여 사용가능한 Log Level들: *CRITICAL | ERROR | WARNING | NOTICE | INFO | DEBUG*참조 [Peer Process 기동시 특정 Logging 제어 설명](https://github.com/hyperledger/fabric/blob/master/docs/Setup/logging-control.md)

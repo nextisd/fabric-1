@@ -29,6 +29,7 @@ import (
 )
 
 // PrivateKeyToDER marshals a private key to der
+// PrivateKeyToDER()는 Private Key를 DER로 정렬시킨다.
 func PrivateKeyToDER(privateKey *ecdsa.PrivateKey) ([]byte, error) {
 	if privateKey == nil {
 		return nil, utils.ErrNilArgument
@@ -38,6 +39,7 @@ func PrivateKeyToDER(privateKey *ecdsa.PrivateKey) ([]byte, error) {
 }
 
 // PrivateKeyToPEM converts a private key to PEM
+// PrivateKeyToPEM()은 Private Key를 PEM으로 변환한다.
 func PrivateKeyToPEM(privateKey interface{}, pwd []byte) ([]byte, error) {
 	if len(pwd) != 0 {
 		return PrivateKeyToEncryptedPEM(privateKey, pwd)
@@ -63,6 +65,7 @@ func PrivateKeyToPEM(privateKey interface{}, pwd []byte) ([]byte, error) {
 }
 
 // PrivateKeyToEncryptedPEM converts a private key to an encrypted PEM
+// PrivateKeyToEncryptedPEM()은 Private Key를 암호화된 PEM으로 변환한다.
 func PrivateKeyToEncryptedPEM(privateKey interface{}, pwd []byte) ([]byte, error) {
 	switch x := privateKey.(type) {
 	case *ecdsa.PrivateKey:
@@ -91,6 +94,7 @@ func PrivateKeyToEncryptedPEM(privateKey interface{}, pwd []byte) ([]byte, error
 }
 
 // DERToPrivateKey unmarshals a der to private key
+// DERToPrivateKey()은 DER을 Private Key로 정렬해제한다(?).
 func DERToPrivateKey(der []byte) (key interface{}, err error) {
 	//fmt.Printf("DER [%s]\n", EncodeBase64(der))
 
@@ -116,6 +120,7 @@ func DERToPrivateKey(der []byte) (key interface{}, err error) {
 }
 
 // PEMtoPrivateKey unmarshals a pem to private key
+// PEMtoPrivateKey()은 PEM을 Private Key로 정렬해제한다(?)
 func PEMtoPrivateKey(raw []byte, pwd []byte) (interface{}, error) {
 	if len(raw) == 0 {
 		return nil, utils.ErrNilArgument
@@ -152,6 +157,7 @@ func PEMtoPrivateKey(raw []byte, pwd []byte) (interface{}, error) {
 }
 
 // PEMtoAES extracts from the PEM an AES key
+// PEMtoAES()는 PEM에서 하나의 AES KEY를 뽑아낸다.
 func PEMtoAES(raw []byte, pwd []byte) ([]byte, error) {
 	if len(raw) == 0 {
 		return nil, utils.ErrNilArgument
@@ -177,11 +183,13 @@ func PEMtoAES(raw []byte, pwd []byte) ([]byte, error) {
 }
 
 // AEStoPEM encapsulates an AES key in the PEM format
+// AEStoPEM()은 AES KEY를 PEM형식으로 캡슐화한다.
 func AEStoPEM(raw []byte) []byte {
 	return pem.EncodeToMemory(&pem.Block{Type: "AES PRIVATE KEY", Bytes: raw})
 }
 
 // AEStoEncryptedPEM encapsulates an AES key in the encrypted PEM format
+// AEStoEncryptedPEM()은 AES KEY를 암호화된 PEM형식으로 캡슐화한다.
 func AEStoEncryptedPEM(raw []byte, pwd []byte) ([]byte, error) {
 	if len(pwd) == 0 {
 		return AEStoPEM(raw), nil
@@ -214,6 +222,7 @@ func DERToPublicKey(derBytes []byte) (pub interface{}, err error) {
 */
 
 // PublicKeyToPEM marshals a public key to the pem forma
+// PublicKeyToPEM()은 Public Key를 PEM형식으로 정렬시킨다.
 func PublicKeyToPEM(publicKey interface{}, pwd []byte) ([]byte, error) {
 	if len(pwd) != 0 {
 		return PublicKeyToEncryptedPEM(publicKey, pwd)
@@ -239,6 +248,7 @@ func PublicKeyToPEM(publicKey interface{}, pwd []byte) ([]byte, error) {
 }
 
 // PublicKeyToEncryptedPEM converts a public key to encrypted pem
+// PublicKeyToEncryptedPEM()은 Public Key를 암호화된 PEM 으로 변환한다.
 func PublicKeyToEncryptedPEM(publicKey interface{}, pwd []byte) ([]byte, error) {
 	switch x := publicKey.(type) {
 	case *ecdsa.PublicKey:
@@ -267,6 +277,7 @@ func PublicKeyToEncryptedPEM(publicKey interface{}, pwd []byte) ([]byte, error) 
 }
 
 // PEMtoPublicKey unmarshals a pem to public key
+// PEMtoPublicKey()은 PEM을 Public Key로 정렬해제한다.
 func PEMtoPublicKey(raw []byte, pwd []byte) (interface{}, error) {
 	if len(raw) == 0 {
 		return nil, utils.ErrNilArgument
@@ -302,6 +313,7 @@ func PEMtoPublicKey(raw []byte, pwd []byte) (interface{}, error) {
 }
 
 // DERToPublicKey unmarshals a der to public key
+// DERToPublicKey()은 DER를 Public Key로 정렬해제한다.
 func DERToPublicKey(derBytes []byte) (pub interface{}, err error) {
 	key, err := x509.ParsePKIXPublicKey(derBytes)
 

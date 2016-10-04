@@ -31,17 +31,19 @@ type encryptionSchemeImpl struct {
 }
 
 func (es *encryptionSchemeImpl) Init(params primitives.AsymmetricCipherParameters) error {
+	// 입력된 PARAM이 NULL이면 이상 처리
 	if params == nil {
 		return primitives.ErrInvalidNilKeyParameter
 	}
 	es.isForEncryption = params.IsPublic()
 	es.params = params
 
+	// 암호화(?)
 	if es.isForEncryption {
 		switch pk := params.(type) {
 		case *publicKeyImpl:
 			es.pub = pk
-		default:
+		default: // 이상 처리
 			return primitives.ErrInvalidPublicKeyType
 		}
 	} else {
