@@ -39,6 +39,7 @@ var nodeStatusCmd = &cobra.Command{
 	},
 }
 
+//@ peer command 로 "status" 입력시 실행되는 함수
 func status() (err error) {
 	clientConn, err := peer.NewPeerClientConnection()
 	if err != nil {
