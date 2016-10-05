@@ -67,6 +67,7 @@ var mainCmd = &cobra.Command{
 // Peer command version flag
 var versionFlag bool
 
+//@ main : peer 프로세스의 최상위 함수
 func main() {
 	// For environment variables.
 	viper.SetEnvPrefix(cmdRoot)
@@ -76,7 +77,7 @@ func main() {
 
 	// Define command-line flags that are valid for all peer commands and
 	// subcommands.
-	//@  (모든 peer command 및 subcommand 에 유효한) command-line flag 를 정의
+	//@ (모든 peer command 및 subcommand 에 유효한) command-line flag 를 정의
 	mainFlags := mainCmd.PersistentFlags()
 	mainFlags.BoolVarP(&versionFlag, "version", "v", false, "Display current version of fabric peer server")
 
@@ -152,6 +153,7 @@ func getPeerCommandFromCobraCommand(command *cobra.Command) string {
 	return commandName
 }
 
+//@ findChildOfRootCommand 는 cobra command 에서 최상위 parent command 를 받는다.
 func findChildOfRootCommand(command *cobra.Command) (*cobra.Command, bool) {
 	for command.HasParent() {
 		if !command.Parent().HasParent() {
