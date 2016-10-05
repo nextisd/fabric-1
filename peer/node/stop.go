@@ -50,7 +50,9 @@ var nodeStopCmd = &cobra.Command{
 	},
 }
 
+//@ peer command 에 "stop" 입력시 실행되는 함수
 func stop() (err error) {
+	//@
 	clientConn, err := peer.NewPeerClientConnection()
 	if err != nil {
 		pidFile := stopPidFile + "/peer.pid"
