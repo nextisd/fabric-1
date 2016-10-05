@@ -52,7 +52,9 @@ var nodeStopCmd = &cobra.Command{
 
 //@ peer command 에 "stop" 입력시 실행되는 함수
 func stop() (err error) {
-	//@
+
+	//@ clientConn 생성 : "peer.address" 에 정의된 local peer address 로 grpc client connection 맺고,
+	//@                   grpc.ClientConn 생성하여 리턴
 	clientConn, err := peer.NewPeerClientConnection()
 	if err != nil {
 		pidFile := stopPidFile + "/peer.pid"
