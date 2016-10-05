@@ -89,7 +89,7 @@ func stop() (err error) {
 	status, err := serverClient.StopServer(context.Background(), &empty.Empty{})
 
 	//@ db 와의 session 종료 ( openchainDB.close() 호출 )
-	//@ 실제 내용은 아래와 같다. ( CF : ColumnFamilyHandle )
+	//@ 실제 내용은 아래와 같다. ( CF : ColumnFamilyHandle --> view 랑 같은건감?? )
 	//@ openchainDB.BlockchainCF.Destroy()
 	//@ openchainDB.StateCF.Destroy()
 	//@ openchainDB.StateDeltaCF.Destroy()
