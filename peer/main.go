@@ -46,6 +46,7 @@ const cmdRoot = "core"
 
 // The main command describes the service and
 // defaults to printing the help message.
+//@ main command 는 service 를 표시하며, default 는 help 메시지를 출력
 var mainCmd = &cobra.Command{
 	Use: "peer",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
@@ -75,6 +76,7 @@ func main() {
 
 	// Define command-line flags that are valid for all peer commands and
 	// subcommands.
+	//@  (모든 peer command 및 subcommand 에 유효한) command-line flag 를 정의
 	mainFlags := mainCmd.PersistentFlags()
 	mainFlags.BoolVarP(&versionFlag, "version", "v", false, "Display current version of fabric peer server")
 
@@ -129,6 +131,11 @@ func main() {
 // i.e. for a command of `peer node start`, this should return "node"
 // For the main/root command this will return the root name (i.e. peer)
 // For invalid commands (i.e. nil commands) this will return an empty string
+
+//@ getPeerCommandFromCobraCommand 는 cobra command 에서 peer command 를 받는다.
+//@ 즉, `peer node start` 라는 함수인자로 호출시, "node" 를 리턴
+//@ main/root command 에 대해 이 함수는 root name 을 리턴 ( 즉, "peer" )
+//@ 유효하지 않은 command 에 대해 이 함수는 empty string 을 리턴
 func getPeerCommandFromCobraCommand(command *cobra.Command) string {
 	var commandName string
 
