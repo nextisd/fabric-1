@@ -41,9 +41,8 @@ var nodeStatusCmd = &cobra.Command{
 
 //@ peer command 로 "status" 입력시 실행되는 함수
 func status() (err error) {
-	//@ clientConn 생성 : "peer.address" 에 정의된 local peer address 로 grpc client connection 맺음
-	//@ 성공 : 
-	//@ 실패 : 에러 리턴
+	//@ clientConn 생성 : "peer.address" 에 정의된 local peer address 로 grpc client connection 맺고,
+	//@                   grpc.ClientConn 생성하여 리턴
 	clientConn, err := peer.NewPeerClientConnection()
 	if err != nil {
 		logger.Infof("Error trying to connect to local peer: %s", err)
