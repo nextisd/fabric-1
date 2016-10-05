@@ -41,6 +41,9 @@ var nodeStatusCmd = &cobra.Command{
 
 //@ peer command 로 "status" 입력시 실행되는 함수
 func status() (err error) {
+	//@ clientConn 생성 : "peer.address" 에 정의된 local peer address 로 grpc client connection 맺음
+	//@ 성공 : 
+	//@ 실패 : 에러 리턴
 	clientConn, err := peer.NewPeerClientConnection()
 	if err != nil {
 		logger.Infof("Error trying to connect to local peer: %s", err)
@@ -49,8 +52,12 @@ func status() (err error) {
 		return err
 	}
 
+	//@ 별도로 생성하는 resource 는 없는거 같음
+	//@ 인자를 복사해서 adminClient 구조체 만든후 돌려줌
+	//@ 구조체 : adminClient , I/F : AdminClient
 	serverClient := pb.NewAdminClient(clientConn)
 
+	//@ local peer 에게 REST 요청 ("/protos.Admin/GetStatus") 보내서 받은 응답을 돌려줌
 	status, err := serverClient.GetStatus(context.Background(), &empty.Empty{})
 	if err != nil {
 		logger.Infof("Error trying to get status from local peer: %s", err)
