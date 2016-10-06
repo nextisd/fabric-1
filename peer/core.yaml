@@ -20,19 +20,19 @@ rest:
     # Enable/disable setting for the REST service. It is recommended to disable
     # REST service on validators in production deployment and use non-validating
     # nodes to host REST service
-    #@ REST 서비스 활성/비활성 항목
-    #@ 권장사항 : Validating 노드에서는 비활성화, Non-Validating 노드에서는 활성화
+    #@@ REST 서비스 활성/비활성 항목
+    #@@ 권장사항 : Validating 노드에서는 비활성화, Non-Validating 노드에서는 활성화
     enabled: true
 
     # The address that the REST service will listen on for incoming requests.
-    #@ REST 서비스 포트
+    #@@ REST 서비스 포트
     address: 0.0.0.0:7050
 
     validPatterns:
 
         # Valid enrollment ID pattern in URLs: At least one character long, and
         # all characters are A-Z, a-z, 0-9 or _.
-        #@ 유효한 등록 ID 패턴 : 적어도 하나의 문자는 long, 모든 문자는 영어 소문자/대문자, 숫자, '_'
+        #@@ 유효한 등록 ID 패턴 : 적어도 하나의 문자는 long, 모든 문자는 영어 소문자/대문자, 숫자, '_'
         enrollmentID: '^\w+$'
 
 ###############################################################################
@@ -50,29 +50,29 @@ logging:
     # commands 'node', 'network' and 'chaincode'. For commands that have
     # subcommands, the defaults also apply to all subcommands of the command.
     # Valid logging levels are case-insensitive strings chosen from
-    #@ 여기 logging level 은 peer 명령 ( node, network, chaincode ) 에 대한 것 --> 대소문자 구분
+    #@@ 여기 logging level 은 peer 명령 ( node, network, chaincode ) 에 대한 것 --> 대소문자 구분
     
     #     CRITICAL | ERROR | WARNING | NOTICE | INFO | DEBUG
 
     # The logging levels specified here can be overridden in various ways,
     # listed below from strongest to weakest:
-    #@ logging level 지정 방법 리스트 : 우선순위가 높은 순서부터 나열함
+    #@@ logging level 지정 방법 리스트 : 우선순위가 높은 순서부터 나열함
     #
     # 1. The --logging-level=<level> command line option overrides all other
     #    specifications.
-    #@ 1. logging level 을 지정하는 command line option : --logging-level=<level>
+    #@@ 1. logging level 을 지정하는 command line option : --logging-level=<level>
     #
     # 2. The environment variable CORE_LOGGING_LEVEL otherwise applies to
     #    all peer commands if defined as a non-empty string.
-    #@ 2. 환경변수 CORE_LOGGING_LEVEL 지정
+    #@@ 2. 환경변수 CORE_LOGGING_LEVEL 지정
     #
     # 3. The environment variables CORE_LOGGING_[NODE|NETWORK|CHAINCODE]
     #    otherwise apply to the respective peer commands if defined as non-empty
     #    strings.
-    #@ 3. 환경변수 CORE_LOGGING_[NODE|NETWORK|CHAINCODE] 지정
+    #@@ 3. 환경변수 CORE_LOGGING_[NODE|NETWORK|CHAINCODE] 지정
     #
     # 4. Otherwise, the specifications below apply.
-    #@ 4. 아니면, 아래 사항이 적용됨 (각 command 별 default)
+    #@@ 4. 아니면, 아래 사항이 적용됨 (각 command 별 default)
     #
     # Developers: Please see fabric/docs/Setup/logging-control.md for more
     # options.
@@ -107,7 +107,7 @@ peer:
     address: 0.0.0.0:7051
     # Whether the Peer should programmatically determine the address to bind to.
     # This case is useful for docker containers.
-    #@ Peer 가 bind 할 address 를 프로그램적으로 결정해야 하는지? docker container 의 경우 유용함
+    #@@ Peer 가 bind 할 address 를 프로그램적으로 결정해야 하는지? docker container 의 경우 유용함
     addressAutoDetect: false
 
     # Setting for runtime.GOMAXPROCS(n). If n < 1, it does not change the current setting
@@ -121,9 +121,8 @@ peer:
             # blocks from oppositie Peer Endpoints.
             # NOTE: currently messages are not stored and forwarded, but rather
             # lost if the channel write blocks.
-
-            #@ 읽기전용 SyncBlocks 메시지 channel (상대 Peer로부터 block 수신) 크기
-            #@ NOTE: 현재 메시지는 저장되지 않고 전달 --> channel 쓰기가 block 된 경우 손실됨
+            #@@ 읽기전용 SyncBlocks 메시지 channel (상대 Peer로부터 block 수신) 크기
+            #@@ NOTE: 현재 메시지는 저장되지 않고 전달 --> channel 쓰기가 block 된 경우 손실됨
             channelSize: 10
         state:
             snapshot:
@@ -131,16 +130,14 @@ peer:
                 # for receiving state deltas for snapshot from oppositie Peer Endpoints.
                 # NOTE: when the channel is exhausted, the writes block for up to the
                 # writeTimeout specified below
-                
-                #@ 읽기전용 syncStateSnapshot 메시지 channel (상대 Peer로부터 snapshot 을 위한 state delta 수신) 크기
-                #@ NOTE: channel 이 종료될 때, 쓰기는 writeTimeout 동안 block
+                #@@ 읽기전용 syncStateSnapshot 메시지 channel (상대 Peer로부터 snapshot 을 위한 state delta 수신) 크기
+                #@@ NOTE: channel 이 종료될 때, 쓰기는 writeTimeout 동안 block
                 channelSize: 50
                 # Write timeout for the syncStateSnapshot messages
                 # When the channel above is exhausted, messages block before being
                 # discarded for this amount of time
-
-                #@ 쓰기 timeout : syncStateSnapshot 메시지
-                #@ channel 이 종료될 때, 메시지는 폐기되기 전까지 아래 시간동안 block 됨
+                #@@ 쓰기 timeout : syncStateSnapshot 메시지
+                #@@ channel 이 종료될 때, 메시지는 폐기되기 전까지 아래 시간동안 block 됨
                 writeTimeout: 60s
             deltas:
                 # Channel size for readonly syncStateDeltas messages channel for
@@ -148,46 +145,43 @@ peer:
                 # Peer Endpoints.
                 # NOTE: currently messages are not stored and forwarded,
                 # but rather lost if the channel write blocks.
-
-                #@ 읽기전용 syncStateDeltas 메시지 channel (상대 Peer로부터 syncBlockRange 동안의 state delta 수신) 크기
-                #@ NOTE: 현재 메시지는 저장되지 않고 전달 --> channel 쓰기가 block 된 경우 손실됨
+                #@@ 읽기전용 syncStateDeltas 메시지 channel (상대 Peer로부터 syncBlockRange 동안의 state delta 수신) 크기
+                #@@ NOTE: 현재 메시지는 저장되지 않고 전달 --> channel 쓰기가 block 된 경우 손실됨
                 channelSize: 20
 
     # Validator defines whether this peer is a validating peer or not, and if
     # it is enabled, what consensus plugin to load
-
-    #@ Validator.enabled = true --> 이 peer 는 validating perr 임 (consensus plug-in load)
+    #@@ Validator.enabled = true --> 이 peer 는 validating perr 임 (consensus plug-in load)
     validator:
         enabled: true
 
         consensus:
             # Consensus plugin to use. The value is the name of the plugin, e.g. pbft, noops ( this value is case-insensitive)
             # if the given value is not recognized, we will default to noops
-            #@ 사용될 consensus plug-in 이름 ( pfbt, noops ). 대소문자 구분됨. default 는 noops
+            #@@ 사용될 consensus plug-in 이름 ( pfbt, noops ). 대소문자 구분됨. default 는 noops
             plugin: noops
 
             # total number of consensus messages which will be buffered per connection before delivery is rejected
-            #@ consensus msg 의 총 숫자 (전달이 거부되기 전까지 connection 마다 보관될 )
+            #@@ consensus msg 의 총 숫자 (전달이 거부되기 전까지 connection 마다 보관될 )
             buffersize: 1000
 
         events:
             # The address that the Event service will be enabled on the validator
-            #@ Event 서비스 (validator 에서 활성화) address
+            #@@ Event 서비스 (validator 에서 활성화) address
             address: 0.0.0.0:7053
 
             # total number of events that could be buffered without blocking the validator sends
-            #@ event 의 총 숫자 (validator 송신을 block 하지 않고 버퍼링할)
+            #@@ event 의 총 숫자 (validator 송신을 block 하지 않고 버퍼링할)
             buffersize: 100
 
             # milliseconds timeout for producer to send an event.
             # if < 0, if buffer full, unblocks immediately and not send
             # if 0, if buffer full, will block and guarantee the event will be sent out
             # if > 0, if buffer full, blocks till timeout
-
-            #@ producer 가 event 송신시 적용하는 timeout (단위 : 밀리초)
-            #@ if < 0  : 버퍼 full 발생시, event 를 송신하지 않고 바로 리턴 (block 발생 없음)
-            #@ if == 0 : 버퍼 full 발생시, event 송신이 완료될 때까지 block 됨
-            #@ if > 0  : 버퍼 full 발생시, timeout 에 도달할 때까지 block 됨
+            #@@ producer 가 event 송신시 적용하는 timeout (단위 : 밀리초)
+            #@@ if < 0  : 버퍼 full 발생시, event 를 송신하지 않고 바로 리턴 (block 발생 없음)
+            #@@ if == 0 : 버퍼 full 발생시, event 송신이 완료될 때까지 block 됨
+            #@@ if > 0  : 버퍼 full 발생시, timeout 에 도달할 때까지 block 됨
             timeout: 10
 
     # TLS Settings for p2p communications
@@ -216,19 +210,18 @@ peer:
             serverhostoverride:
 
     # Peer discovery settings.  Controls how this peer discovers other peers
-    #@ Peer 검색 설정 : 다른 peer 를 어떻게 찾을지 설정
+    #@@ Peer 검색 설정 : 다른 peer 를 어떻게 찾을지 설정
     discovery:
 
         # The root nodes are used for bootstrapping purposes, and generally
         # supplied through ENV variables
         # It can be either a single host or a comma separated list of hosts.
-
-        #@ root node 는 bootstrapping 목적으로 사용되며, 일반적으로 환경변수로 제공
-        #@ host 1개 일 수도 있고, 콤마(,)로 구분된 host 리스트도 가능
+        #@@ root node 는 bootstrapping 목적으로 사용되며, 일반적으로 환경변수로 제공
+        #@@ host 1개 일 수도 있고, 콤마(,)로 구분된 host 리스트도 가능
         rootnode:
 
         # The duration of time between attempts to asks peers for their connected peers
-        #@ 연결된 peer 리스트에 대한 요청 주기
+        #@@ 연결된 peer 리스트에 대한 요청 주기
         period:  5s
 
         ## leaving this in for example of sub map entry
@@ -242,22 +235,22 @@ peer:
 
         # Should the discovered nodes and their reputations
         # be stored in DB and persisted between restarts
-        #@ 발견된 node 와 node 의 명성(? reputations) 을 DB 에 저장하고 재시작까지 유지할지
+        #@@ 발견된 node 와 node 의 명성(? reputations) 을 DB 에 저장하고 재시작까지 유지할지
         persist:    true
 
         # the period in seconds with which the discovery
         # tries to reconnect to successful nodes
         # 0 means the nodes are not reconnected
-        #@ 성공했던 node 에 재접속을 시도하기까지의 시간간격(초) : 0 이면 재접속 하지 않음
+        #@@ 성공했던 node 에 재접속을 시도하기까지의 시간간격(초) : 0 이면 재접속 하지 않음
         touchPeriod: 6s
 
         # the maximum nuber of nodes to reconnect to
         # -1 for unlimited
-        #@ 재접속할 최대 node 수 (-1 이면 무제한)
+        #@@ 재접속할 최대 node 수 (-1 이면 무제한)
         touchMaxNodes: 100
 
     # Path on the file system where peer will store data
-    #@ peer 가 데이터를 저장할 file 경로
+    #@@ peer 가 데이터를 저장할 file 경로
     fileSystemPath: /var/hyperledger/production
 
 
@@ -276,11 +269,10 @@ vm:
     # unix:///var/run/docker.sock
     # http://localhost:2375
     # https://localhost:2376
-
-    #@ 관리 시스템의 접속 주소.  docker 의 경우, 일반적으로 아래 중 1개임
-    #@ unix:///var/run/docker.sock
-    #@ http://localhost:2375
-    #@ https://localhost:2376
+    #@@ 관리 시스템의 접속 주소.  docker 의 경우, 일반적으로 아래 중 1개임
+    #@@ unix:///var/run/docker.sock
+    #@@ http://localhost:2375
+    #@@ https://localhost:2376
     endpoint: unix:///var/run/docker.sock
 
     # settings for docker vms
@@ -301,16 +293,15 @@ vm:
         # not support set LogConfig using Environment Variables
         # LogConfig sets the logging driver (Type) and related options (Config) for Docker
         # you can refer https://docs.docker.com/engine/admin/logging/overview/ for more detail configruation.
-
-        #@ docker container 생성 파라미터
-        #@ 클러스터에 대한 IPAM 및 DNS 서버가 있는 경우, 효율적인 컨테이너를 만들 수 있음
-        #@ NetworkMode : container 의 networking mode ( 지원값 = `host`(default),`bridge`,`ipvlan`,`none` )
-        #@ dns : container 가 사용할 DNS 서버 리스트
-        #@ note: `Privileged` `Binds` `Links` `PortBindings` 에 대한 사용자 지정은 미지원
-        #@ 환경변수를 사용한 LogConfig 설정은 지원되지 않음
-        #@ LogConfig.Type   : docker 를 위한 logging driver
-        #@ LogConfig.Config : LogConfig.Type 과 관계된 옵션들
-        #@ REFERENCE : https://docs.docker.com/engine/admin/logging/overview/
+        #@@ docker container 생성 파라미터
+        #@@ 클러스터에 대한 IPAM 및 DNS 서버가 있는 경우, 효율적인 컨테이너를 만들 수 있음
+        #@@ NetworkMode : container 의 networking mode ( 지원값 = `host`(default),`bridge`,`ipvlan`,`none` )
+        #@@ dns : container 가 사용할 DNS 서버 리스트
+        #@@ note: `Privileged` `Binds` `Links` `PortBindings` 에 대한 사용자 지정은 미지원
+        #@@ 환경변수를 사용한 LogConfig 설정은 지원되지 않음
+        #@@ LogConfig.Type   : docker 를 위한 logging driver
+        #@@ LogConfig.Config : LogConfig.Type 과 관계된 옵션들
+        #@@ REFERENCE : https://docs.docker.com/engine/admin/logging/overview/
         hostConfig:
             NetworkMode: host
             Dns:
@@ -334,13 +325,12 @@ chaincode:
     # used for all other requests. The name is really a hashcode
     # returned by the system in response to the deploy transaction. In
     # development mode where user runs the chaincode, the name can be any string
-
-    #@ id : (실행하는 Chaincode ID 를 등록하기 위해) Chaincode stub 에서 사용
-    #@      일반적으로 환경변수를 통해 제공됨
-    #@      ID 의 path form 은 chaincode deploy 시 제공됨
-    #@ name 은 모든 다른 요청에서 사용됨The name is really a hashcode
-    #@ name 은 실제 hashcode 이며, deploy Tx 에 대한 응답으로 받음
-    #@ user 가 개발모드에서 chaincode 를 실행하는 경우, name 은 어떤 string 도 가능
+    #@@ id : (실행하는 Chaincode ID 를 등록하기 위해) Chaincode stub 에서 사용
+    #@@      일반적으로 환경변수를 통해 제공됨
+    #@@      ID 의 path form 은 chaincode deploy 시 제공됨
+    #@@ name 은 모든 다른 요청에서 사용됨The name is really a hashcode
+    #@@ name 은 실제 hashcode 이며, deploy Tx 에 대한 응답으로 받음
+    #@@ user 가 개발모드에서 chaincode 를 실행하는 경우, name 은 어떤 string 도 가능
     id:
         path:
         name:
@@ -349,9 +339,8 @@ chaincode:
 
         # This is the basis for the Golang Dockerfile.  Additional commands will
         # be appended depedendent upon the chaincode specification.
-        
-        #@ Golang Dockerfile 의 basis
-        #@ 추가적인 commands 는 chaincode 설정에 따라 덧붙여 질 수 있음
+        #@@ Golang Dockerfile 의 basis
+        #@@ 추가적인 commands 는 chaincode 설정에 따라 덧붙여 질 수 있음
         Dockerfile:  |
           FROM hyperledger/fabric-ccenv:$(ARCH)-$(PROJECT_VERSION)
           COPY src $GOPATH/src
@@ -361,9 +350,8 @@ chaincode:
 
         # This is the basis for the CAR Dockerfile.  Additional commands will
         # be appended depedendent upon the chaincode specification.
-
-        #@ CAR Dockerfile basis
-        #@ 추가적인 commands 는 chaincode 설정에 따라 덧붙여 질 수 있음
+        #@@ CAR Dockerfile basis
+        #@@ 추가적인 commands 는 chaincode 설정에 따라 덧붙여 질 수 있음
         Dockerfile:  |
             FROM hyperledger/fabric-ccenv:$(ARCH)-$(PROJECT_VERSION)
 
@@ -372,48 +360,44 @@ chaincode:
         # tools added for java shim layer packaging.
         # This image is packed with shim layer libraries that are necessary
         # for Java chaincode runtime.
-        
-        #@ java:openjdk-8 에 기반한 image 임. (shim layer package 를 위한 컴파일러 도구 포함)
-        #@ image 는 shim layer library (java chaincode 실행시 필요) 와 같이 묶여짐
+        #@@ java:openjdk-8 에 기반한 image 임. (shim layer package 를 위한 컴파일러 도구 포함)
+        #@@ image 는 shim layer library (java chaincode 실행시 필요) 와 같이 묶여짐
         Dockerfile:  |
             from hyperledger/fabric-javaenv:$(ARCH)-$(PROJECT_VERSION)
 
     # timeout in millisecs for starting up a container and waiting for Register
     # to come through. 1sec should be plenty for chaincode unit tests
-
-    #@ container 를 기동하고 'Register' 가 올 때까지의 timeout (밀리초). 단위테스트에선 1초면 충분
+    #@@ container 를 기동하고 'Register' 가 올 때까지의 timeout (밀리초). 단위테스트에선 1초면 충분
     startuptimeout: 300000
 
     #timeout in millisecs for deploying chaincode from a remote repository.
-    #@ remote repository 에서 chaincode 를 deploy 하는 timeout (밀리초)
+    #@@ remote repository 에서 chaincode 를 deploy 하는 timeout (밀리초)
     deploytimeout: 30000
 
     #mode - options are "dev", "net"
     #dev - in dev mode, user runs the chaincode after starting validator from
     # command line on local machine
     #net - in net mode validator will run chaincode in a docker container
-
-    #@ mode - "dev" 와 "net" 옵션
-    #@ dev - user 는 command line 으로 validator 를 기동한 이후 chaincode 를 실행
-    #@ net - validator 는 docker container 안에서 chaincode 를 실행
+    #@@ mode - "dev" 와 "net" 옵션
+    #@@ dev - user 는 command line 으로 validator 를 기동한 이후 chaincode 를 실행
+    #@@ net - validator 는 docker container 안에서 chaincode 를 실행
 
     mode: net
 
     # typically installpath should not be modified. Otherwise, user must ensure
     # the chaincode executable is placed in the path specifed by installpath in
     # the image
-    #@ 일반적으로 installpath 는 수정 금지
-    #@ user 는 실행가능한 chaincode 가 image 내의 installpath 에 있다는 것을 확인해야 함
+    #@@ 일반적으로 installpath 는 수정 금지
+    #@@ user 는 실행가능한 chaincode 가 image 내의 installpath 에 있다는 것을 확인해야 함
     installpath: /opt/gopath/bin/
 
     # keepalive in seconds. In situations where the communiction goes through a
     # proxy that does not support keep-alive, this parameter will maintain connection
     # between peer and chaincode.
     # A value <= 0 turns keepalive off
-
-    #@ keepalive (초) , 설정값 < 0 : keepalive off
-    #@ 통신이 keepalive 를 지원하지 않는 proxy 를 통하는 경우, 파라미터는 peer ~ chaincode 연결을 유지
-    #@ A value <= 0 turns keepalive off
+    #@@ keepalive (초) , 설정값 < 0 : keepalive off
+    #@@ 통신이 keepalive 를 지원하지 않는 proxy 를 통하는 경우, 파라미터는 peer ~ chaincode 연결을 유지
+    #@@ A value <= 0 turns keepalive off
     keepalive: 0
 
 ###############################################################################
@@ -433,10 +417,9 @@ ledger:
     # Control the number state deltas that are maintained. This takes additional
     # disk space, but allow the state to be rolled backwards and forwards
     # without the need to replay transactions.
-
-    #@ 관리되는 'state delta' 의 숫자를 조절
-    #@ 이것은 추가적인 디스크를 차지함. 그러나 Tx 의 replay 없이 state 를 이전/이후 로 돌릴 수 있도록 해줌
-    #@ without the need to replay transactions.
+    #@@ 관리되는 'state delta' 의 숫자를 조절
+    #@@ 이것은 추가적인 디스크를 차지함. 그러나 Tx 의 replay 없이 state 를 이전/이후 로 돌릴 수 있도록 해줌
+    #@@ without the need to replay transactions.
     deltaHistorySize: 500
 
     # The data structure in which the state will be stored. Different data
@@ -445,11 +428,10 @@ ledger:
     # ( Note:'raw' is experimental and incomplete. )
     # If not set, the default data structure is the 'buckettree'.
     # This CANNOT be changed after the DB has been created.
-
-    #@ state 가 저장되는 데이터 구조 Different data : 'buckettree', 'trie' and 'raw' ('raw' 는 현재 미완성)
-    #@ 다른 데이터 구조는 다른 성능특성을 나타냄
-    #@ default 값 : 'buckettree'
-    #@ DB 가 생성된 이후에는 변경할 수 없음
+    #@@ state 가 저장되는 데이터 구조 Different data : 'buckettree', 'trie' and 'raw' ('raw' 는 현재 미완성)
+    #@@ 다른 데이터 구조는 다른 성능특성을 나타냄
+    #@@ default 값 : 'buckettree'
+    #@@ DB 가 생성된 이후에는 변경할 수 없음
     dataStructure:
       # The name of the data structure is for storing the state
       name: buckettree
@@ -458,31 +440,27 @@ ledger:
         # configurations for 'bucketree'. These CANNOT be changed after the DB
         # has been created. 'numBuckets' defines the number of bins that the
         # state key-values are to be divided
-
-        #@ 'bucketree' 에 대한 설정 (DB 생성이후에는 변경 불가)
-        #@ 'numBuckets' : state key-value 가 분할될 총 갯수
+        #@@ 'bucketree' 에 대한 설정 (DB 생성이후에는 변경 불가)
+        #@@ 'numBuckets' : state key-value 가 분할될 총 갯수
         numBuckets: 1000003
         # 'maxGroupingAtEachLevel' defines the number of bins that are grouped
         # together to construct next level of the merkle-tree (this is applied
         # repeatedly for constructing the entire tree).
-        
-        #@ 그룹을 만들 bins 갯수. ( 예 : 5개를 모아 상위 레벨의 merkle-tree 생성 )
+        #@@ 그룹을 만들 bins 갯수. ( 예 : 5개를 모아 상위 레벨의 merkle-tree 생성 )
         maxGroupingAtEachLevel: 5
         # 'bucketCacheSize' defines the size (in MBs) of the cache that is used to keep
         # the buckets (from root upto secondlast level) in memory. This cache helps
         # in making state hash computation faster. A value less than or equals to zero
         # leads to disabling this caching. This caching helps more if transactions
         # perform significant writes.
-        
-        #@ 메모리에서 bucket 을 유지할 cache 크기, MB (root 에서 마지막 두번째 레벨까지)
-        #@ state hash 계산을 더 빠르게 할 수 있음 ( 0 이하의 값은 disable )
-        #@ Tx 가 충분히 큰 write 시 더 도움이 됨
+        #@@ 메모리에서 bucket 을 유지할 cache 크기, MB (root 에서 마지막 두번째 레벨까지)
+        #@@ state hash 계산을 더 빠르게 할 수 있음 ( 0 이하의 값은 disable )
+        #@@ Tx 가 충분히 큰 write 시 더 도움이 됨
         bucketCacheSize: 100
 
         # configurations for 'trie'
         # 'tire' has no additional configurations exposed as yet
-
-        #@ 'trie' 에 대한 설정 (추가 설정이 아직은 제공되지 않음)
+        #@@ 'trie' 에 대한 설정 (추가 설정이 아직은 제공되지 않음)
 
 ###############################################################################
 #
@@ -493,40 +471,35 @@ security:
     # Enable security will force every entity on the network to enroll with obc-ca
     # and maintain a valid set of certificates in order to communicate with
     # other peers
-
-    #@ enable : N/W 에 있는 모든 entity 가 obc-ca 를 통해 등록하도록 강제
-    #@          다른 peer 와의 통신을 위해 유효한 인증서들을 관리
+    #@@ enable : N/W 에 있는 모든 entity 가 obc-ca 를 통해 등록하도록 강제
+    #@@          다른 peer 와의 통신을 위해 유효한 인증서들을 관리
     enabled: false
     # To enroll NVP or VP with membersrvc. These parameters are for 1 time use.
     # They will not be valid on subsequent times without un-enroll first.
     # The values come from off-line registration with obc-ca. For testing, make
     # sure the values are in membersrvc/membersrvc.yaml file eca.users
-
-    #@ NVP 또는 VP 를 membersrvc 에 등록. 이 파라미터는 일회성
-    #@ 등록을 취소하지 않는다면, 이후의 변경은 모두 무시 (값들은 obc-ca 의 offline 등록에서 옴)
-    #@ 테스트를 위해, membersrvc/membersrvc.yaml 파일의 eca.users 항목에 값들이 있는지 확인
+    #@@ NVP 또는 VP 를 membersrvc 에 등록. 이 파라미터는 일회성
+    #@@ 등록을 취소하지 않는다면, 이후의 변경은 모두 무시 (값들은 obc-ca 의 offline 등록에서 옴)
+    #@@ 테스트를 위해, membersrvc/membersrvc.yaml 파일의 eca.users 항목에 값들이 있는지 확인
     enrollID: vp
     enrollSecret: f3489fy98ghf
     # To enable privacy of transactions (requires security to be enabled). This
     # encrypts the transaction content during transit and at rest. The state
     # data is also encrypted
-
-    #@ Tx 의 privacy를 가능하게 함
-    #@ transit 동안 또는 rest 시에 Tx 의 내용을 암호화 (state 또한 암호화)
+    #@@ Tx 의 privacy를 가능하게 함
+    #@@ transit 동안 또는 rest 시에 Tx 의 내용을 암호화 (state 또한 암호화)
     privacy: false
 
     # Can be 256 or 384. If you change here, you have to change also
     # the same property in membersrvc.yaml to the same value
-
-    #@ 256 또는 384 값 허용.
-    #@ 이 항목의 값을 변경하면, membersrvc.yaml 에 있는 동일한 항목도 같은 값으로 수정해야 함
+    #@@ 256 또는 384 값 허용.
+    #@@ 이 항목의 값을 변경하면, membersrvc.yaml 에 있는 동일한 항목도 같은 값으로 수정해야 함
     level: 256
 
     # Can be SHA2 or SHA3. If you change here, you have to change also
     # the same property in membersrvc.yaml to the same value
-
-    #@ SHA2 또는 SHA3 값 허용. Can be SHA2 or SHA3.
-    #@ 이 항목의 값을 변경하면, membersrvc.yaml 에 있는 동일한 항목도 같은 값으로 수정해야 함
+    #@@ SHA2 또는 SHA3 값 허용. Can be SHA2 or SHA3.
+    #@@ 이 항목의 값을 변경하면, membersrvc.yaml 에 있는 동일한 항목도 같은 값으로 수정해야 함
     hashAlgorithm: SHA3
 
     # TCerts related configuration
@@ -537,17 +510,15 @@ security:
     # Enable the release of keys needed to decrypt attributes from TCerts in
     # the chaincode using the metadata field of the transaction (requires
     # security to be enabled).
-    
-    #@ Tx 의 metadata field 를 이용하여, chaincode 내의 TCerts 로부터
-    #@ attribute 를 해독하는데 필요한 key 의 해제를 가능하게 함 (활성화를 위해서는 security 요구됨)
+    #@@ Tx 의 metadata field 를 이용하여, chaincode 내의 TCerts 로부터
+    #@@ attribute 를 해독하는데 필요한 key 의 해제를 가능하게 함 (활성화를 위해서는 security 요구됨)
     attributes:
       enabled: false
 
     # TCerts pool configuration.  Multi-thread pool can also be configured
     # by multichannel option switching concurrency in communication with TCA.
-
-    #@ TCerts pool 설정.  
-    #@ Multi-thread pool 설정 가능. multichannel 옵션 (TCA와의 통신의 동시성 변경)
+    #@@ TCerts pool 설정.  
+    #@@ Multi-thread pool 설정 가능. multichannel 옵션 (TCA와의 통신의 동시성 변경)
     multithreading:
       enabled: false
       multichannel: false
@@ -567,12 +538,12 @@ security:
 #     - After a network outage which has isolated the replica
 #     - If the current blockchain/state is determined to be corrupt
 #
-#@   - state transfer 가 필요하다고 replica 에서 인지시, 복구 동작에 적용
-#@
-#@   - This might happen:
-#@     - 결함이 있는 primary 로의 응답에서 view change 하는 동안
-#@     - replica 를 격리한 network 의 중단 후
-#@     - 현재 blockchain/state 가 손상된 것으로 판단되는 경우
+#@@   - state transfer 가 필요하다고 replica 에서 인지시, 복구 동작에 적용
+#@@
+#@@   - This might happen:
+#@@     - 결함이 있는 primary 로의 응답에서 view change 하는 동안
+#@@     - replica 를 격리한 network 의 중단 후
+#@@     - 현재 blockchain/state 가 손상된 것으로 판단되는 경우
 #
 ################################################################################
 statetransfer:
@@ -581,24 +552,22 @@ statetransfer:
     # In general, this should be set to true, setting to false will cause
     # the replica to panic, and require a human's intervention to intervene
     # and fix the corruption
-    
-    #@ replica 는 손상된 block 을 수리하려는 시도를 해야 하나?
-    #@ 일반적으로, 이항목은 true 로 설정되어야 함.
-    #@ false 로 설정시, replica 에 panic 이 발생하며, 손상을 복구하기 위한 사람의 개입이 필요함
+    #@@ replica 는 손상된 block 을 수리하려는 시도를 해야 하나?
+    #@@ 일반적으로, 이항목은 true 로 설정되어야 함.
+    #@@ false 로 설정시, replica 에 panic 이 발생하며, 손상을 복구하기 위한 사람의 개입이 필요함
     recoverdamage: true
 
     # The number of blocks to retrieve per sync request
-    #@ sync 요청마다 수신할 block 갯수
+    #@@ sync 요청마다 수신할 block 갯수
     blocksperrequest: 20
 
     # The maximum number of state deltas to attempt to retrieve
     # If more than this number of deltas is required to play the state up to date
     # then instead the state will be flagged as invalid, and a full copy of the state
     # will be retrieved instead
-    
-    #@ 수신을 시도할 state delta 의 최대 갯수
-    #@ state 를 최신화 하기 위해 이 값보다 더 큰 delta 가 필요하다면,
-    #@ state 를 invalid 로 표시하고, state 의 full copy 를 받아야 함
+    #@@ 수신을 시도할 state delta 의 최대 갯수
+    #@@ state 를 최신화 하기 위해 이 값보다 더 큰 delta 가 필요하다면,
+    #@@ state 를 invalid 로 표시하고, state 의 full copy 를 받아야 함
     maxdeltas: 200
 
     # Timeouts
