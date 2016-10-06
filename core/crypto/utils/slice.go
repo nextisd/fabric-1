@@ -17,6 +17,7 @@ limitations under the License.
 package utils
 
 // Clone clones the passed slice
+// Clone() 통과된 Slice 복사
 func Clone(src []byte) []byte {
 	clone := make([]byte, len(src))
 	copy(clone, src)

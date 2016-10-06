@@ -48,16 +48,19 @@ type tCertImpl struct {
 }
 
 //GetCertificate returns the x509 certificate of the TCert.
+//GetCertificate() TCert의 x509인증서를 Return
 func (tCert *tCertImpl) GetCertificate() *x509.Certificate {
 	return tCert.cert
 }
 
 //GetPreK0 returns the PreK0 of the TCert. This key is used to derivate attributes keys.
+//GetPreK0() TCert의 PreK0를 return. 이 키는 파생된 속성키로 사용된다.
 func (tCert *tCertImpl) GetPreK0() []byte {
 	return tCert.preK0
 }
 
 //Sign signs a msg with the TCert secret key an returns the signature.
+//Sign()은 전문을 서명한다.
 func (tCert *tCertImpl) Sign(msg []byte) ([]byte, error) {
 	if tCert.sk == nil {
 		return nil, utils.ErrNilArgument
@@ -67,6 +70,7 @@ func (tCert *tCertImpl) Sign(msg []byte) ([]byte, error) {
 }
 
 //Verify verifies signature and message using the TCert public key.
+//Verify()는 TCert Public카를 사용하는 메시지와 서명을 검증한다.
 func (tCert *tCertImpl) Verify(signature, msg []byte) (err error) {
 	ok, err := tCert.client.verify(tCert.cert.PublicKey, msg, signature)
 	if err != nil {
@@ -79,6 +83,7 @@ func (tCert *tCertImpl) Verify(signature, msg []byte) (err error) {
 }
 
 //GetKForAttribute derives the key for a specific attribute name.
+//GetKForAttribute()는 특정 속성명에 대한 Key를 생성한다.
 func (tCert *tCertImpl) GetKForAttribute(attributeName string) ([]byte, error) {
 	if tCert.preK0 == nil {
 		return nil, utils.ErrNilArgument

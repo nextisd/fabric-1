@@ -35,6 +35,7 @@ type tCertPoolEntry struct {
 const maxFillerThreads = 5
 
 //NewTCertPoolEntry creates a new tcert pool entry
+//NewTCertPoolEntry()는 신규 TCert Pool의 Enrty 생성
 func newTCertPoolEntry(client *clientImpl, attributes []string) *tCertPoolEntry {
 	var tCertChannel chan *TCertBlock
 	var tCertChannelFeedback chan struct{}
@@ -84,12 +85,14 @@ func (tCertPoolEntry *tCertPoolEntry) Stop() (err error) {
 }
 
 //AddTCert add a tcert to the poolEntry.
+//AddTCert()는 Pool Entry에 TCert를 추가한다.
 func (tCertPoolEntry *tCertPoolEntry) AddTCert(tCertBlock *TCertBlock) (err error) {
 	tCertPoolEntry.tCertChannel <- tCertBlock
 	return
 }
 
 //GetNextTCert gets the next tcert of the pool.
+//GetNextTCert()는 Pool에서 다음의 TCert취득
 func (tCertPoolEntry *tCertPoolEntry) GetNextTCert(attributes ...string) (tCertBlock *TCertBlock, err error) {
 	for i := 0; i < 3; i++ {
 		tCertPoolEntry.client.Debugf("Getting next TCert... %d out of 3", i)
@@ -264,6 +267,7 @@ type tCertPoolMultithreadingImpl struct {
 }
 
 //Start starts the pool processing.
+//Start() Pool Process Start
 func (tCertPool *tCertPoolMultithreadingImpl) Start() (err error) {
 	// Start the filler, initializes a poolEntry without attributes.
 	var attributes []string
@@ -281,6 +285,7 @@ func (tCertPool *tCertPoolMultithreadingImpl) releaseEntries() {
 }
 
 //Stop stops the pool.
+//Stop() Pool Process stop
 func (tCertPool *tCertPoolMultithreadingImpl) Stop() (err error) {
 	// Stop the filler
 	tCertPool.lockEntries()
@@ -295,6 +300,7 @@ func (tCertPool *tCertPoolMultithreadingImpl) Stop() (err error) {
 }
 
 //Returns a tCertPoolEntry for the attributes "attributes", if the tCertPoolEntry doesn't exists a new tCertPoolEntry will be create for that attributes.
+// getPoolEntryFromHash()는 속성Hash를 기반으로 poolEntry 취득
 func (tCertPool *tCertPoolMultithreadingImpl) getPoolEntryFromHash(attributeHash string) *tCertPoolEntry {
 	tCertPool.lockEntries()
 	defer tCertPool.releaseEntries()
@@ -304,6 +310,7 @@ func (tCertPool *tCertPoolMultithreadingImpl) getPoolEntryFromHash(attributeHash
 }
 
 //Returns a tCertPoolEntry for the attributes "attributes", if the tCertPoolEntry doesn't exists a new tCertPoolEntry will be create for that attributes.
+// getOrCreatePoolEntry()는 만일 속성에 대한 tCertPoolEntry가 없으면 신규로 생성하고 있으면 Return.
 func (tCertPool *tCertPoolMultithreadingImpl) getOrCreatePoolEntry(attributes []string) (*tCertPoolEntry, error) {
 	tCertPool.client.Debug("Getting pool entry %v \n", attributes)
 	attributeHash := calculateAttributesHash(attributes)
@@ -347,6 +354,7 @@ func (tCertPool *tCertPoolMultithreadingImpl) getNextTCert(attributes ...string)
 }
 
 //AddTCert adds a TCert into the pool is invoked by the client after TCA is called.
+// TCA거 호출된 후 Client에 의해 실행된 Pool에 TCert를 추가한다.
 func (tCertPool *tCertPoolMultithreadingImpl) AddTCert(tCertBlock *TCertBlock) (err error) {
 	poolEntry := tCertPool.getPoolEntryFromHash(tCertBlock.attributesHash)
 	if poolEntry == nil {

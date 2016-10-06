@@ -35,6 +35,7 @@ import (
 	"golang.org/x/net/context"
 )
 
+// initTCertEngine() TCert 엔진 초기화
 func (client *clientImpl) initTCertEngine() (err error) {
 	// load TCertOwnerKDFKey
 	if err = client.loadTCertOwnerKDFKey(); err != nil {
@@ -64,6 +65,7 @@ func (client *clientImpl) initTCertEngine() (err error) {
 	return
 }
 
+// storeTCertOwnerKDFKey() TCert Owner KDF Key 저장
 func (client *clientImpl) storeTCertOwnerKDFKey() error {
 	if err := client.ks.storeKey(client.conf.getTCertOwnerKDFKeyFilename(), client.tCertOwnerKDFKey); err != nil {
 		client.Errorf("Failed storing TCertOwnerKDFKey [%s].", err.Error())
@@ -73,6 +75,7 @@ func (client *clientImpl) storeTCertOwnerKDFKey() error {
 	return nil
 }
 
+// loadTCertOwnerKDFKey() TCert Owner KDF Key Load
 func (client *clientImpl) loadTCertOwnerKDFKey() error {
 	// Load TCertOwnerKDFKey
 	client.Debug("Loading TCertOwnerKDFKey...")
@@ -96,6 +99,7 @@ func (client *clientImpl) loadTCertOwnerKDFKey() error {
 	return nil
 }
 
+// getTCertFromExternalDER() 외부 DER에서 TCert 취득
 func (client *clientImpl) getTCertFromExternalDER(der []byte) (tCert, error) {
 	// DER to x509
 	x509Cert, err := primitives.DERToX509Certificate(der)
@@ -242,6 +246,7 @@ func (client *clientImpl) getTCertFromExternalDER(der []byte) (tCert, error) {
 	return &tCertImpl{client, x509Cert, nil, []byte{}}, nil
 }
 
+// getTCertFromDER() DER에서 TCert 취득
 func (client *clientImpl) getTCertFromDER(certBlk *TCertDBBlock) (certBlock *TCertBlock, err error) {
 	if client.tCertOwnerKDFKey == nil {
 		return nil, fmt.Errorf("KDF key not initialized yet")
@@ -376,6 +381,7 @@ func (client *clientImpl) getTCertFromDER(certBlk *TCertDBBlock) (certBlock *TCe
 	return
 }
 
+// getTCertsFromTCA() TCA에서 TCert 취득
 func (client *clientImpl) getTCertsFromTCA(attrhash string, attributes []string, num int) error {
 	client.Debugf("Get [%d] certificates from the TCA...", num)
 

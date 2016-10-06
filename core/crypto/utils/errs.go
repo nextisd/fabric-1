@@ -87,6 +87,7 @@ var (
 )
 
 // ErrToString converts and error to a string. If the error is nil, it returns the string "<clean>"
+// ErrToString() 에러메시지 출력. 단, error가 NULL일 경우 "<clean>"을 리턴
 func ErrToString(err error) string {
 	if err != nil {
 		return err.Error()

@@ -22,6 +22,9 @@ import (
 	"github.com/hyperledger/fabric/core/crypto/primitives"
 )
 
+// registerCryptoEngine() 암호화엔진 등록
+//		IN)  Nothing
+//		OUT) error
 func (client *clientImpl) registerCryptoEngine() (err error) {
 	// Store query state key
 	client.queryStateKey, err = primitives.GetRandomNonce()
@@ -39,6 +42,9 @@ func (client *clientImpl) registerCryptoEngine() (err error) {
 	return
 }
 
+// initCryptoEngine() 암호화엔진 초기화
+//		IN)  Nothing
+//		OUT) error
 func (client *clientImpl) initCryptoEngine() (err error) {
 	// Load TCertOwnerKDFKey
 	if err = client.initTCertEngine(); err != nil {

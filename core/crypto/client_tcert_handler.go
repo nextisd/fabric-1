@@ -43,21 +43,25 @@ func (handler *tCertHandlerImpl) init(client *clientImpl, tCert tCert) error {
 }
 
 // GetCertificate returns the TCert DER
+// GetCertificate()는 TCert DER를 Return
 func (handler *tCertHandlerImpl) GetCertificate() []byte {
 	return utils.Clone(handler.tCert.GetCertificate().Raw)
 }
 
 // Sign signs msg using the signing key corresponding to this TCert
+// Sign()은 이TCert에 상응하는 서명키를 사용하는 전문을 서명한다(?).
 func (handler *tCertHandlerImpl) Sign(msg []byte) ([]byte, error) {
 	return handler.tCert.Sign(msg)
 }
 
 // Verify verifies msg using the verifying key corresponding to this TCert
+// Verify()은 이 TCert에 대응하는 검증키를 사용하는 전문을 검증한다.
 func (handler *tCertHandlerImpl) Verify(signature []byte, msg []byte) error {
 	return handler.tCert.Verify(signature, msg)
 }
 
 // GetTransactionHandler returns the transaction handler relative to this certificate
+// GetTransactionHandler()는 이 인증서와 관련이 있는 Tx Handler를 Return
 func (handler *tCertHandlerImpl) GetTransactionHandler() (TransactionHandler, error) {
 	txHandler := &tCertTransactionHandlerImpl{}
 	err := txHandler.init(handler)
@@ -86,26 +90,31 @@ func (handler *tCertTransactionHandlerImpl) init(tCertHandler *tCertHandlerImpl)
 }
 
 // GetCertificateHandler returns the certificate handler relative to the certificate mapped to this transaction
+// GetCertificateHandler()는 Tx와 매핑되는 인증서와 관련한 인증서Handler를 Return
 func (handler *tCertTransactionHandlerImpl) GetCertificateHandler() (CertificateHandler, error) {
 	return handler.tCertHandler, nil
 }
 
 // GetBinding returns an Binding to the underlying transaction layer
+// GetBinding()은 Tx레이어 하에서 Binding을 return
 func (handler *tCertTransactionHandlerImpl) GetBinding() ([]byte, error) {
 	return utils.Clone(handler.binding), nil
 }
 
 // NewChaincodeDeployTransaction is used to deploy chaincode.
+// NewChaincodeDeployTransaction()은 Chaincode를 Deploy하는데 사용
 func (handler *tCertTransactionHandlerImpl) NewChaincodeDeployTransaction(chaincodeDeploymentSpec *obc.ChaincodeDeploymentSpec, uuid string, attributeNames ...string) (*obc.Transaction, error) {
 	return handler.tCertHandler.client.newChaincodeDeployUsingTCert(chaincodeDeploymentSpec, uuid, attributeNames, handler.tCertHandler.tCert, handler.nonce)
 }
 
 // NewChaincodeExecute is used to execute chaincode's functions.
+// NewChaincodeExecute()은 Chaincode 기능들을 실행하는데 사용
 func (handler *tCertTransactionHandlerImpl) NewChaincodeExecute(chaincodeInvocation *obc.ChaincodeInvocationSpec, uuid string, attributeNames ...string) (*obc.Transaction, error) {
 	return handler.tCertHandler.client.newChaincodeExecuteUsingTCert(chaincodeInvocation, uuid, attributeNames, handler.tCertHandler.tCert, handler.nonce)
 }
 
 // NewChaincodeQuery is used to query chaincode's functions.
+// NewChaincodeQuery()는 Chaincode 기능들을 조회하는데 사용
 func (handler *tCertTransactionHandlerImpl) NewChaincodeQuery(chaincodeInvocation *obc.ChaincodeInvocationSpec, uuid string, attributeNames ...string) (*obc.Transaction, error) {
 	return handler.tCertHandler.client.newChaincodeQueryUsingTCert(chaincodeInvocation, uuid, attributeNames, handler.tCertHandler.tCert, handler.nonce)
 }

@@ -37,6 +37,7 @@ type clientImpl struct {
 }
 
 // NewChaincodeDeployTransaction is used to deploy chaincode.
+// NewChaincodeDeployTransaction is used to deploy chaincode.
 func (client *clientImpl) NewChaincodeDeployTransaction(chaincodeDeploymentSpec *obc.ChaincodeDeploymentSpec, uuid string, attributes ...string) (*obc.Transaction, error) {
 	// Verify that the client is initialized
 	if !client.IsInitialized() {
@@ -44,6 +45,7 @@ func (client *clientImpl) NewChaincodeDeployTransaction(chaincodeDeploymentSpec 
 	}
 
 	// Get next available (not yet used) transaction certificate
+	// 유용한 Next Tx인증서 취득
 	tCerts, err := client.tCertPool.GetNextTCerts(1, attributes...)
 	if err != nil {
 		client.Errorf("Failed to obtain a (not yet used) TCert for Chaincode Deploy[%s].", err.Error())
@@ -60,17 +62,20 @@ func (client *clientImpl) NewChaincodeDeployTransaction(chaincodeDeploymentSpec 
 }
 
 // GetNextTCerts Gets next available (not yet used) transaction certificate.
+// GetNextTCerts() 유용한 Next Tx인증서 취득
 func (client *clientImpl) GetNextTCerts(nCerts int, attributes ...string) (tCerts []tCert, err error) {
 	if nCerts < 1 {
 		return nil, errors.New("Number of requested TCerts has to be positive!")
 	}
 
 	// Verify that the client is initialized
+	// Client가 초기화되었는지 검증
 	if !client.IsInitialized() {
 		return nil, utils.ErrNotInitialized
 	}
 
 	// Get next available (not yet used) transaction certificate
+	// 사용가능한 Next Tx인증서 취득
 	tBlocks, err := client.tCertPool.GetNextTCerts(nCerts, attributes...)
 	if err != nil {
 		client.Errorf("Failed getting [%d] (not yet used) Transaction Certificates (TCerts) [%s].", nCerts, err.Error())
@@ -84,13 +89,16 @@ func (client *clientImpl) GetNextTCerts(nCerts int, attributes ...string) (tCert
 }
 
 // NewChaincodeInvokeTransaction is used to invoke chaincode's functions.
+// NewChaincodeInvokeTransaction()는 Chaincode의 기능을 실행하는데 사용된다.
 func (client *clientImpl) NewChaincodeExecute(chaincodeInvocation *obc.ChaincodeInvocationSpec, uuid string, attributes ...string) (*obc.Transaction, error) {
 	// Verify that the client is initialized
+	// Client가 초기화되었는지 검증
 	if !client.IsInitialized() {
 		return nil, utils.ErrNotInitialized
 	}
 
 	// Get next available (not yet used) transaction certificate
+	// 사용가능한 Next Tx인증서 취득
 	tBlocks, err := client.tCertPool.GetNextTCerts(1, attributes...)
 	if err != nil {
 		client.Errorf("Failed to obtain a (not yet used) TCert [%s].", err.Error())
@@ -103,10 +111,12 @@ func (client *clientImpl) NewChaincodeExecute(chaincodeInvocation *obc.Chaincode
 	}
 
 	// Create Transaction
+	// Tx 생성
 	return client.newChaincodeExecuteUsingTCert(chaincodeInvocation, uuid, attributes, tBlocks[0].tCert, nil)
 }
 
 // NewChaincodeQuery is used to query chaincode's functions.
+// NewChaincodeQuery()는 Chaincode의 기능 조회에  사용된다.
 func (client *clientImpl) NewChaincodeQuery(chaincodeInvocation *obc.ChaincodeInvocationSpec, uuid string, attributes ...string) (*obc.Transaction, error) {
 	// Verify that the client is initialized
 	if !client.IsInitialized() {
@@ -125,11 +135,12 @@ func (client *clientImpl) NewChaincodeQuery(chaincodeInvocation *obc.ChaincodeIn
 		return nil, errors.New("Failed to obtain a TCert for Chaincode Invocation. Expected exactly one returned TCert.")
 	}
 
-	// Create Transaction
+	// Query Transaction
 	return client.newChaincodeQueryUsingTCert(chaincodeInvocation, uuid, attributes, tBlocks[0].tCert, nil)
 }
 
 // GetEnrollmentCertHandler returns a CertificateHandler whose certificate is the enrollment certificate
+// GetEnrollmentCertHandler()는 암호화된 인증서의 핸들러를 Return
 func (client *clientImpl) GetEnrollmentCertificateHandler() (CertificateHandler, error) {
 	// Verify that the client is initialized
 	if !client.IsInitialized() {
@@ -148,6 +159,7 @@ func (client *clientImpl) GetEnrollmentCertificateHandler() (CertificateHandler,
 }
 
 // GetTCertHandlerNext returns a CertificateHandler whose certificate is the next available TCert
+// GetTCertHandlerNext()는 Next 사용가능한 TCert의 핸들러를 Return
 func (client *clientImpl) GetTCertificateHandlerNext(attributes ...string) (CertificateHandler, error) {
 	// Verify that the client is initialized
 	if !client.IsInitialized() {
@@ -178,6 +190,7 @@ func (client *clientImpl) GetTCertificateHandlerNext(attributes ...string) (Cert
 }
 
 // GetTCertHandlerFromDER returns a CertificateHandler whose certificate is the one passed
+// GetTCertHandlerFromDER()는 통과된 하나의 인증서의 Handler를 Return
 func (client *clientImpl) GetTCertificateHandlerFromDER(tCertDER []byte) (CertificateHandler, error) {
 	// Verify that the client is initialized
 	if !client.IsInitialized() {
