@@ -68,10 +68,12 @@ var nodeStartCmd = &cobra.Command{
 	},
 }
 
-//@ peer command 로 "start" 입력시 실행되는 함수
+//@@ peer command 로 "start" 입력시 실행되는 함수
 func serve(args []string) error {
 	// Parameter overrides must be processed before any paramaters are
 	// cached. Failures to cache cause the server to terminate immediately.
+	//@@ Parameter overrides must be processed before any paramaters are
+	//@@ cached. Failures to cache cause the server to terminate immediately.
 	if chaincodeDevMode {
 		logger.Info("Running in chaincode development mode")
 		logger.Info("Set consensus to NOOPS and user starts chaincode")
