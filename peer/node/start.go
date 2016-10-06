@@ -92,7 +92,8 @@ func serve(args []string) error {
 		return err
 	}
 
-	//@@ cache 된 설정에서, peerEndpoint 생성후 리턴
+	//@@ cache 된 설정에서, peerEndpoint 생성후 리턴 (protos/fabric.pb.go 참조)
+	//@@ PeerEndpoint struct : PeerID, Address, Type --> 이건.. msg 임
 	peerEndpoint, err := peer.GetPeerEndpoint()
 	if err != nil {
 		err = fmt.Errorf("Failed to get Peer Endpoint: %s", err)
@@ -113,7 +114,8 @@ func serve(args []string) error {
 		grpclog.Fatalf("Failed to listen: %v", err)
 	}
 
-	//@@ ??
+	//@@ validator 일 경우에만 grpc server 생성 ( peer.ValidatorEnabled() == true )
+	//@@ listen addr : "peer.validator.events.address"
 	ehubLis, ehubGrpcServer, err := createEventHubServer()
 	if err != nil {
 		grpclog.Fatalf("Failed to create ehub server: %v", err)
@@ -130,12 +132,16 @@ func serve(args []string) error {
 		logger.Infof("Privacy enabled status: false")
 	}
 
-	//@@ Rocks DB 에 접속, 기본 handler 생성
+	//@@ Rocks DB 에 접속, 기본 handler 생성 ( core/db/db.go 참조 )
+	//@@ openchainDB.open() --> openchainDB 에 handler (BlockchainCF, StateCF, StateDeltaCF, IndexesCF) 있음
+	//@@ db, cfHandlers, err := gorocksdb.OpenDbColumnFamilies(opts, dbPath, cfNames, cfOpts)
 	db.Start()
 
 	var opts []grpc.ServerOption
 	if comm.TLSEnabled() {
-		//@@ 
+		//@@ Server 용 TLS 생성 (TransportAuthenticator)
+		//@@ PEM 으로 인코딩된 file 쌍에서 public/private key 를 parsing
+		//@@ PEM (Privacy Enhanced Mail) : Binary를 Base64로 인코딩
 		creds, err := credentials.NewServerTLSFromFile(viper.GetString("peer.tls.cert.file"),
 			viper.GetString("peer.tls.key.file"))
 
@@ -145,16 +151,15 @@ func serve(args []string) error {
 		opts = []grpc.ServerOption{grpc.Creds(creds)}
 	}
 
-	//@@ 
+	//@@ gRPC 서버 생성 : 등록된 서비스 없으며, 시작되지 않음 (요청처리 불가)
 	grpcServer := grpc.NewServer(opts...)
 
-	//@@ 
+	//@@ ECA / TCA / TLSCA 와 관련된 보안관련 초기화 (인증서, public/private key 포함)
 	secHelper, err := getSecHelper()
 	if err != nil {
 		return err
 	}
 
-	//@@ 
 	secHelperFunc := func() crypto.Peer {
 		return secHelper
 	}
@@ -344,22 +349,23 @@ func createEventHubServer() (net.Listener, *grpc.Server, error) {
 	return lis, grpcServer, err
 }
 
-//@@ 
+//@@ filename 의 file 생성 (path 포함)
+//@@ 자신의 pid 기록 (lock 처리)
 func writePid(fileName string, pid int) error {
-	//@@ 
+	//@@ 모든 경로 생성
 	err := os.MkdirAll(filepath.Dir(fileName), 0755)
 	if err != nil {
 		return err
 	}
 
-	//@@ 
+	//@@ file open
 	fd, err := os.OpenFile(fileName, os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
 		return err
 	}
 	defer fd.Close()
 
-	//@@ 
+	//@@ file lock
 	if err := syscall.Flock(int(fd.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
 		return fmt.Errorf("can't lock '%s', lock is held", fd.Name())
 	}
@@ -380,7 +386,7 @@ func writePid(fileName string, pid int) error {
 		return err
 	}
 
-	//@@ 
+	//@@ file unlock
 	if err := syscall.Flock(int(fd.Fd()), syscall.LOCK_UN); err != nil {
 		return fmt.Errorf("can't release lock '%s', lock is held", fd.Name())
 	}
@@ -392,7 +398,13 @@ var once sync.Once
 //this should be called exactly once and the result cached
 //NOTE- this crypto func might rightly belong in a crypto package
 //and universally accessed
-//@@ 
+//@@ 정확히 1번 불려져야 하며, 결과는 cache 됨 --> 내부에 once 처리됨
+//@@ enrollID : config 값 "security.enrollID" ( core.yaml -> security: --> enrollID: )
+//@@ enrollSecret : config 값 "security.enrollSecret" ( core.yaml -> security: --> enrollSecret: )
+//@@ if validator : crypto.RegisterValidator() --> crypto.InitValidator()
+//@@ else (peer)  : crypto.RegisterPeer()      --> crypto.InitPeer()
+//@@ crypto.RegisterValidator() , crypto.RegisterPeer() : enrollID 를 PKI 인프라 (ECA, TCA) 에 등록
+//@@                                                      실제로는 ECA/TCA/TLSCA 인증서 받아서 key-storage 에 저장..
 func getSecHelper() (crypto.Peer, error) {
 	var secHelper crypto.Peer
 	var err error
@@ -401,26 +413,35 @@ func getSecHelper() (crypto.Peer, error) {
 		if core.SecurityEnabled() {
 			enrollID := viper.GetString("security.enrollID")
 			enrollSecret := viper.GetString("security.enrollSecret")
+
+			//@@ node Type == validator
 			if peer.ValidatorEnabled() {
 				logger.Debugf("Registering validator with enroll ID: %s", enrollID)
-				//@@ 
+				//@@ enrollID 를 PKI 인프라 (ECA, TCA) 에 등록
+				//@@ 실제로는 ECA/TCA/TLSCA 인증서 받아서 key-storage 에 저장..
 				if err = crypto.RegisterValidator(enrollID, nil, enrollID, enrollSecret); nil != err {
 					return
 				}
 				logger.Debugf("Initializing validator with enroll ID: %s", enrollID)
-				//@@ 
+
+				//@@ ECA / TCA / TLSCA 인증서 load
+				//@@ public / private key load
 				secHelper, err = crypto.InitValidator(enrollID, nil)
 				if nil != err {
 					return
 				}
+			//@@ node Type != validator
 			} else {
 				logger.Debugf("Registering non-validator with enroll ID: %s", enrollID)
-				//@@ 
+				//@@ enrollID 를 PKI 인프라 (ECA, TCA) 에 등록
+				//@@ 실제로는 ECA/TCA/TLSCA 인증서 받아서 key-storage 에 저장..
 				if err = crypto.RegisterPeer(enrollID, nil, enrollID, enrollSecret); nil != err {
 					return
 				}
 				logger.Debugf("Initializing non-validator with enroll ID: %s", enrollID)
-				//@@ 
+
+				//@@ ECA / TCA / TLSCA 인증서 load
+				//@@ public / private key load
 				secHelper, err = crypto.InitPeer(enrollID, nil)
 				if nil != err {
 					return
