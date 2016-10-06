@@ -72,8 +72,8 @@ var nodeStartCmd = &cobra.Command{
 func serve(args []string) error {
 	// Parameter overrides must be processed before any paramaters are
 	// cached. Failures to cache cause the server to terminate immediately.
-	//@@ Parameter overrides must be processed before any paramaters are
-	//@@ cached. Failures to cache cause the server to terminate immediately.
+	//@@ 모든 파라미터는 cache 되기전에 override 되어야 함
+	//@@ cache 실패시 서버는 즉시 종료되어야 함
 	if chaincodeDevMode {
 		logger.Info("Running in chaincode development mode")
 		logger.Info("Set consensus to NOOPS and user starts chaincode")
@@ -85,16 +85,21 @@ func serve(args []string) error {
 
 	}
 
+	//@@ 기본적인 config 변수 값들을 저장
+	//@@ string : localAddress, peerEndpoint / bool : securityEnabled
+	//@@ int : syncStateSnapshotChannelSize, syncStateDeltasChannelSize, syncBlocksChannelSize, validatorEnabled
 	if err := peer.CacheConfiguration(); err != nil {
 		return err
 	}
 
+	//@@ cache 된 설정에서, peerEndpoint 생성후 리턴
 	peerEndpoint, err := peer.GetPeerEndpoint()
 	if err != nil {
 		err = fmt.Errorf("Failed to get Peer Endpoint: %s", err)
 		return err
 	}
 
+	//@@ listen address 얻기 ( core.yaml 에서, listenAddress 찾아봐라 )
 	listenAddr := viper.GetString("peer.listenAddress")
 
 	if "" == listenAddr {
@@ -102,11 +107,13 @@ func serve(args []string) error {
 		listenAddr = peerEndpoint.Address
 	}
 
+	//@@ tcp listen 시작
 	lis, err := net.Listen("tcp", listenAddr)
 	if err != nil {
 		grpclog.Fatalf("Failed to listen: %v", err)
 	}
 
+	//@@ ??
 	ehubLis, ehubGrpcServer, err := createEventHubServer()
 	if err != nil {
 		grpclog.Fatalf("Failed to create ehub server: %v", err)
@@ -123,10 +130,12 @@ func serve(args []string) error {
 		logger.Infof("Privacy enabled status: false")
 	}
 
+	//@@ Rocks DB 에 접속, 기본 handler 생성
 	db.Start()
 
 	var opts []grpc.ServerOption
 	if comm.TLSEnabled() {
+		//@@ 
 		creds, err := credentials.NewServerTLSFromFile(viper.GetString("peer.tls.cert.file"),
 			viper.GetString("peer.tls.key.file"))
 
@@ -136,17 +145,21 @@ func serve(args []string) error {
 		opts = []grpc.ServerOption{grpc.Creds(creds)}
 	}
 
+	//@@ 
 	grpcServer := grpc.NewServer(opts...)
 
+	//@@ 
 	secHelper, err := getSecHelper()
 	if err != nil {
 		return err
 	}
 
+	//@@ 
 	secHelperFunc := func() crypto.Peer {
 		return secHelper
 	}
 
+	//@@ 
 	registerChaincodeSupport(chaincode.DefaultChain, grpcServer, secHelper)
 
 	var peerServer *peer.Impl
@@ -154,6 +167,8 @@ func serve(args []string) error {
 	// Create the peerServer
 	if peer.ValidatorEnabled() {
 		logger.Debug("Running as validating peer - making genesis block if needed")
+		
+		//@@ 
 		makeGenesisError := genesis.MakeGenesis()
 		if makeGenesisError != nil {
 			return makeGenesisError
@@ -161,6 +176,7 @@ func serve(args []string) error {
 		logger.Debugf("Running as validating peer - installing consensus %s",
 			viper.GetString("peer.validator.consensus"))
 
+		//@@ 
 		peerServer, err = peer.NewPeerWithEngine(secHelperFunc, helper.GetEngine)
 	} else {
 		logger.Debug("Running as non-validating peer")
@@ -174,25 +190,31 @@ func serve(args []string) error {
 	}
 
 	// Register the Peer server
+	//@@ 
 	pb.RegisterPeerServer(grpcServer, peerServer)
 
 	// Register the Admin server
+	//@@ 
 	pb.RegisterAdminServer(grpcServer, core.NewAdminServer())
 
 	// Register Devops server
+	//@@ 
 	serverDevops := core.NewDevopsServer(peerServer)
 	pb.RegisterDevopsServer(grpcServer, serverDevops)
 
 	// Register the ServerOpenchain server
+	//@@ 
 	serverOpenchain, err := rest.NewOpenchainServerWithPeerInfo(peerServer)
 	if err != nil {
 		err = fmt.Errorf("Error creating OpenchainServer: %s", err)
 		return err
 	}
 
+	//@@ 
 	pb.RegisterOpenchainServer(grpcServer, serverOpenchain)
 
 	// Create and register the REST service if configured
+	//@@ 
 	if viper.GetBool("rest.enabled") {
 		go rest.StartOpenchainRESTServer(serverOpenchain, serverDevops)
 	}
@@ -207,6 +229,8 @@ func serve(args []string) error {
 
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+
+	//@@ 
 	go func() {
 		sig := <-sigs
 		fmt.Println()
@@ -214,6 +238,7 @@ func serve(args []string) error {
 		serve <- nil
 	}()
 
+	//@@ 
 	go func() {
 		var grpcErr error
 		if grpcErr = grpcServer.Serve(lis); grpcErr != nil {
@@ -224,11 +249,13 @@ func serve(args []string) error {
 		serve <- grpcErr
 	}()
 
+	//@@ 
 	if err := writePid(viper.GetString("peer.fileSystemPath")+"/peer.pid", os.Getpid()); err != nil {
 		return err
 	}
 
 	// Start the event hub server
+	//@@ 
 	if ehubGrpcServer != nil && ehubLis != nil {
 		go ehubGrpcServer.Serve(ehubLis)
 	}
@@ -244,9 +271,11 @@ func serve(args []string) error {
 	}
 
 	// Block until grpc server exits
+	//@@ 
 	return <-serve
 }
 
+//@@  
 func registerChaincodeSupport(chainname chaincode.ChainName, grpcServer *grpc.Server,
 	secHelper crypto.Peer) {
 
@@ -257,6 +286,7 @@ func registerChaincodeSupport(chainname chaincode.ChainName, grpcServer *grpc.Se
 	}
 
 	//get chaincode startup timeout
+	//@@ 
 	tOut, err := strconv.Atoi(viper.GetString("chaincode.startuptimeout"))
 	if err != nil { //what went wrong ?
 		fmt.Printf("could not retrive timeout var...setting to 5secs\n")
@@ -264,15 +294,19 @@ func registerChaincodeSupport(chainname chaincode.ChainName, grpcServer *grpc.Se
 	}
 	ccStartupTimeout := time.Duration(tOut) * time.Millisecond
 
+	//@@ 
 	ccSrv := chaincode.NewChaincodeSupport(chainname, peer.GetPeerEndpoint, userRunsCC,
 		ccStartupTimeout, secHelper)
 
 	//Now that chaincode is initialized, register all system chaincodes.
+	//@@ 
 	system_chaincode.RegisterSysCCs()
 
+	//@@ 
 	pb.RegisterChaincodeSupportServer(grpcServer, ccSrv)
 }
 
+//@@ 
 func createEventHubServer() (net.Listener, *grpc.Server, error) {
 	var lis net.Listener
 	var grpcServer *grpc.Server
@@ -284,6 +318,7 @@ func createEventHubServer() (net.Listener, *grpc.Server, error) {
 		}
 
 		//TODO - do we need different SSL material for events ?
+		//@@ 
 		var opts []grpc.ServerOption
 		if comm.TLSEnabled() {
 			creds, err := credentials.NewServerTLSFromFile(
@@ -296,27 +331,35 @@ func createEventHubServer() (net.Listener, *grpc.Server, error) {
 			opts = []grpc.ServerOption{grpc.Creds(creds)}
 		}
 
+		//@@ 
 		grpcServer = grpc.NewServer(opts...)
+		//@@ 
 		ehServer := producer.NewEventsServer(
 			uint(viper.GetInt("peer.validator.events.buffersize")),
 			viper.GetInt("peer.validator.events.timeout"))
 
+		//@@ 
 		pb.RegisterEventsServer(grpcServer, ehServer)
 	}
 	return lis, grpcServer, err
 }
 
+//@@ 
 func writePid(fileName string, pid int) error {
+	//@@ 
 	err := os.MkdirAll(filepath.Dir(fileName), 0755)
 	if err != nil {
 		return err
 	}
 
+	//@@ 
 	fd, err := os.OpenFile(fileName, os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
 		return err
 	}
 	defer fd.Close()
+
+	//@@ 
 	if err := syscall.Flock(int(fd.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
 		return fmt.Errorf("can't lock '%s', lock is held", fd.Name())
 	}
@@ -337,6 +380,7 @@ func writePid(fileName string, pid int) error {
 		return err
 	}
 
+	//@@ 
 	if err := syscall.Flock(int(fd.Fd()), syscall.LOCK_UN); err != nil {
 		return fmt.Errorf("can't release lock '%s', lock is held", fd.Name())
 	}
@@ -348,29 +392,35 @@ var once sync.Once
 //this should be called exactly once and the result cached
 //NOTE- this crypto func might rightly belong in a crypto package
 //and universally accessed
+//@@ 
 func getSecHelper() (crypto.Peer, error) {
 	var secHelper crypto.Peer
 	var err error
+	//@@ 
 	once.Do(func() {
 		if core.SecurityEnabled() {
 			enrollID := viper.GetString("security.enrollID")
 			enrollSecret := viper.GetString("security.enrollSecret")
 			if peer.ValidatorEnabled() {
 				logger.Debugf("Registering validator with enroll ID: %s", enrollID)
+				//@@ 
 				if err = crypto.RegisterValidator(enrollID, nil, enrollID, enrollSecret); nil != err {
 					return
 				}
 				logger.Debugf("Initializing validator with enroll ID: %s", enrollID)
+				//@@ 
 				secHelper, err = crypto.InitValidator(enrollID, nil)
 				if nil != err {
 					return
 				}
 			} else {
 				logger.Debugf("Registering non-validator with enroll ID: %s", enrollID)
+				//@@ 
 				if err = crypto.RegisterPeer(enrollID, nil, enrollID, enrollSecret); nil != err {
 					return
 				}
 				logger.Debugf("Initializing non-validator with enroll ID: %s", enrollID)
+				//@@ 
 				secHelper, err = crypto.InitPeer(enrollID, nil)
 				if nil != err {
 					return
