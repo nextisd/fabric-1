@@ -33,6 +33,7 @@ import (
 	"golang.org/x/crypto/hkdf"
 )
 
+// aesEncrypt() : AES암호화
 func aesEncrypt(key, plain []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
@@ -51,6 +52,7 @@ func aesEncrypt(key, plain []byte) ([]byte, error) {
 	return text, nil
 }
 
+// aesDecrypt() : AES복호화
 func aesDecrypt(key, text []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
@@ -77,16 +79,19 @@ func eciesEncrypt(rand io.Reader, pub *ecdsa.PublicKey, s1, s2 []byte, plain []b
 
 	// Select an ephemeral elliptic curve key pair associated with
 	// elliptic curve domain parameters params
+	// 타원 곡선 도메인 매개 변수 PARAMS과 관련된 임시 타원 곡선 키 쌍을 검색(?)
 	priv, Rx, Ry, err := elliptic.GenerateKey(pub.Curve, rand)
 	//fmt.Printf("Rx %s\n", utils.EncodeBase64(Rx.Bytes()))
 	//fmt.Printf("Ry %s\n", utils.EncodeBase64(Ry.Bytes()))
 
 	// Convert R=(Rx,Ry) to an octed string R bar
 	// This is uncompressed
+	// Octed 문자열로 변환 R=(Rx, Ry)
 	Rb := elliptic.Marshal(pub.Curve, Rx, Ry)
 
 	// Derive a shared secret field element z from the ephemeral secret key k
 	// and convert z to an octet string Z
+	// 임시보안키 K로부터 공유된 암호화 Field 항목 X를 얻고 X를 OCTET문자열 Z로 변환한다.
 	z, _ := params.ScalarMult(pub.X, pub.Y, priv)
 	Z := z.Bytes()
 	//fmt.Printf("Z %s\n", utils.EncodeBase64(Z))
@@ -175,6 +180,7 @@ func eciesDecrypt(priv *ecdsa.PrivateKey, s1, s2 []byte, ciphertext []byte) ([]b
 
 	// Derive a shared secret field element z from the ephemeral secret key k
 	// and convert z to an octet string Z
+	// 임시보안키 K로부터 공유된 암호화 Field 항목 X를 얻고 X를 OCTET문자열 Z로 변환한다.
 	z, _ := params.ScalarMult(Rx, Ry, priv.D.Bytes())
 	Z := z.Bytes()
 	//fmt.Printf("Z %s\n", utils.EncodeBase64(Z))

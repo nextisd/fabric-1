@@ -26,6 +26,7 @@ import (
 )
 
 // DecryptQueryResult is used to decrypt the result of a query transaction
+// DecryptQueryResult() Tx 쿼리결과를 복호화하는데 사용된다.
 func (client *clientImpl) DecryptQueryResult(queryTx *obc.Transaction, ct []byte) ([]byte, error) {
 	// Verify that the client is initialized
 	if !client.isInitialized {

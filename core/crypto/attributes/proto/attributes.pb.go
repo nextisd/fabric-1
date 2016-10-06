@@ -3,11 +3,14 @@
 // DO NOT EDIT!
 
 /*
+  protos 패키지는 일반적인 Prorotocol 버퍼 패키지이다.
 Package protos is a generated protocol buffer package.
 
+이러한 파일들로부터 일반화된다 : attributes.proto
 It is generated from these files:
 	attributes.proto
 
+Top Level 메시지
 It has these top-level messages:
 	AttributesMetadataEntry
 	AttributesMetadata
@@ -26,10 +29,11 @@ var _ = math.Inf
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
-// proto package needs to be updated.
+// proto package needs to be updated.(에러 발생시 proto 패키지 업그레이드 필요)
 const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
 // AttributesMetadataEntry is an entry within the metadata that store an attribute name with its respective key.
+// AttributesMetadataEntry는 각각의 키와 같이 속성명을 저장하는 메타데이터간의 항목이다.
 type AttributesMetadataEntry struct {
 	AttributeName string `protobuf:"bytes,1,opt,name=AttributeName,json=attributeName" json:"AttributeName,omitempty"`
 	AttributeKey  []byte `protobuf:"bytes,2,opt,name=AttributeKey,json=attributeKey,proto3" json:"AttributeKey,omitempty"`
@@ -41,6 +45,7 @@ func (*AttributesMetadataEntry) ProtoMessage()               {}
 func (*AttributesMetadataEntry) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
 
 // AttributesMetadata holds both the original metadata bytes and the metadata required to access attributes.
+// AttributesMetadata는 접근속성을 필요로 한 메타데이터와 원래의 메타데이터 수 Byte 두가지를 갖는다.
 type AttributesMetadata struct {
 	// Original metadata bytes
 	Metadata []byte `protobuf:"bytes,1,opt,name=Metadata,json=metadata,proto3" json:"Metadata,omitempty"`

@@ -99,6 +99,7 @@ func (tCertPool *tCertPoolSingleThreadImpl) Stop() (err error) {
 }
 
 //calculateAttributesHash generates a unique hash using the passed attributes.
+// calculateAttributesHash() 정상적인 속성을 사용하고 있는 유일한 Hash를 생성.
 func calculateAttributesHash(attributes []string) (attrHash string) {
 
 	keys := make([]string, len(attributes))
@@ -123,6 +124,7 @@ func calculateAttributesHash(attributes []string) (attrHash string) {
 }
 
 //GetNextTCert returns a TCert from the pool valid to the passed attributes. If no TCert is available TCA is invoked to generate it.
+//GetNextTCert()는 Next TCert를 Return.
 func (tCertPool *tCertPoolSingleThreadImpl) GetNextTCerts(nCerts int, attributes ...string) ([]*TCertBlock, error) {
 	blocks := make([]*TCertBlock, nCerts)
 	for i := 0; i < nCerts; i++ {
@@ -159,6 +161,7 @@ func (tCertPool *tCertPoolSingleThreadImpl) getNextTCert(attributes ...string) (
 }
 
 //AddTCert adds a TCert into the pool is invoked by the client after TCA is called.
+// AddTCert() TCA거 호출된 후 Client에 의해 실행된 Pool에 TCert를 추가한다.
 func (tCertPool *tCertPoolSingleThreadImpl) AddTCert(tCertBlock *TCertBlock) (err error) {
 
 	tCertPool.client.Debugf("Adding new Cert [% x].", tCertBlock.tCert.GetCertificate().Raw)

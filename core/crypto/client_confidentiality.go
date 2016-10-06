@@ -26,6 +26,9 @@ import (
 	obc "github.com/hyperledger/fabric/protos"
 )
 
+// encryptTx() TX 암호화
+//		IN) tx		Transaction
+//		OUY) error
 func (client *clientImpl) encryptTx(tx *obc.Transaction) error {
 
 	if len(tx.Nonce) == 0 {
@@ -48,6 +51,9 @@ type chainCodeValidatorMessage1_2 struct {
 	StateKey   []byte
 }
 
+// encryptTxVersion1_2() TX version 암호화
+//		IN) tx		Transaction
+//		OUY) error
 func (client *clientImpl) encryptTxVersion1_2(tx *obc.Transaction) error {
 	// Create (PK_C,SK_C) pair
 	ccPrivateKey, err := client.eciesSPI.NewPrivateKey(rand.Reader, primitives.GetDefaultCurve())

@@ -40,6 +40,9 @@ var (
 // Public Methods
 
 // RegisterClient registers a client to the PKI infrastructure
+// RegisterClient() Client를 PKI 인프라스트럭처에 등록
+//		IN) name,  비밀번호(pwd),  등록ID, 등록비밀번호
+//		OUT) 이상 발생시 errno
 func RegisterClient(name string, pwd []byte, enrollID, enrollPWD string) error {
 	clientMutex.Lock()
 	defer clientMutex.Unlock()
@@ -72,6 +75,9 @@ func RegisterClient(name string, pwd []byte, enrollID, enrollPWD string) error {
 }
 
 // InitClient initializes a client named name with password pwd
+// InitClient() a client 초기화
+//		IN) name, 비밀번호
+//		OUT)	client, error
 func InitClient(name string, pwd []byte) (Client, error) {
 	clientMutex.Lock()
 	defer clientMutex.Unlock()
@@ -100,6 +106,9 @@ func InitClient(name string, pwd []byte) (Client, error) {
 }
 
 // CloseClient releases all the resources allocated by clients
+// CloseClient() Client에 의해 할당된 모든 리소스를 해제
+//		IN)		client
+//		OUT)	error
 func CloseClient(client Client) error {
 	clientMutex.Lock()
 	defer clientMutex.Unlock()
@@ -108,6 +117,9 @@ func CloseClient(client Client) error {
 }
 
 // CloseAllClients closes all the clients initialized so far
+// CloseAllClients() 이제까지 초기화한 Client 모두를 Close한다.
+//		IN) Nothing
+//		OUT)	정상/비정상		error들
 func CloseAllClients() (bool, []error) {
 	clientMutex.Lock()
 	defer clientMutex.Unlock()
@@ -132,6 +144,9 @@ func newClient() *clientImpl {
 	return &clientImpl{&nodeImpl{}, nil, nil, nil, nil}
 }
 
+// closeClientInternal() 내부의 Client Clode
+//		IN) client, force(True/False)
+//		OUT) error
 func closeClientInternal(client Client, force bool) error {
 	if client == nil {
 		return utils.ErrNilArgument

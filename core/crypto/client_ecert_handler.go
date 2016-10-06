@@ -45,11 +45,17 @@ func (handler *eCertHandlerImpl) GetCertificate() []byte {
 }
 
 // Sign signs msg using the signing key corresponding to this TCert
+// Sign() TCert에 맞는 서명키를 이용하 메세지를 서명한다.
+//		IN) msg
+//		OUT) 서명결과, error
 func (handler *eCertHandlerImpl) Sign(msg []byte) ([]byte, error) {
 	return handler.client.signWithEnrollmentKey(msg)
 }
 
 // Verify verifies msg using the verifying key corresponding to this TCert
+// Verify() TCert에 맞는 검증키를 이용해 메시지를 검증한다.
+//		IN) signature,  msg
+//		OUT) error
 func (handler *eCertHandlerImpl) Verify(signature []byte, msg []byte) error {
 	ok, err := handler.client.verifyWithEnrollmentCert(msg, signature)
 	if err != nil {
@@ -62,6 +68,9 @@ func (handler *eCertHandlerImpl) Verify(signature []byte, msg []byte) error {
 }
 
 // GetTransactionHandler returns the transaction handler relative to this certificate
+// GetTransactionHandler() 증명서와 관련된 Tx Handler를 Return한다.
+//		IN) Nothing
+//		OUT) Tx Handler, error
 func (handler *eCertHandlerImpl) GetTransactionHandler() (TransactionHandler, error) {
 	txHandler := &eCertTransactionHandlerImpl{}
 	err := txHandler.init(handler.client)
@@ -74,6 +83,7 @@ func (handler *eCertHandlerImpl) GetTransactionHandler() (TransactionHandler, er
 	return txHandler, nil
 }
 
+// init() ???
 func (handler *eCertTransactionHandlerImpl) init(client *clientImpl) error {
 	nonce, err := client.createTransactionNonce()
 	if err != nil {
@@ -90,6 +100,9 @@ func (handler *eCertTransactionHandlerImpl) init(client *clientImpl) error {
 }
 
 // GetCertificateHandler returns the certificate handler relative to the certificate mapped to this transaction
+// GetCertificateHandler() Tx와 Mapping된 인증서와 관련한 인증서 Handler를 Return안다.
+//		IN) Nothing
+//		Out) CertificateHandler, error
 func (handler *eCertTransactionHandlerImpl) GetCertificateHandler() (CertificateHandler, error) {
 	return handler.client.GetEnrollmentCertificateHandler()
 }

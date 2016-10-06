@@ -29,6 +29,7 @@ type NodeConfiguration struct {
 }
 
 // GetEnrollmentID returns the enrollment ID
+// GetEnrollmentID() 등록ID 취득
 func (conf *NodeConfiguration) GetEnrollmentID() string {
 	key := "tests.crypto.users." + conf.Name + ".enrollid"
 	value := viper.GetString(key)
@@ -39,6 +40,7 @@ func (conf *NodeConfiguration) GetEnrollmentID() string {
 }
 
 // GetEnrollmentPWD returns the enrollment PWD
+// GetEnrollmentPWD() 비밀번호 취득
 func (conf *NodeConfiguration) GetEnrollmentPWD() string {
 	key := "tests.crypto.users." + conf.Name + ".enrollpw"
 	value := viper.GetString(key)

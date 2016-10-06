@@ -31,6 +31,9 @@ var (
 )
 
 // Init SHA2
+// initSHA2() : SHA2 초기화
+//		IN)  level : Level 256/384
+//		OUT) 비정상시 이상 메시지
 func initSHA2(level int) (err error) {
 	switch level {
 	case 256:
@@ -46,6 +49,9 @@ func initSHA2(level int) (err error) {
 }
 
 // Init SHA3
+// initSHA3() : SHA2 초기화
+//		IN)  level : Level 256/384
+//		OUT) 비정상시 이상 메시지
 func initSHA3(level int) (err error) {
 	switch level {
 	case 256:
@@ -61,6 +67,10 @@ func initSHA3(level int) (err error) {
 }
 
 // SetSecurityLevel sets the security configuration with the hash length and the algorithm
+// SetSecurityLevel() : 보안 레벨 설정
+//		IN) 알고리즘레벨		"SHA2"/"SHA3"
+//			level			보안레벨
+//		OUT) 비정상시 이상 메시지
 func SetSecurityLevel(algorithm string, level int) (err error) {
 	switch algorithm {
 	case "SHA2":
@@ -79,6 +89,10 @@ func SetSecurityLevel(algorithm string, level int) (err error) {
 }
 
 // InitSecurityLevel initialize the crypto layer at the given security level
+// InitSecurityLevel() : 보안 레벨 초기화
+//		IN) 알고리즘레벨		"SHA2"/"SHA3"
+//			level			보안레벨
+//		OUT) 비정상시 이상 메시지
 func InitSecurityLevel(algorithm string, level int) (err error) {
 	initOnce.Do(func() {
 		err = SetSecurityLevel(algorithm, level)

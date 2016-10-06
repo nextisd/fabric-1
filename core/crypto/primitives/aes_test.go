@@ -16,6 +16,7 @@ limitations under the License.
 
 // This package contains unit-tests for the
 // github.com/hyperledger/fabric/core/crypto/primitives package
+// 이 페키지는 "github.com/hyperledger/fabric/core/crypto/primitives" 패키지를 위한 단위테스트를 포함한다.
 package primitives_test
 
 import (
@@ -29,6 +30,7 @@ import (
 )
 
 // TestCBCPKCS7EncryptCBCPKCS7Decrypt encrypts using CBCPKCS7Encrypt and decrypts using CBCPKCS7Decrypt.
+// TestCBCPKCS7EncryptCBCPKCS7Decrypt()은 CBCPKCS7Encrypt를 이용해 암호화하고, CBCPKCS7Decrypt를 이용해 복호화한다.  encrypts using CBCPKCS7Encrypt and decrypts using CBCPKCS7Decrypt.
 func TestCBCPKCS7EncryptCBCPKCS7Decrypt(t *testing.T) {
 
 	// Note: The purpose of this test is not to test AES-256 in CBC mode's strength

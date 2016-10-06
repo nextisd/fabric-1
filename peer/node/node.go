@@ -31,6 +31,7 @@ var (
 var logger = logging.MustGetLogger("nodeCmd")
 
 // Cmd returns the cobra command for Node
+//@@ command (start, status, stop) 등록 후 object 리턴
 func Cmd() *cobra.Command {
 	nodeCmd.AddCommand(startCmd())
 	nodeCmd.AddCommand(statusCmd())

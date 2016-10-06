@@ -25,6 +25,7 @@ var (
 )
 
 // GetDefaultCurve returns the default elliptic curve used by the crypto layer
+// GetDefaultCurve()는 cryto 영역을 이용하여 기본타원곡선을 return한다.
 func GetDefaultCurve() elliptic.Curve {
 	return defaultCurve
 }

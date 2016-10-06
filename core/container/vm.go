@@ -40,7 +40,7 @@ type VM struct {
 }
 
 // NewVM creates a new VM instance.
-// NewVM() : 신규 VM 인스턴스를 생성
+// NewVM() : 신규 VM 인스턴스를 생성.
 func NewVM() (*VM, error) {
 	client, err := cutil.NewDockerClient()
 	if err != nil {

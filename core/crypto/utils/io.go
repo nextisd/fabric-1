@@ -23,7 +23,10 @@ import (
 	"path/filepath"
 )
 
-// DirMissingOrEmpty checks is a directory is missin or empty
+// DirMissingOrEmpty checks is a directory is missing or empty
+// DirMissingOrEmpty() 디렉토리가 비었는지 누락되었는지 확인
+//		IN) path
+//		OUT) 정상/이상  이상시 errno
 func DirMissingOrEmpty(path string) (bool, error) {
 	dirExists, err := DirExists(path)
 	if err != nil {
@@ -44,6 +47,9 @@ func DirMissingOrEmpty(path string) (bool, error) {
 }
 
 // DirExists checks if a directory exists
+// DirExists() : 디렉토리가 있는지 확인
+//		IN) path
+//		OUT) 정상/이상	이상시 errno
 func DirExists(path string) (bool, error) {
 	_, err := os.Stat(path)
 	if err == nil {
@@ -56,6 +62,9 @@ func DirExists(path string) (bool, error) {
 }
 
 // DirEmpty checks if a directory is empty
+// DirEmpty() : 디렉토리가 비워있는지 확인
+//		IN) path
+//		OUT) 정상/이상	이상시 errno
 func DirEmpty(path string) (bool, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -71,6 +80,9 @@ func DirEmpty(path string) (bool, error) {
 }
 
 // FileMissing checks if a file is missing
+// FileMissing() : 파일이 누락되었나 확인
+//		IN) path, 파일명
+//		OUT) 정상/이상	이상시 errno
 func FileMissing(path string, name string) (bool, error) {
 	_, err := os.Stat(filepath.Join(path, name))
 	if err != nil {
@@ -80,6 +92,9 @@ func FileMissing(path string, name string) (bool, error) {
 }
 
 // FilePathMissing returns true if the path is missing, false otherwise.
+// FilePathMissing() : 파일이 누락되었나 확인
+//		IN) path, 파일명
+//		OUT) 정상/이상	정상 리턴시 Path Missing
 func FilePathMissing(path string) (bool, error) {
 	_, err := os.Stat(path)
 	if err != nil {
@@ -89,11 +104,13 @@ func FilePathMissing(path string) (bool, error) {
 }
 
 // DecodeBase64 decodes from Base64
+// DecodeBase64() Base64 로부터 복호화
 func DecodeBase64(in string) ([]byte, error) {
 	return base64.StdEncoding.DecodeString(in)
 }
 
 // EncodeBase64 encodes to Base64
+// EncodeBase64() Base64로 암호화
 func EncodeBase64(in []byte) string {
 	return base64.StdEncoding.EncodeToString(in)
 }

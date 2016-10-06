@@ -137,6 +137,7 @@ type SecurityAccessor interface {
 var peerLogger = logging.MustGetLogger("peer")
 
 // NewPeerClientConnection Returns a new grpc.ClientConn to the configured local PEER.
+//@ NewPeerClientConnection 는 local peer 와의 grpc 연결을 맺고, grpc.ClientConn 를 리턴한다.
 func NewPeerClientConnection() (*grpc.ClientConn, error) {
 	return NewPeerClientConnectionWithAddress(viper.GetString("peer.address"))
 }
