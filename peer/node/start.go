@@ -311,12 +311,16 @@ func registerChaincodeSupport(chainname chaincode.ChainName, grpcServer *grpc.Se
 	pb.RegisterChaincodeSupportServer(grpcServer, ccSrv)
 }
 
-//@@ 
+//@@ validator 일 경우에만 grpc server 생성 ( peer.ValidatorEnabled() == true )
+//@@ listen addr : "peer.validator.events.address"
 func createEventHubServer() (net.Listener, *grpc.Server, error) {
 	var lis net.Listener
 	var grpcServer *grpc.Server
 	var err error
+
+	//@@ node 가 validator 일 경우
 	if peer.ValidatorEnabled() {
+		// core.yaml "peer.validator.events.address" 에 지정된 address listen
 		lis, err = net.Listen("tcp", viper.GetString("peer.validator.events.address"))
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to listen: %v", err)
@@ -326,6 +330,7 @@ func createEventHubServer() (net.Listener, *grpc.Server, error) {
 		//@@ 
 		var opts []grpc.ServerOption
 		if comm.TLSEnabled() {
+			//@@ Server 용 TLS 생성
 			creds, err := credentials.NewServerTLSFromFile(
 				viper.GetString("peer.tls.cert.file"),
 				viper.GetString("peer.tls.key.file"))
