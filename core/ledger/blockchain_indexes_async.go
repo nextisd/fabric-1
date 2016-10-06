@@ -25,6 +25,9 @@ import (
 	"github.com/tecbot/gorocksdb"
 )
 
+// blockchain_indexes.go       : blockchain indexer sync 구현
+// blockchain_indexes_async.go : blockchain indexer async 구현
+
 var lastIndexedBlockKey = []byte{byte(0)}
 
 type blockWrapper struct {
@@ -37,6 +40,8 @@ type blockWrapper struct {
 type blockchainIndexerAsync struct {
 	blockchain *blockchain
 	// Channel for transferring block from block chain for indexing
+	//
+	// 인덱싱 처리를 위한 블록 전송용 채널
 	blockChan    chan blockWrapper
 	indexerState *blockchainIndexerState
 }
@@ -45,12 +50,17 @@ func newBlockchainIndexerAsync() *blockchainIndexerAsync {
 	return new(blockchainIndexerAsync)
 }
 
+// blockchain async indexer 구현
+
 func (indexer *blockchainIndexerAsync) isSynchronous() bool {
 	return false
 }
 
+// start() : 인덱스 생성 시작
+// start() -> indexPendingBlocks() -> fetchBlockFromDBAndCreateIndexes()
 func (indexer *blockchainIndexerAsync) start(blockchain *blockchain) error {
 	indexer.blockchain = blockchain
+	// indexerState 설정 : RWMutex 락 처리, lastIndexedBlock 세팅
 	indexerState, err := newBlockchainIndexerState(indexer)
 	if err != nil {
 		return err
@@ -59,12 +69,15 @@ func (indexer *blockchainIndexerAsync) start(blockchain *blockchain) error {
 	indexLogger.Debugf("staring indexer, lastIndexedBlockNum = [%d]",
 		indexer.indexerState.getLastIndexedBlockNumber())
 
+	// 대기중(pending)인 블록들을 일괄 인덱싱 처리.
 	err = indexer.indexPendingBlocks()
 	if err != nil {
 		return err
 	}
 	indexLogger.Debugf("staring indexer, lastIndexedBlockNum = [%d] after processing pending blocks",
 		indexer.indexerState.getLastIndexedBlockNumber())
+
+	// 채널로 들어오는 블록들의 attribute에 대한 인덱스를 추가?
 	indexer.blockChan = make(chan blockWrapper)
 	go func() {
 		for {
@@ -83,7 +96,7 @@ func (indexer *blockchainIndexerAsync) start(blockchain *blockchain) error {
 					blockWrapper.blockNumber, indexer.indexerState.getError())
 				continue
 			}
-
+			// createIndexesInternal() : 다양한 attribute에 대한 인덱스를 DB 항목에 추가함.
 			err := indexer.createIndexesInternal(blockWrapper.block, blockWrapper.blockNumber, blockWrapper.blockHash)
 			if err != nil {
 				indexer.indexerState.setError(err)
@@ -105,6 +118,8 @@ func (indexer *blockchainIndexerAsync) createIndexes(block *protos.Block, blockN
 }
 
 // createIndexes adds entries into db for creating indexes on various attributes
+//
+// createIndexesInternal() : 다양한 attribute에 대한 인덱스를 DB 항목에 추가함.
 func (indexer *blockchainIndexerAsync) createIndexesInternal(block *protos.Block, blockNumber uint64, blockHash []byte) error {
 	openchainDB := db.GetDBHandle()
 	writeBatch := gorocksdb.NewWriteBatch()
@@ -121,6 +136,7 @@ func (indexer *blockchainIndexerAsync) createIndexesInternal(block *protos.Block
 	return nil
 }
 
+// fetchBlockNumberByBlockHash() : 블록해쉬값에 해당하는 블록번호 리턴.
 func (indexer *blockchainIndexerAsync) fetchBlockNumberByBlockHash(blockHash []byte) (uint64, error) {
 	err := indexer.indexerState.checkError()
 	if err != nil {
@@ -131,6 +147,7 @@ func (indexer *blockchainIndexerAsync) fetchBlockNumberByBlockHash(blockHash []b
 	return fetchBlockNumberByBlockHashFromDB(blockHash)
 }
 
+// fetchTransactionIndexByID() : txID에 해당하는 트랜잭션 인덱스 리턴.
 func (indexer *blockchainIndexerAsync) fetchTransactionIndexByID(txID string) (uint64, uint64, error) {
 	err := indexer.indexerState.checkError()
 	if err != nil {
@@ -140,6 +157,7 @@ func (indexer *blockchainIndexerAsync) fetchTransactionIndexByID(txID string) (u
 	return fetchTransactionIndexByIDFromDB(txID)
 }
 
+// indexPendingBlocks() : 대기중(pending)인 블록들을 인덱싱 처리.
 func (indexer *blockchainIndexerAsync) indexPendingBlocks() error {
 	blockchain := indexer.blockchain
 	if blockchain.getSize() == 0 {
@@ -156,6 +174,9 @@ func (indexer *blockchainIndexerAsync) indexPendingBlocks() error {
 
 	// block numbers use uint64 - so, 'lastIndexedBlockNum = 0' is ambiguous.
 	// So, explicitly checking whether zero-th block has been indexed
+	//
+	// block number는 uint64를 사용함. 그래서, 'lastIndexedBlockNum = 0'는 모호한 표현임.
+	// 따라서, 0번째 블록이 인덱싱 되었는지를 명시적으로 체크함.
 	if !zerothBlockIndexed {
 		err := indexer.fetchBlockFromDBAndCreateIndexes(0)
 		if err != nil {
@@ -165,6 +186,8 @@ func (indexer *blockchainIndexerAsync) indexPendingBlocks() error {
 
 	if lastCommittedBlockNum == lastIndexedBlockNum {
 		// all committed blocks are indexed
+		//
+		// 모든 커밋된 블록들이 인덱싱 되었음.
 		return nil
 	}
 
@@ -178,6 +201,7 @@ func (indexer *blockchainIndexerAsync) indexPendingBlocks() error {
 	return nil
 }
 
+// fetchBlockFromDBAndCreateIndexes() : 입력 블록높이에 해당하는 블록을 DB에서 가져온 뒤, 인덱스 생성.
 func (indexer *blockchainIndexerAsync) fetchBlockFromDBAndCreateIndexes(blockNumber uint64) error {
 	blockchain := indexer.blockchain
 	blockToIndex, errBlockFetch := blockchain.getBlock(blockNumber)
@@ -209,6 +233,11 @@ func (indexer *blockchainIndexerAsync) stop() {
 // should include up to block number (or higher) that may have been committed
 // when user query arrives?
 // If a delay of a couple of blocks are allowed, we can get rid of this synchronization stuff
+//
+// 아래 코드는 인덱싱된 블록 번호, 블록 인덱싱중 에러 발생을 추적하는것에 대한 내용임.
+// 비동기적으로 블록 인덱싱시에는 블록 인덱스가 생성되기 이전에 클라이언트 쿼리가 도착하는 경우가 발생할 수 있다.
+//
+// 만약 2개 블록이 딜레이 되는것을 허용했을 경우, 우리는 이 동기화 부분을 삭제해도 됨.
 type blockchainIndexerState struct {
 	indexer *blockchainIndexerAsync
 
@@ -219,6 +248,8 @@ type blockchainIndexerState struct {
 	newBlockIndexed    *sync.Cond
 }
 
+// newBlockchainIndexerState(): RWMutex 락 처리, lastIndexedBlock 세팅
+// indexer.start()에서 호출
 func newBlockchainIndexerState(indexer *blockchainIndexerAsync) (*blockchainIndexerState, error) {
 	var lock sync.RWMutex
 	zerothBlockIndexed, lastIndexedBlockNum, err := fetchLastIndexedBlockNumFromDB()
@@ -228,6 +259,8 @@ func newBlockchainIndexerState(indexer *blockchainIndexerAsync) (*blockchainInde
 	return &blockchainIndexerState{indexer, zerothBlockIndexed, lastIndexedBlockNum, nil, &lock, sync.NewCond(&lock)}, nil
 }
 
+// blockIndexed() : indexerState구조체에 lastBlockIndex, zerothBlockIndexed 세팅.
+// 대기중인 모든 고루틴(indexerState.newBlockindexed.*)에 새로운 블록이 인덱스 되었다고 broadcast 처리.
 func (indexerState *blockchainIndexerState) blockIndexed(blockNumber uint64) {
 	indexerState.newBlockIndexed.L.Lock()
 	defer indexerState.newBlockIndexed.L.Unlock()
@@ -236,18 +269,21 @@ func (indexerState *blockchainIndexerState) blockIndexed(blockNumber uint64) {
 	indexerState.newBlockIndexed.Broadcast()
 }
 
+// getLastIndexedBlockNumber() : 마지막 인덱싱된 블록 번호 리턴.
 func (indexerState *blockchainIndexerState) getLastIndexedBlockNumber() uint64 {
 	indexerState.lock.RLock()
 	defer indexerState.lock.RUnlock()
 	return indexerState.lastBlockIndexed
 }
 
+// isZerothBlockIndexed() : 0번째 블록 인덱싱 되었는지 리턴.
 func (indexerState *blockchainIndexerState) isZerothBlockIndexed() bool {
 	indexerState.lock.RLock()
 	defer indexerState.lock.RUnlock()
 	return indexerState.zerothBlockIndexed
 }
 
+// waitForLastCommittedBlock() : 처리중인 인덱싱이 종료될때까지 락 걸고 대기.
 func (indexerState *blockchainIndexerState) waitForLastCommittedBlock() error {
 	indexLogger.Debugf("waitForLastCommittedBlock() indexerState.err = %#v", indexerState.err)
 	chain := indexerState.indexer.blockchain
@@ -310,6 +346,7 @@ func (indexerState *blockchainIndexerState) checkError() error {
 	return indexerState.err
 }
 
+// fetchLastIndexedBlockNumFromDB() :zerothBlockIndexed 여부와 최종블록번호 리턴.
 func fetchLastIndexedBlockNumFromDB() (zerothBlockIndexed bool, lastIndexedBlockNum uint64, err error) {
 	lastIndexedBlockNumberBytes, err := db.GetDBHandle().GetFromIndexesCF(lastIndexedBlockKey)
 	if err != nil {

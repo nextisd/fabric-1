@@ -46,6 +46,10 @@ const (
 // State structure for maintaining world state.
 // This encapsulates a particular implementation for managing the state persistence
 // This is not thread safe
+//
+// State 구조체 : world state 처리를 위해 사용됨.
+// state 지속성을 관리 하기 위함.
+// thread-safe 하지 않음(락 처리 없음?)
 type State struct {
 	stateImpl             statemgmt.HashableState
 	stateDelta            *statemgmt.StateDelta

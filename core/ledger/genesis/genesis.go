@@ -29,6 +29,8 @@ var makeGenesisError error
 var once sync.Once
 
 // MakeGenesis creates the genesis block and adds it to the blockchain.
+//
+// MakeGenesis() : 제네시스 블록 생성 후 블록체인에 추가.
 func MakeGenesis() error {
 	once.Do(func() {
 		ledger, err := ledger.GetLedger()

@@ -31,6 +31,8 @@ var prefixBlockHashKey = byte(1)
 var prefixTxIDKey = byte(2)
 var prefixAddressBlockNumCompositeKey = byte(3)
 
+// blockchain_indexes.go       : blockchain indexer sync 구현
+// blockchain_indexes_async.go : blockchain indexer async 구현
 type blockchainIndexer interface {
 	isSynchronous() bool
 	start(blockchain *blockchain) error
@@ -41,6 +43,8 @@ type blockchainIndexer interface {
 }
 
 // Implementation for sync indexer
+//
+// blockchain sync indexer 구현
 type blockchainIndexerSync struct {
 }
 
@@ -74,11 +78,28 @@ func (indexer *blockchainIndexerSync) stop() {
 }
 
 // Functions for persisting and retrieving index data
+//
+// addIndexDataForPersistence() : 인덱스 데이터를 유지하고 검색 기능 구현.
 func addIndexDataForPersistence(block *protos.Block, blockNumber uint64, blockHash []byte, writeBatch *gorocksdb.WriteBatch) error {
 	openchainDB := db.GetDBHandle()
+	// IndexesCF : 인덱스 컬럼패밀리 핸들러
+	// 컬럼패밀리(column family) : 하나의 key에 여러개의 컬럼이 달려 있는 형태로서, RDBMS의 테이블과 유사.
+	// e.g. users { user1 = {k:"v",  k:"v"}, user2 = {k:"v", k:"v"} }
+	// user1, user2가 각각의 row의 key가 되며 users는 컬럼패밀리.
+	//	*fabric/core/db/db.go
+	//	var columnfamilies = []string{
+	//		blockchainCF, // blocks of the block chain
+	//		stateCF,      // world state
+	//		stateDeltaCF, // open transaction state
+	//		indexesCF,    // tx uuid -> blockno
+	//		persistCF,    // persistent per-peer state (consensus)
+	//  }
+
 	cf := openchainDB.IndexesCF
 
 	// add blockhash -> blockNumber
+	//
+	// blockHash(key),blockNumber(value)를 indexesCF 컬럼패밀리에 추가
 	indexLogger.Debugf("Indexing block number [%d] by hash = [%x]", blockNumber, blockHash)
 	writeBatch.PutCF(cf, encodeBlockHashKey(blockHash), encodeBlockNumber(blockNumber))
 
@@ -88,8 +109,10 @@ func addIndexDataForPersistence(block *protos.Block, blockNumber uint64, blockHa
 	transactions := block.GetTransactions()
 	for txIndex, tx := range transactions {
 		// add TxID -> (blockNumber,indexWithinBlock)
+		// 트랜잭션들을 모두 처리 : Txid(key),Blocknumber+txIndex(value)를 indexesCF에 추가
 		writeBatch.PutCF(cf, encodeTxIDKey(tx.Txid), encodeBlockNumTxIndex(blockNumber, uint64(txIndex)))
 
+		// tx index Map 생성 및 추가
 		txExecutingAddress := getTxExecutingAddress(tx)
 		addressToTxIndexesMap[txExecutingAddress] = append(addressToTxIndexesMap[txExecutingAddress], uint64(txIndex))
 
@@ -97,16 +120,19 @@ func addIndexDataForPersistence(block *protos.Block, blockNumber uint64, blockHa
 		case protos.Transaction_CHAINCODE_DEPLOY, protos.Transaction_CHAINCODE_INVOKE:
 			authroizedAddresses, chaincodeID := getAuthorisedAddresses(tx)
 			for _, authroizedAddress := range authroizedAddresses {
+				// ChaincodeID Map 생성
 				addressToChaincodeIDsMap[authroizedAddress] = append(addressToChaincodeIDsMap[authroizedAddress], chaincodeID)
 			}
 		}
 	}
 	for address, txsIndexes := range addressToTxIndexesMap {
+
 		writeBatch.PutCF(cf, encodeAddressBlockNumCompositeKey(address, blockNumber), encodeListTxIndexes(txsIndexes))
 	}
 	return nil
 }
 
+// fetchBlockNumberByBlockHashFromDB() : blockHash에 해당하는 블록의 blockNumber값 리턴
 func fetchBlockNumberByBlockHashFromDB(blockHash []byte) (uint64, error) {
 	indexLogger.Debugf("fetchBlockNumberByBlockHashFromDB() for blockhash [%x]", blockHash)
 	blockNumberBytes, err := db.GetDBHandle().GetFromIndexesCF(encodeBlockHashKey(blockHash))
@@ -121,6 +147,7 @@ func fetchBlockNumberByBlockHashFromDB(blockHash []byte) (uint64, error) {
 	return blockNumber, nil
 }
 
+// fetchTransactionIndexByIDFromDB() : txID에 해당하는 blockNum과 txIndex를 리턴
 func fetchTransactionIndexByIDFromDB(txID string) (uint64, uint64, error) {
 	blockNumTxIndexBytes, err := db.GetDBHandle().GetFromIndexesCF(encodeTxIDKey(txID))
 	if err != nil {
@@ -134,12 +161,16 @@ func fetchTransactionIndexByIDFromDB(txID string) (uint64, uint64, error) {
 
 func getTxExecutingAddress(tx *protos.Transaction) string {
 	// TODO Fetch address form tx
+	//
+	// TODO tx 실행 주소 리턴, 미개발?
 	return "address1"
 }
 
 func getAuthorisedAddresses(tx *protos.Transaction) ([]string, *protos.ChaincodeID) {
 	// TODO fetch address from chaincode deployment tx
 	// TODO this method should also return error
+	//
+	// 미개발?
 	data := tx.ChaincodeID
 	cID := &protos.ChaincodeID{}
 	err := proto.Unmarshal(data, cID)

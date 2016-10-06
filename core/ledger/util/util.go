@@ -28,6 +28,8 @@ import (
 // For preserving the order in a default bytes-comparison, first byte contains the number of remaining bytes.
 // The presence of first byte also allows to use the returned bytes as part of other larger byte array such as a
 // composite-key representation in db
+//
+// EncodeOrderPreservingVarUint64() : uint64를 byte array로 인코딩 후 리턴
 func EncodeOrderPreservingVarUint64(number uint64) []byte {
 	bytes := make([]byte, 8)
 	binary.BigEndian.PutUint64(bytes, number)
@@ -52,6 +54,7 @@ func EncodeOrderPreservingVarUint64(number uint64) []byte {
 
 // DecodeOrderPreservingVarUint64 decodes the number from the bytes obtained from method 'EncodeOrderPreservingVarUint64'.
 // Also, returns the number of bytes that are consumed in the process
+// DecodeOrderPreservingVarUint64() : Byte array를 Uint64로 디코딩후 리턴
 func DecodeOrderPreservingVarUint64(bytes []byte) (uint64, int) {
 	s, _ := proto.DecodeVarint(bytes)
 	size := int(s)

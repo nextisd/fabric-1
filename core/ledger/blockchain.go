@@ -30,6 +30,10 @@ import (
 
 // Blockchain holds basic information in memory. Operations on Blockchain are not thread-safe
 // TODO synchronize access to in-memory variables
+//
+// blockchain 구조체는 기본적인 정보를 메모리에 저장.
+// blockchain 구조체는 thread-safe 하지 않게 접근 가능함, 여러 객체에서 공유해서 사용가능, 락처리 없음
+// TODO in-memory 변수에 대한 동기화 접근 구현 필요
 type blockchain struct {
 	size               uint64
 	previousBlockHash  []byte
@@ -45,7 +49,7 @@ type lastProcessedBlock struct {
 
 var indexBlockDataSynchronously = true
 
-func newBlockchain() (*blockchain, error) {
+// newBlockchain() : 신규 블록체인 생성, Ledger.GetNewLedger()에서 호출
 	size, err := fetchBlockchainSizeFromDB()
 	if err != nil {
 		return nil, err
@@ -64,13 +68,23 @@ func newBlockchain() (*blockchain, error) {
 		blockchain.previousBlockHash = previousBlockHash
 	}
 
-	err = blockchain.startIndexer()
+	err = blockchain.startIndexer()	// nil 리턴으로 박혀있음.
 	if err != nil {
 		return nil, err
 	}
 	return blockchain, nil
 }
 
+////////////////////////////////////////////////////////////////////
+// blockchain 구조체 메서드 연결
+////////////////////////////////////////////////////////////////////
+
+// startIndexer() : blockchain indexer 생성
+// interfaces :	isSynchronous()
+// 				start()
+//				createIndexes()
+//				fetchBlockNumberByBlockHash()
+//				fetchTransactionIndexByID()
 func (blockchain *blockchain) startIndexer() (err error) {
 	if indexBlockDataSynchronously {
 		blockchain.indexer = newBlockchainIndexerSync()
@@ -82,6 +96,8 @@ func (blockchain *blockchain) startIndexer() (err error) {
 }
 
 // getLastBlock get last block in blockchain
+//
+// getLastBlock() : 블록체인 내 마지막 블록 리턴
 func (blockchain *blockchain) getLastBlock() (*protos.Block, error) {
 	if blockchain.size == 0 {
 		return nil, nil
@@ -90,16 +106,22 @@ func (blockchain *blockchain) getLastBlock() (*protos.Block, error) {
 }
 
 // getSize number of blocks in blockchain
+//
+// getSize() : 블록체인 내 블록의 개수 리턴
 func (blockchain *blockchain) getSize() uint64 {
 	return blockchain.size
 }
 
 // getBlock get block at arbitrary height in block chain
+//
+// getBlock() : @blockNumber에 해당하는 블록 리턴
 func (blockchain *blockchain) getBlock(blockNumber uint64) (*protos.Block, error) {
 	return fetchBlockFromDB(blockNumber)
 }
 
 // getBlockByHash get block by block hash
+// 
+// getBlockByHash() : @blockHash에 해당하는 블록 리턴
 func (blockchain *blockchain) getBlockByHash(blockHash []byte) (*protos.Block, error) {
 	blockNumber, err := blockchain.indexer.fetchBlockNumberByBlockHash(blockHash)
 	if err != nil {
@@ -108,6 +130,7 @@ func (blockchain *blockchain) getBlockByHash(blockHash []byte) (*protos.Block, e
 	return blockchain.getBlock(blockNumber)
 }
 
+// getTransactionByID() : @txID에 해당하는 트랜잭션 리턴
 func (blockchain *blockchain) getTransactionByID(txID string) (*protos.Transaction, error) {
 	blockNumber, txIndex, err := blockchain.indexer.fetchTransactionIndexByID(txID)
 	if err != nil {
@@ -122,6 +145,8 @@ func (blockchain *blockchain) getTransactionByID(txID string) (*protos.Transacti
 }
 
 // getTransactions get all transactions in a block identified by block number
+//
+// getTransactions() : @blockNumber에 해당하는 블록의 모든 트랜잭션들을 리턴
 func (blockchain *blockchain) getTransactions(blockNumber uint64) ([]*protos.Transaction, error) {
 	block, err := blockchain.getBlock(blockNumber)
 	if err != nil {
@@ -131,6 +156,8 @@ func (blockchain *blockchain) getTransactions(blockNumber uint64) ([]*protos.Tra
 }
 
 // getTransactionsByBlockHash get all transactions in a block identified by block hash
+//
+// getTransactionsByBlockHash() : @blockHash에 해당하는 블록의 모든 트랜잭션들을 리턴
 func (blockchain *blockchain) getTransactionsByBlockHash(blockHash []byte) ([]*protos.Transaction, error) {
 	block, err := blockchain.getBlockByHash(blockHash)
 	if err != nil {
@@ -140,6 +167,8 @@ func (blockchain *blockchain) getTransactionsByBlockHash(blockHash []byte) ([]*p
 }
 
 // getTransaction get a transaction identified by block number and index within the block
+//
+// getTransaction() : @blockNumber와 @txIndex에 해당하는 트랜잭션을 리턴
 func (blockchain *blockchain) getTransaction(blockNumber uint64, txIndex uint64) (*protos.Transaction, error) {
 	block, err := blockchain.getBlock(blockNumber)
 	if err != nil {
@@ -149,6 +178,8 @@ func (blockchain *blockchain) getTransaction(blockNumber uint64, txIndex uint64)
 }
 
 // getTransactionByBlockHash get a transaction identified by block hash and index within the block
+//
+// getTransactionByBlockHash() : @blockHash와 @txIndex에 해당하는 트랜잭션을 리턴
 func (blockchain *blockchain) getTransactionByBlockHash(blockHash []byte, txIndex uint64) (*protos.Transaction, error) {
 	block, err := blockchain.getBlockByHash(blockHash)
 	if err != nil {
@@ -157,6 +188,7 @@ func (blockchain *blockchain) getTransactionByBlockHash(blockHash []byte, txInde
 	return block.GetTransactions()[txIndex], nil
 }
 
+// getBlockchainInfo() : 마지막 블록의 정보 리턴 ( Height, CurrentBlockHash, PreviousBlockHash )
 func (blockchain *blockchain) getBlockchainInfo() (*protos.BlockchainInfo, error) {
 	if blockchain.getSize() == 0 {
 		return &protos.BlockchainInfo{Height: 0}, nil
@@ -171,6 +203,7 @@ func (blockchain *blockchain) getBlockchainInfo() (*protos.BlockchainInfo, error
 	return info, nil
 }
 
+// getBlockchainInfoForBlock() : @height, @block에 해당하는 블록 정보 리턴 ( Height, CurrentBlockHash, PreviousBlockHash )
 func (blockchain *blockchain) getBlockchainInfoForBlock(height uint64, block *protos.Block) *protos.BlockchainInfo {
 	hash, _ := block.GetHash()
 	info := &protos.BlockchainInfo{
@@ -181,15 +214,24 @@ func (blockchain *blockchain) getBlockchainInfoForBlock(height uint64, block *pr
 	return info
 }
 
+// buildBlock() : 블록생성시 사용
+//  1. addPersistenceChangesForNewBlock()에서 신규블록 생성시 사용
+//  2. GetTXBatchPreviewBlockInfo()에서 TXBatch 처리후 블록정보를 미리 확인해볼때 호출해서 사용  
+//
+// 	@param block : 생성할 block 구조체(protobuf)
+// 	@param stateHash : 이 블록의 트랜잭션들이 실행완료 된 후 state hash값
 func (blockchain *blockchain) buildBlock(block *protos.Block, stateHash []byte) *protos.Block {
 	block.SetPreviousBlockHash(blockchain.previousBlockHash)
-	block.StateHash = stateHash
+	block.StateHash = stateHash 
 	return block
 }
 
+// addPersistenceChangesForNewBlock() : 신규 블록 생성 및 commit 처리, blockNumber 리턴.
+// Ledger.CommitTxBatch()에서 호출
 func (blockchain *blockchain) addPersistenceChangesForNewBlock(ctx context.Context,
 	block *protos.Block, stateHash []byte, writeBatch *gorocksdb.WriteBatch) (uint64, error) {
 	block = blockchain.buildBlock(block, stateHash)
+	// UTC Timestamp 기록
 	if block.NonHashData == nil {
 		block.NonHashData = &protos.NonHashData{LocalLedgerCommitTimestamp: util.CreateUtcTimestamp()}
 	} else {
@@ -213,6 +255,8 @@ func (blockchain *blockchain) addPersistenceChangesForNewBlock(ctx context.Conte
 	return blockNumber, nil
 }
 
+// blockPersistenceStatus() : 블록이 만들어질때(commitTxBatch) 에러 발생시는 nil 리턴, 정상 커밋 처리될때 indexer생성.
+// ledger.blockchain.blockPersistenceStatus 에서 호출
 func (blockchain *blockchain) blockPersistenceStatus(success bool) {
 	if success {
 		blockchain.size++
@@ -227,6 +271,8 @@ func (blockchain *blockchain) blockPersistenceStatus(success bool) {
 	blockchain.lastProcessedBlock = nil
 }
 
+// persistRawBlock() : raw block을 체인에 추가. 이 함수는 피어간 동기화시에만 사용해야 함.
+// ledger.blockchain.persistRawBlock에서 호출
 func (blockchain *blockchain) persistRawBlock(block *protos.Block, blockNumber uint64) error {
 	blockBytes, blockBytesErr := block.Bytes()
 	if blockBytesErr != nil {
@@ -243,6 +289,9 @@ func (blockchain *blockchain) persistRawBlock(block *protos.Block, blockNumber u
 
 	// Need to check as we support out of order blocks in cases such as block/state synchronization. This is
 	// real blockchain height, not size.
+	//
+	// 블록/상태 동기화등의 경우 블록 순서 체크가 필요함.
+	// 블록체인 사이즈가 아닌 블록체인 높이를 뜻함. 
 	if blockchain.getSize() < blockNumber+1 {
 		sizeBytes := encodeUint64(blockNumber + 1)
 		writeBatch.PutCF(db.GetDBHandle().BlockchainCF, blockCountKey, sizeBytes)
@@ -263,6 +312,7 @@ func (blockchain *blockchain) persistRawBlock(block *protos.Block, blockNumber u
 	return nil
 }
 
+// fetchBlockFromDB() : DB로 부터 블록높이에 해당하는 블록을 리턴.
 func fetchBlockFromDB(blockNumber uint64) (*protos.Block, error) {
 	blockBytes, err := db.GetDBHandle().GetFromBlockchainCF(encodeBlockNumberDBKey(blockNumber))
 	if err != nil {
@@ -274,6 +324,7 @@ func fetchBlockFromDB(blockNumber uint64) (*protos.Block, error) {
 	return protos.UnmarshallBlock(blockBytes)
 }
 
+// fetchBlockchainSizeFromDB() : 블록개수 리턴.
 func fetchBlockchainSizeFromDB() (uint64, error) {
 	bytes, err := db.GetDBHandle().GetFromBlockchainCF(blockCountKey)
 	if err != nil {
@@ -285,6 +336,7 @@ func fetchBlockchainSizeFromDB() (uint64, error) {
 	return decodeToUint64(bytes), nil
 }
 
+// fetchBlockchainSizeFromSnapshot() : 블록개수 리턴 from 스냅샷, edger.GetStateSnapshot()에서 호출.
 func fetchBlockchainSizeFromSnapshot(snapshot *gorocksdb.Snapshot) (uint64, error) {
 	blockNumberBytes, err := db.GetDBHandle().GetFromBlockchainCFSnapshot(snapshot, blockCountKey)
 	if err != nil {
@@ -298,6 +350,7 @@ func fetchBlockchainSizeFromSnapshot(snapshot *gorocksdb.Snapshot) (uint64, erro
 }
 
 var blockCountKey = []byte("blockCount")
+
 
 func encodeBlockNumberDBKey(blockNumber uint64) []byte {
 	return encodeUint64(blockNumber)

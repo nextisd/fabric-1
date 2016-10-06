@@ -5,6 +5,8 @@
 ###############################################################################
 peer:
     # Path on the file system where peer will store data
+    #
+    # 피어가 데이터를 저장할 파일 시스템 경로
     fileSystemPath: /var/hyperledger/test/ledger_test
 
 ledger:
@@ -14,4 +16,7 @@ ledger:
     # Control the number state deltas that are maintained. This takes additional
     # disk space, but allow the state to be rolled backwards and forwards
     # without the need to replay transactions.
+    #
+    # 유지관리할 delta state 개수 설정. 추가 적인 디스크 공간이 필요하지만, 
+    # 트랜잭션을 replay 할 필요 없이 state를 roll backwards/forwards 처리 할 수 있음.
     deltaHistorySize: 500

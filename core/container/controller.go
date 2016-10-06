@@ -47,6 +47,7 @@ type refCountedLock struct {
 //   . abstract construction of different types of VMs (we only care about Docker for now)
 //   . manage lifecycle of VM (start with build, start, stop ...
 //     eventually probably need fine grained management)
+//
 //VMController - VM들을 관리
 //   . VM 유형 생성(현재는 Docker만)
 //   . VM lifecycle 관리( build, start, stop 등으로 시작해서 세밀한 관리가 필요함)
@@ -58,17 +59,20 @@ type VMController struct {
 }
 
 //singleton...acess through NewVMController
+//
 //singleton 객체, NewVMController로 액세스함
 var vmcontroller *VMController
 
 //constants for supported containers
-//지원하는 컨테이너용 상수
+//
+//지원되는 컨테이너용 상수
 const (
 	DOCKER = "Docker"
 	SYSTEM = "System"
 )
 
 //NewVMController - creates/returns singleton
+//
 //NerVMController - singleton 객체를 생성하고 리턴
 //singleton pattern : 여러차례 객체 생성이 호출되더라도 프로그램내에서는 하나의 객체만 생성해서 유지됨
 func init() {
@@ -134,6 +138,7 @@ func (vmc *VMController) unlockContainer(id string) {
 //The context should be passed and tested at each layer till we stop
 //note that we'd stop on the first method on the stack that does not
 //take context
+//
 //VMCReqIntf 인터페이스 - 모든 request 들은 이 인터페이스를 구현해야함
 //context는 각각의 레이어 구간마다 테스트가 필요함
 type VMCReqIntf interface {
@@ -143,6 +148,7 @@ type VMCReqIntf interface {
 
 //VMCResp - response from requests. resp field is a anon interface.
 //It can hold any response. err should be tested first
+//
 //VMCResp - 요청에 대한 응답 구조체. Resp는 anon interface(anonymous)
 //따라서 모든 응답을 처리할 수 있음. Err는 가장 먼저 테스트 되어야함.
 type VMCResp struct {
@@ -151,6 +157,7 @@ type VMCResp struct {
 }
 
 //CreateImageReq - properties for creating an container image
+//
 //CreateImageReq - 컨테이너 이미지 생성을 위한 속성값 구조체
 type CreateImageReq struct {
 	ccintf.CCID
@@ -265,7 +272,7 @@ func (di DestroyImageReq) getCCID() ccintf.CCID {
 //context can be cancelled. VMCProcess will try to cancel calling functions if it can
 //For instance docker clients api's such as BuildImage are not cancelable.
 //In all cases VMCProcess will wait for the called go routine to return
-
+//
 //VMCProcess함수는 아래와 같이 사용되어야 함
 //   . context 생성
 //   . 유형별 req(컨테이너 컨트롤 속성 구조체) 생성 (e.g. CreateImageReq)

@@ -17,6 +17,8 @@ limitations under the License.
 package statemgmt
 
 // StateDeltaIterator - An iterator implementation over state-delta
+//
+// StateDeltaIterator 구조체 : state delta의 interator 구현
 type StateDeltaIterator struct {
 	updates         map[string]*UpdatedValue
 	relevantKeys    []string
@@ -25,6 +27,8 @@ type StateDeltaIterator struct {
 }
 
 // NewStateDeltaRangeScanIterator - return an iterator for performing a range scan over a state-delta object
+//
+// NewStateDeltaRangeScanIterator() :
 func NewStateDeltaRangeScanIterator(delta *StateDelta, chaincodeID string, startKey string, endKey string) *StateDeltaIterator {
 	updates := delta.GetUpdates(chaincodeID)
 	return &StateDeltaIterator{updates, retrieveRelevantKeys(updates, startKey, endKey), -1, false}
