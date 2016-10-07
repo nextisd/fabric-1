@@ -115,6 +115,7 @@ func serve(args []string) error {
 	}
 
 	//@@ validator 일 경우에만 grpc server 생성 ( peer.ValidatorEnabled() == true )
+	//@@ ehubLis : listener, ehubGrpcServer : event hub gRPC 서버
 	//@@ listen addr : "peer.validator.events.address"
 	ehubLis, ehubGrpcServer, err := createEventHubServer()
 	if err != nil {
@@ -252,23 +253,30 @@ func serve(args []string) error {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
-	//@@ ??
-	
+	//@@ go 루틴 실행 : signal 대기
 	go func() {
-		sig := <-sigs		이건 뭐지? --> signal 받는 channel 생성??
+		//@@ signal handler 임.. ( sigs channel 에서 signal 들어올 때까지 대기 )
+		sig := <-sigs
 		fmt.Println()
 		fmt.Println(sig)
-		serve <- nil		serve : error 를 수신하는 channel --> 기다린다는 거야 아닌거야
+		//@@ serve (error 를 수신하는 channel) 로 nil 보냄
+		serve <- nil
 	}()
 
-	//@@ 
+	//@@ go 루틴 실행 : gRPC 서버 start (접속/서비스 요청 처리 시작)
+	//@@ listener (lis) 생성과 실제 서비스 시작이 너무 멀어..
 	go func() {
 		var grpcErr error
+		//@@ listener lis 로 들어오는 접속요청 처리 (accept 실패시, lis 를 close)
+		//@@ ServerTransport 생성 & service 처리 (go 루틴)
+		//@@ service 처리 go 루틴 : gRPC 요청 받고, handler 호출, reply
 		if grpcErr = grpcServer.Serve(lis); grpcErr != nil {
 			grpcErr = fmt.Errorf("grpc server exited with error: %s", grpcErr)
 		} else {
 			logger.Info("grpc server exited")
 		}
+		//@@ serve (error 를 수신하는 channel) 로 grpcErr 를 보냄
+		//@@ grpcErr : gRPC 서버를 실행하면서 발생된 에러
 		serve <- grpcErr
 	}()
 
@@ -278,15 +286,19 @@ func serve(args []string) error {
 	}
 
 	// Start the event hub server
-	//@@ 
+	//@@ event hub server (이거도 gRPC 서버임) start (접속/서비스 요청 처리 시작)
+	//@@ listener (ehubLis) 생성과 실제 서비스 시작이 너무 멀어..
 	if ehubGrpcServer != nil && ehubLis != nil {
 		go ehubGrpcServer.Serve(ehubLis)
 	}
 
+	//@@ profile 이 머지.. listen & accept 해서 HTTP/2 세션 생성은 하는데, handler 가 없음
 	if viper.GetBool("peer.profile.enabled") {
 		go func() {
 			profileListenAddress := viper.GetString("peer.profile.listenAddress")
 			logger.Infof("Starting profiling server with listenAddress = %s", profileListenAddress)
+			//@@ ListenAndServe 는 항상 a non-nil error 를 리턴함.. --> 왜 하는거야
+			//@@ (TCP address 를 listen & accept) 한 연결에 대해 handler 호출 (여기서는 nil)
 			if profileErr := http.ListenAndServe(profileListenAddress, nil); profileErr != nil {
 				logger.Errorf("Error starting profiler: %s", profileErr)
 			}
@@ -294,7 +306,7 @@ func serve(args []string) error {
 	}
 
 	// Block until grpc server exits
-	//@@ 
+	//@@ 종료조건 : grpc 서버 실행시 에러가 발생하거나, signal 받았을 때
 	return <-serve
 }
 
