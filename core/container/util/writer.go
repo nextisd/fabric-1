@@ -49,6 +49,7 @@ var javaExcludeFileTypes = map[string]bool{
 	".class": true,
 }
 
+//WriteFolderToTarPackage() : 입력경로의 디렉토리를 tar로 묶음
 func WriteFolderToTarPackage(tw *tar.Writer, srcPath string, excludeDir string, includeFileTypeMap map[string]bool, excludeFileTypeMap map[string]bool) error {
 	rootDirectory := srcPath
 	vmLogger.Infof("rootDirectory = %s", rootDirectory)
@@ -120,7 +121,7 @@ func WriteFolderToTarPackage(tw *tar.Writer, srcPath string, excludeDir string, 
 
 //WriteGopathSrc tars up files under gopath src
 //
-//WriteGopathSrc 함수는 gopath 경로의 소스 코드들을 tar로 묶음
+//WriteGopathSrc() : gopath 경로의 소스 코드들을 tar로 묶음
 func WriteGopathSrc(tw *tar.Writer, excludeDir string) error {
 	gopath := os.Getenv("GOPATH")
 	// Only take the first element of GOPATH
@@ -154,7 +155,7 @@ func WriteGopathSrc(tw *tar.Writer, excludeDir string) error {
 
 //Package Java project to tar file from the source path
 //
-//srcPath상의 java project를 tar 파일로 패키징
+//WriteJavaProjectToPackage() : srcPath상의 java project를 tar 파일로 패키징
 func WriteJavaProjectToPackage(tw *tar.Writer, srcPath string) error {
 
 	vmLogger.Debugf("Packaging Java project from path %s", srcPath)
@@ -174,7 +175,7 @@ func WriteJavaProjectToPackage(tw *tar.Writer, srcPath string) error {
 
 //WriteFileToPackage writes a file to the tarball
 //
-//WriteFileToPackage함수는 tarball 파일을 작성함
+//WriteFileToPackage() : tarball 파일을 작성함
 func WriteFileToPackage(localpath string, packagepath string, tw *tar.Writer) error {
 	fd, err := os.Open(localpath)
 	if err != nil {
@@ -189,7 +190,7 @@ func WriteFileToPackage(localpath string, packagepath string, tw *tar.Writer) er
 
 //WriteStreamToPackage writes bytes (from a file reader) to the tarball
 //
-//WriteStreamToPackage함수는 file reader.io 로부터의 byte stream을 tarball에 작성함
+//WriteStreamToPackage() : file reader.io 로부터의 byte stream을 tarball에 작성함
 func WriteStreamToPackage(is io.Reader, localpath string, packagepath string, tw *tar.Writer) error {
 	info, err := os.Stat(localpath)
 	if err != nil {

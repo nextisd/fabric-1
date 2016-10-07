@@ -51,8 +51,8 @@ const (
 // state 지속성을 관리 하기 위함.
 // thread-safe 하지 않음(락 처리 없음?)
 type State struct {
-	stateImpl             statemgmt.HashableState
-	stateDelta            *statemgmt.StateDelta
+	stateImpl             statemgmt.HashableState // State management 인터페이스
+	stateDelta            *statemgmt.StateDelta   // map[tx-state-delta]
 	currentTxStateDelta   *statemgmt.StateDelta
 	currentTxID           string
 	txStateDeltaHash      map[string][]byte
@@ -61,9 +61,17 @@ type State struct {
 }
 
 // NewState constructs a new State. This Initializes encapsulated state implementation
+//
+// NewState() : 신규 state 생성 및 초기화.
 func NewState() *State {
+	// github.com / nextisd / kksl / core / ledger / statemgmt / state / config.go - loadConfig()
 	initConfig()
 	logger.Infof("Initializing state implementation [%s]", stateImplName)
+	// State Management는 현재 3가지 유형으로 구현 가능
+	// 1. buckettreeType : 키 값이 범위를 n개의 버킷으로 나누어 저장?
+	// 2. trieType       : 이진검색트리가 아님, 특정 노드의 후손들은 그 노드와 동일한 prefix를 가짐.
+	//						http://m.blog.naver.com/javaking75/140211950640 참고
+	// 3. rawType        :
 	switch stateImplName {
 	case buckettreeType:
 		stateImpl = buckettree.NewStateImpl()

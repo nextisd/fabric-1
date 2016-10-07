@@ -49,7 +49,7 @@ func NewStateDelta() *StateDelta {
 
 // Get get the state from delta if exists
 //
-// Get() : stateDelta로 부터 @chaincodeID의 state를 가져옴.
+// stateDelta.Get() : stateDelta로 부터 @chaincodeID의 state를 가져옴.
 func (stateDelta *StateDelta) Get(chaincodeID string, key string) *UpdatedValue {
 	// TODO Cache?
 	chaincodeStateDelta, ok := stateDelta.ChaincodeStateDeltas[chaincodeID]
@@ -62,7 +62,7 @@ func (stateDelta *StateDelta) Get(chaincodeID string, key string) *UpdatedValue 
 
 // Set sets state value for a key
 //
-// Set() : @key에 대한 state value를 세팅
+// stateDelta.Set() : @key에 대한 state value를 세팅
 func (stateDelta *StateDelta) Set(chaincodeID string, key string, value, previousValue []byte) {
 	// getOrCreateChaincodeStateDelta() : @chaincodeID의 stateDelta를 리턴하거나, 신규 생성.
 	chaincodeStateDelta := stateDelta.getOrCreateChaincodeStateDelta(chaincodeID)
@@ -72,7 +72,7 @@ func (stateDelta *StateDelta) Set(chaincodeID string, key string, value, previou
 
 // Delete deletes a key from the state
 //
-// Delete() : state에서 key 삭제.
+// stateDelta.Delete() : state에서 key 삭제.
 func (stateDelta *StateDelta) Delete(chaincodeID string, key string, previousValue []byte) {
 	chaincodeStateDelta := stateDelta.getOrCreateChaincodeStateDelta(chaincodeID)
 	chaincodeStateDelta.remove(key, previousValue)
@@ -82,7 +82,7 @@ func (stateDelta *StateDelta) Delete(chaincodeID string, key string, previousVal
 // IsUpdatedValueSet returns true if a update value is already set for
 // the given chaincode ID and key.
 //
-// IsUpdatedValueSet() : Previous Value가 state delta에 세팅되어 있는지 체크.
+// stateDelta.IsUpdatedValueSet() : Previous Value가 state delta에 세팅되어 있는지 체크.
 // state.Set()에서 호출 : Previous Value가	있으면 그대로 두고,
 // 									  	없으면 state.Get()해서 세팅하고나서
 //						Value를 다시 state.Set() 세팅처리.
@@ -99,7 +99,7 @@ func (stateDelta *StateDelta) IsUpdatedValueSet(chaincodeID, key string) bool {
 
 // ApplyChanges merges another delta - if a key is present in both, the value of the existing key is overwritten
 //
-// ApplyChanges() : 다른 delta들을 merge. key가 중복될 경우 value는 overwrite됨.
+// stateDelta.ApplyChanges() : 다른 delta들을 merge. key가 중복될 경우 value는 overwrite됨.
 func (stateDelta *StateDelta) ApplyChanges(anotherStateDelta *StateDelta) {
 	for chaincodeID, chaincodeStateDelta := range anotherStateDelta.ChaincodeStateDeltas {
 		existingChaincodeStateDelta, existingChaincode := stateDelta.ChaincodeStateDeltas[chaincodeID]
@@ -136,7 +136,7 @@ func (stateDelta *StateDelta) ApplyChanges(anotherStateDelta *StateDelta) {
 
 // IsEmpty checks whether StateDelta contains any data
 //
-// IsEmpty() : stateDelta가 비었는지 체크
+// stateDelta.IsEmpty() : stateDelta가 비었는지 체크
 func (stateDelta *StateDelta) IsEmpty() bool {
 	return len(stateDelta.ChaincodeStateDeltas) == 0
 }
@@ -144,7 +144,7 @@ func (stateDelta *StateDelta) IsEmpty() bool {
 // GetUpdatedChaincodeIds return the chaincodeIDs that are prepsent in the delta
 // If sorted is true, the method return chaincodeIDs in lexicographical sorted order
 //
-// GetUpdatedChaincodeIds() : delta에 존재하는 chaincodeID들을 리턴
+// stateDelta.GetUpdatedChaincodeIds() : delta에 존재하는 chaincodeID들을 리턴
 // @param sorted : true일때는 chaincodeID들을 사전순으로 정렬
 func (stateDelta *StateDelta) GetUpdatedChaincodeIds(sorted bool) []string {
 	updatedChaincodeIds := make([]string, len(stateDelta.ChaincodeStateDeltas))
@@ -161,7 +161,7 @@ func (stateDelta *StateDelta) GetUpdatedChaincodeIds(sorted bool) []string {
 
 // GetUpdates returns changes associated with given chaincodeId
 //
-// GetUpdates() : @chaincodeID에 관련된 변경사항을 리턴(UpdatedKVs: map{key,{value,prev_value}})
+// stateDelta.GetUpdates() : @chaincodeID에 관련된 변경사항을 리턴(UpdatedKVs: map{key,{value,prev_value}})
 func (stateDelta *StateDelta) GetUpdates(chaincodeID string) map[string]*UpdatedValue {
 	chaincodeStateDelta := stateDelta.ChaincodeStateDeltas[chaincodeID]
 	if chaincodeStateDelta == nil {
@@ -170,7 +170,7 @@ func (stateDelta *StateDelta) GetUpdates(chaincodeID string) map[string]*Updated
 	return chaincodeStateDelta.UpdatedKVs
 }
 
-// getOrCreateChaincodeStateDelta() : @chaincodeID의 stateDelta를 리턴하거나, 신규 생성.
+// stateDelta.getOrCreateChaincodeStateDelta() : @chaincodeID의 stateDelta를 리턴하거나, 신규 생성.
 func (stateDelta *StateDelta) getOrCreateChaincodeStateDelta(chaincodeID string) *ChaincodeStateDelta {
 	chaincodeStateDelta, ok := stateDelta.ChaincodeStateDeltas[chaincodeID]
 	if !ok {
@@ -183,7 +183,7 @@ func (stateDelta *StateDelta) getOrCreateChaincodeStateDelta(chaincodeID string)
 // ComputeCryptoHash computes crypto-hash for the data held
 // returns nil if no data is present
 //
-// ComputeCryptoHash() :stateDelta를 암호-해시 계산후 해쉬값(sha3.ShakeSum256처리)을 리턴.
+// stateDelta.ComputeCryptoHash() :stateDelta를 암호-해시 계산후 해쉬값(sha3.ShakeSum256처리)을 리턴.
 func (stateDelta *StateDelta) ComputeCryptoHash() []byte {
 	if stateDelta.IsEmpty() {
 		return nil
@@ -220,13 +220,13 @@ func newChaincodeStateDelta(chaincodeID string) *ChaincodeStateDelta {
 	return &ChaincodeStateDelta{chaincodeID, make(map[string]*UpdatedValue)}
 }
 
-// get() : @key에 해당하는 UpdateKVs 가져오기
+// chaincodeStateDelta.get() : @key에 해당하는 UpdateKVs 가져오기
 func (chaincodeStateDelta *ChaincodeStateDelta) get(key string) *UpdatedValue {
 	// TODO Cache?
 	return chaincodeStateDelta.UpdatedKVs[key]
 }
 
-// set() : chaincodeStateDelta를 @updatedValue로 업데이트 처리.
+// chaincodeStateDelta.set() : chaincodeStateDelta를 @updatedValue로 업데이트 처리.
 func (chaincodeStateDelta *ChaincodeStateDelta) set(key string, updatedValue, previousValue []byte) {
 	updatedKV, ok := chaincodeStateDelta.UpdatedKVs[key]
 	if ok {
@@ -242,7 +242,7 @@ func (chaincodeStateDelta *ChaincodeStateDelta) set(key string, updatedValue, pr
 	}
 }
 
-// remove() : @key에 해당하는 value 삭제
+// chaincodeStateDelta.remove() : @key에 해당하는 value 삭제
 func (chaincodeStateDelta *ChaincodeStateDelta) remove(key string, previousValue []byte) {
 	updatedKV, ok := chaincodeStateDelta.UpdatedKVs[key]
 	if ok {
@@ -258,12 +258,12 @@ func (chaincodeStateDelta *ChaincodeStateDelta) remove(key string, previousValue
 	}
 }
 
-// hasChanges() : ChaincodeStateDelta에 변경사항이 있는지 체크
+// chaincodeStateDelta.hasChanges() : ChaincodeStateDelta에 변경사항이 있는지 체크
 func (chaincodeStateDelta *ChaincodeStateDelta) hasChanges() bool {
 	return len(chaincodeStateDelta.UpdatedKVs) > 0
 }
 
-// getSortedKeys() : ChaincodeStateDelta의 key를 정렬후 리턴
+// chaincodeStateDelta.getSortedKeys() : ChaincodeStateDelta의 key를 정렬후 리턴
 func (chaincodeStateDelta *ChaincodeStateDelta) getSortedKeys() []string {
 	updatedKeys := []string{}
 	for k := range chaincodeStateDelta.UpdatedKVs {
@@ -284,21 +284,21 @@ type UpdatedValue struct {
 
 // IsDeleted checks whether the key was deleted
 //
-// IsDeleted() : key가 삭제되었는지 체크
+// updatedValue.IsDeleted() : key가 삭제되었는지 체크
 func (updatedValue *UpdatedValue) IsDeleted() bool {
 	return updatedValue.Value == nil
 }
 
 // GetValue returns the value
 //
-// GetValue() : UpdatedValue.Value 리턴
+// updatedValue.GetValue() : UpdatedValue.Value 리턴
 func (updatedValue *UpdatedValue) GetValue() []byte {
 	return updatedValue.Value
 }
 
 // GetPreviousValue returns the previous value
 //
-// GetPreviousValue() : updatedValue.PreviousValue 리턴
+// updatedValue.GetPreviousValue() : updatedValue.PreviousValue 리턴
 func (updatedValue *UpdatedValue) GetPreviousValue() []byte {
 	return updatedValue.PreviousValue
 }
@@ -313,7 +313,8 @@ func (updatedValue *UpdatedValue) GetPreviousValue() []byte {
 // 아래에 구현한 state delta에 대한 custom marshalling / Unmarshalling 코드들을 제거 할수 있을것임.
 
 // Marshal serializes the StateDelta
-// Marshal() : StateDelta를 serialize(byte화)
+//
+// stateDelta.Marshal() : StateDelta를 serialize(byte화)
 func (stateDelta *StateDelta) Marshal() (b []byte) {
 	buffer := proto.NewBuffer([]byte{})
 	err := buffer.EncodeVarint(uint64(len(stateDelta.ChaincodeStateDeltas)))
@@ -329,7 +330,7 @@ func (stateDelta *StateDelta) Marshal() (b []byte) {
 	return
 }
 
-// marshal() : ChaincodeStateDelta를 serialize
+// chaincodeStateDelta.marshal() : ChaincodeStateDelta를 serialize
 func (chaincodeStateDelta *ChaincodeStateDelta) marshal(buffer *proto.Buffer) {
 	err := buffer.EncodeVarint(uint64(len(chaincodeStateDelta.UpdatedKVs)))
 	if err != nil {
@@ -346,7 +347,7 @@ func (chaincodeStateDelta *ChaincodeStateDelta) marshal(buffer *proto.Buffer) {
 	return
 }
 
-// marshalValueWithMarker() : 마커(protobuf 타입?)를 추가해서 mashalling
+// chaincodeStateDelta.marshalValueWithMarker() : 마커(protobuf 타입?)를 추가해서 mashalling
 func (chaincodeStateDelta *ChaincodeStateDelta) marshalValueWithMarker(buffer *proto.Buffer, value []byte) {
 	if value == nil {
 		// Just add a marker that the value is nil
@@ -374,7 +375,7 @@ func (chaincodeStateDelta *ChaincodeStateDelta) marshalValueWithMarker(buffer *p
 
 // Unmarshal deserializes StateDelta
 //
-// Unmarshal() : StateDelta를 deserialize
+// stateDelta.Unmarshal() : StateDelta를 deserialize
 func (stateDelta *StateDelta) Unmarshal(bytes []byte) error {
 	buffer := proto.NewBuffer(bytes)
 	size, err := buffer.DecodeVarint()
@@ -398,7 +399,7 @@ func (stateDelta *StateDelta) Unmarshal(bytes []byte) error {
 	return nil
 }
 
-// unmarshal() : ChaincodeStateDelta를 deserialize
+// chaincodeStateDelta.unmarshal() : ChaincodeStateDelta를 deserialize
 func (chaincodeStateDelta *ChaincodeStateDelta) unmarshal(buffer *proto.Buffer) error {
 	size, err := buffer.DecodeVarint()
 	if err != nil {
@@ -423,7 +424,7 @@ func (chaincodeStateDelta *ChaincodeStateDelta) unmarshal(buffer *proto.Buffer) 
 	return nil
 }
 
-// unmarshalValueWithMarker() : 마커(protobuf 타입?)를 추가해서 unmashalling
+// chaincodeStateDelta.unmarshalValueWithMarker() : 마커(protobuf 타입?)를 추가해서 unmashalling
 func (chaincodeStateDelta *ChaincodeStateDelta) unmarshalValueWithMarker(buffer *proto.Buffer) ([]byte, error) {
 	valueMarker, err := buffer.DecodeVarint()
 	if err != nil {

@@ -32,7 +32,8 @@ import (
 )
 
 // VM implemenation of VM management functionality.
-// VM 관리기능 구현 구조체
+//
+// VM 구조체 : VM 관리기능 구현 구조체
 // 도커 클라이언트에서 Dockerfile 생성후 image build 처리
 // 컨테이너 생성은 도커 호스트쪽에서 하므로 controller.go에서 처리
 type VM struct {
@@ -140,7 +141,8 @@ func GetChaincodePackageBytes(spec *pb.ChaincodeSpec) ([]byte, error) {
 }
 
 // Builds the Chaincode image using the supplied Dockerfile package contents
-// buildChaincodeContainerUsingDockerfilePackageBytes() : Dockerfile 패키지 내용을 사용해서 Chaincode image를 Build
+//
+// vm.buildChaincodeContainerUsingDockerfilePackageBytes() : Dockerfile 패키지 내용을 사용해서 Chaincode image를 Build
 func (vm *VM) buildChaincodeContainerUsingDockerfilePackageBytes(spec *pb.ChaincodeSpec, code []byte) error {
 	outputbuf := bytes.NewBuffer(nil)
 	vmName := spec.ChaincodeID.Name
