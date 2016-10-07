@@ -11,7 +11,7 @@
 	- 'singleton' ledger 객체 레퍼런스 리턴
 - **GetNewLedger()**
 ---
-#### Transaction-batch related methods #####
+### Transaction-batch related methods ###
 
 - **BeginTxBatch()**
 	+ 트랜잭션 일괄처리(transaction-batch) 다음 라운드가 시작될때 호출됨(invoked)
@@ -42,7 +42,7 @@
     state.currentTxID = ""`
 
 ---
-#### World-state related methods #####
+### World-state related methods ####
 
 - **GetTempStateHash()**
     + account에 현재 transaction-batch를 처리하는 동안 상태 변화를 포함한 state hash값을 계산.
@@ -118,7 +118,7 @@
     + snapshot으로 부터 new state를 생성할때 state synchronization을 할때만 사용하는게 일반적임
 
 ---
-#### Transaction-batch related methods #####
+### Transaction-batch related methods ####
 
 - **GetBlockchainInfo()**
     + blockchain ledger 정보 조회(height, current/previous block hash,...)
