@@ -40,6 +40,7 @@ import (
 )
 
 // ChainName is the name of the chain to which this chaincode support belongs to.
+// @@ chaincode support가 속한 체인의 이름.
 type ChainName string
 
 const (
@@ -54,6 +55,7 @@ const (
 
 // chains is a map between different blockchains and their ChaincodeSupport.
 //this needs to be a first class, top-level object... for now, lets just have a placeholder
+// @@ chains : 서로 다른 블록체인과  그들의 ChaincodeSupport간의 map, 가장 상위 레벨의 객체.
 var chains map[ChainName]*ChaincodeSupport
 
 func init() {
@@ -62,11 +64,14 @@ func init() {
 
 //chaincode runtime environment encapsulates handler and container environment
 //This is where the VM that's running the chaincode would hook in
+// @@ 체인코드 실행 환경은 핸들러와 컨테이너 환경을 캡슐화한 것.
+// @@ 체인코드를 실행하는 vm에 필요.
 type chaincodeRTEnv struct {
 	handler *Handler
 }
 
 // runningChaincodes contains maps of chaincodeIDs to their chaincodeRTEs
+// @@ chaincodeID와 chaincodeRTE(실행 환경)을 매핑한 것을 가지고 있음
 type runningChaincodes struct {
 	sync.RWMutex
 	// chaincode environment for each chaincode
@@ -74,6 +79,7 @@ type runningChaincodes struct {
 }
 
 // GetChain returns the chaincode support for a given chain
+// @@ 입력인자로 주어진 chain의 chaincode support를 리턴
 func GetChain(name ChainName) *ChaincodeSupport {
 	return chains[name]
 }
@@ -83,6 +89,7 @@ func (chaincodeSupport *ChaincodeSupport) preLaunchSetup(chaincode string) chan 
 	//register placeholder Handler. This will be transferred in registerHandler
 	//NOTE: from this point, existence of handler for this chaincode means the chaincode
 	//is in the process of getting started (or has been started)
+	// @@ register 핸들러로 대체?
 	notfy := make(chan bool, 1)
 	chaincodeSupport.runningChaincodes.chaincodeMap[chaincode] = &chaincodeRTEnv{handler: &Handler{readyNotify: notfy}}
 	return notfy
@@ -95,6 +102,7 @@ func (chaincodeSupport *ChaincodeSupport) chaincodeHasBeenLaunched(chaincode str
 }
 
 // NewChaincodeSupport creates a new ChaincodeSupport instance
+// @@ ChaincodeSupport 객체를 생성
 func NewChaincodeSupport(chainname ChainName, getPeerEndpoint func() (*pb.PeerEndpoint, error), userrunsCC bool, ccstartuptimeout time.Duration, secHelper crypto.Peer) *ChaincodeSupport {
 	pnid := viper.GetString("peer.networkId")
 	pid := viper.GetString("peer.id")
@@ -102,6 +110,7 @@ func NewChaincodeSupport(chainname ChainName, getPeerEndpoint func() (*pb.PeerEn
 	s := &ChaincodeSupport{name: chainname, runningChaincodes: &runningChaincodes{chaincodeMap: make(map[string]*chaincodeRTEnv)}, secHelper: secHelper, peerNetworkID: pnid, peerID: pid}
 
 	//initialize global chain
+	// 체인을 초기화
 	chains[chainname] = s
 
 	peerEndpoint, err := getPeerEndpoint()
@@ -174,6 +183,7 @@ func NewChaincodeSupport(chainname ChainName, getPeerEndpoint func() (*pb.PeerEn
 // }
 
 // ChaincodeSupport responsible for providing interfacing with chaincodes from the Peer.
+// @@ ChaincodeSupport : 체인코드와 피어간의 인터페이싱을 제공
 type ChaincodeSupport struct {
 	name                 ChainName
 	runningChaincodes    *runningChaincodes
@@ -238,6 +248,7 @@ func (chaincodeSupport *ChaincodeSupport) registerHandler(chaincodehandler *Hand
 	return nil
 }
 
+// 체인코드 핸들러를 등록 해제
 func (chaincodeSupport *ChaincodeSupport) deregisterHandler(chaincodehandler *Handler) error {
 
 	// clean up rangeQueryIteratorMap
@@ -261,6 +272,7 @@ func (chaincodeSupport *ChaincodeSupport) deregisterHandler(chaincodehandler *Ha
 }
 
 // Based on state of chaincode send either init or ready to move to ready state
+// @@ 체인코드의 상태에 따라 init 또는 ready를 송신하여 ready 상태로 전환.
 func (chaincodeSupport *ChaincodeSupport) sendInitOrReady(context context.Context, txid string, chaincode string, initArgs [][]byte, timeout time.Duration, tx *pb.Transaction, depTx *pb.Transaction) error {
 	chaincodeSupport.runningChaincodes.Lock()
 	//if its in the map, there must be a connected stream...nothing to do
@@ -296,6 +308,7 @@ func (chaincodeSupport *ChaincodeSupport) sendInitOrReady(context context.Contex
 }
 
 //get args and env given chaincodeID
+// @@ 입력된 chaincodeID에 속하는 arguments와 환경 변수를 get
 func (chaincodeSupport *ChaincodeSupport) getArgsAndEnv(cID *pb.ChaincodeID, cLang pb.ChaincodeSpec_Type) (args []string, envs []string, err error) {
 	envs = []string{"CORE_CHAINCODE_ID_NAME=" + cID.Name}
 	//if TLS is enabled, pass TLS material to chaincode
@@ -362,13 +375,13 @@ func (chaincodeSupport *ChaincodeSupport) launchAndWaitForRegister(ctxt context.
 	}
 
 	chaincodeLogger.Debugf("start container: %s(networkid:%s,peerid:%s)", chaincode, chaincodeSupport.peerNetworkID, chaincodeSupport.peerID)
-
+	// @@체인코드가 유저 체인코드인지, 시스템 체인코드인지 구분하여 VM호출하기 위함.
 	vmtype, _ := chaincodeSupport.getVMType(cds)
-
+	// @@컨테이너 패키지의 ccinf(체인코드인터페이스)를 통해 이미지 생성
 	sir := container.StartImageReq{CCID: ccintf.CCID{ChaincodeSpec: cds.ChaincodeSpec, NetworkID: chaincodeSupport.peerNetworkID, PeerID: chaincodeSupport.peerID}, Reader: targz, Args: args, Env: env}
 
 	ipcCtxt := context.WithValue(ctxt, ccintf.GetCCHandlerKey(), chaincodeSupport)
-
+	// @@컨테이너 패키지의 의 VMCprocess를 호출하여 컨테이너 실행
 	resp, err := container.VMCProcess(ipcCtxt, vmtype, sir)
 	if err != nil || (resp != nil && resp.(container.VMCResp).Err != nil) {
 		if err == nil {
@@ -382,11 +395,13 @@ func (chaincodeSupport *ChaincodeSupport) launchAndWaitForRegister(ctxt context.
 	}
 
 	//wait for REGISTER state
+	// @@ REGISTER 상태를 대기
 	select {
-	case ok := <-notfy:
+	case ok := <-notfy: // @@ 성공시 noti
 		if !ok {
 			err = fmt.Errorf("registration failed for %s(networkid:%s,peerid:%s,tx:%s)", chaincode, chaincodeSupport.peerNetworkID, chaincodeSupport.peerID, txid)
 		}
+	// @@ 등록에 대한 timeout 발생
 	case <-time.After(chaincodeSupport.ccStartupTimeout):
 		err = fmt.Errorf("Timeout expired while starting chaincode %s(networkid:%s,peerid:%s,tx:%s)", chaincode, chaincodeSupport.peerNetworkID, chaincodeSupport.peerID, txid)
 	}
@@ -401,6 +416,7 @@ func (chaincodeSupport *ChaincodeSupport) launchAndWaitForRegister(ctxt context.
 }
 
 //Stop stops a chaincode if running
+// @@ 만약 체인코드가 이미 실행중이라면 stop
 func (chaincodeSupport *ChaincodeSupport) Stop(context context.Context, cds *pb.ChaincodeDeploymentSpec) error {
 	chaincode := cds.ChaincodeSpec.ChaincodeID.Name
 	if chaincode == "" {
@@ -433,6 +449,7 @@ func (chaincodeSupport *ChaincodeSupport) Stop(context context.Context, cds *pb.
 }
 
 // Launch will launch the chaincode if not running (if running return nil) and will wait for handler of the chaincode to get into FSM ready state.
+// @@ Lanunch : 체인코드가 현재 실행중이 아니라면 실행시키고, 체인코드의 핸들러가 FSM의 ready 상태가 될 때까지 wait
 func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, t *pb.Transaction) (*pb.ChaincodeID, *pb.ChaincodeInput, error) {
 	//build the chaincode
 	var cID *pb.ChaincodeID
@@ -536,6 +553,7 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, t *pb.
 	//from here on : if we launch the container and get an error, we need to stop the container
 
 	//launch container if it is a System container or not in dev mode
+	// 컨테이너가 시스템 체인코드 컨테이거나, dev 모드라면 컨테이너를 실행시킨다.
 	if (!chaincodeSupport.userRunsCC || cds.ExecEnv == pb.ChaincodeDeploymentSpec_SYSTEM) && (chrte == nil || chrte.handler == nil) {
 		var targz io.Reader = bytes.NewBuffer(cds.CodePackage)
 		_, err = chaincodeSupport.launchAndWaitForRegister(context, cds, cID, t.Txid, cLang, targz)
@@ -571,6 +589,7 @@ func (chaincodeSupport *ChaincodeSupport) getSecHelper() crypto.Peer {
 
 //getVMType - just returns a string for now. Another possibility is to use a factory method to
 //return a VM executor
+// @@ 체인코드가 실행될 vm 컨테이너를 리턴. 시스템일 경우는 시스템, 유저일 경우 docker.
 func (chaincodeSupport *ChaincodeSupport) getVMType(cds *pb.ChaincodeDeploymentSpec) (string, error) {
 	if cds.ExecEnv == pb.ChaincodeDeploymentSpec_SYSTEM {
 		return container.SYSTEM, nil
@@ -579,6 +598,7 @@ func (chaincodeSupport *ChaincodeSupport) getVMType(cds *pb.ChaincodeDeploymentS
 }
 
 // Deploy deploys the chaincode if not in development mode where user is running the chaincode.
+// @@ 체인코드 deploy
 func (chaincodeSupport *ChaincodeSupport) Deploy(context context.Context, t *pb.Transaction) (*pb.ChaincodeDeploymentSpec, error) {
 	//build the chaincode
 	cds := &pb.ChaincodeDeploymentSpec{}
@@ -620,6 +640,7 @@ func (chaincodeSupport *ChaincodeSupport) Deploy(context context.Context, t *pb.
 	chaincodeLogger.Debugf("deploying chaincode %s(networkid:%s,peerid:%s)", chaincode, chaincodeSupport.peerNetworkID, chaincodeSupport.peerID)
 
 	//create image and create container
+	// @@ image를 생성, 컨테이너 생성.
 	_, err = container.VMCProcess(context, vmtype, cir)
 	if err != nil {
 		err = fmt.Errorf("Error starting container: %s", err)
@@ -639,6 +660,7 @@ func (chaincodeSupport *ChaincodeSupport) Register(stream pb.ChaincodeSupport_Re
 }
 
 // createTransactionMessage creates a transaction message.
+// @@ 트랜잭션 메세지(ChaincodeMessage)를 생성
 func createTransactionMessage(txid string, cMsg *pb.ChaincodeInput) (*pb.ChaincodeMessage, error) {
 	payload, err := proto.Marshal(cMsg)
 	if err != nil {
@@ -649,6 +671,7 @@ func createTransactionMessage(txid string, cMsg *pb.ChaincodeInput) (*pb.Chainco
 }
 
 // createQueryMessage creates a query message.
+// @@ 쿼리 메세지(ChaincodeMessage)를 생성
 func createQueryMessage(txid string, cMsg *pb.ChaincodeInput) (*pb.ChaincodeMessage, error) {
 	payload, err := proto.Marshal(cMsg)
 	if err != nil {
@@ -658,6 +681,8 @@ func createQueryMessage(txid string, cMsg *pb.ChaincodeInput) (*pb.ChaincodeMess
 }
 
 // Execute executes a transaction and waits for it to complete until a timeout value.
+// @@ 타임아웃 제한 시간내에 트랜잭션 실행 성공시에는 성공 response를 체인코드에 송신,
+// @@ 타임아웃을 넘겼을 경우는 에러를 송신.
 func (chaincodeSupport *ChaincodeSupport) Execute(ctxt context.Context, chaincode string, msg *pb.ChaincodeMessage, timeout time.Duration, tx *pb.Transaction) (*pb.ChaincodeMessage, error) {
 	chaincodeSupport.runningChaincodes.Lock()
 	//we expect the chaincode to be running... sanity check
@@ -684,6 +709,7 @@ func (chaincodeSupport *ChaincodeSupport) Execute(ctxt context.Context, chaincod
 	}
 
 	//our responsibility to delete transaction context if sendExecuteMessage succeeded
+	// @@ 실행 메세지 송신 성공시에는 트랜잭션을 삭제
 	chrte.handler.deleteTxContext(msg.Txid)
 
 	return ccresp, err
