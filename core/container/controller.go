@@ -287,7 +287,7 @@ func (di DestroyImageReq) getCCID() ccintf.CCID {
 //  KTODO : 체인코드 실행시 VMCProcess()로 VM 이미지를 콘트롤함, chaincode쪽 분석시 추가 연계 분석필요!
 //  KTODO : 필요하면 아래 flow 그림으로 그릴것
 //  Chaincode(peer) deploy/invoke -> VMCProcess(Create/start/stop/destroy vm)	-> newVM(SYSTEM)-inproccontroller -> req.do() -> 채널
-//																	  	-> newVM(DOCKER)-dockercontroller -> req.do()
+//									  	-> newVM(DOCKER)-dockercontroller -> req.do()
 //  @param ctxt context.Context : CCHANDLER를 키값으로 context 할당, peer의 체인코드와의 인터페이스 설정
 //  @param vmtype : 체인코드 deploy시 설정한 값, 현재는 Docker/System 두가지 값을 가짐
 //  @param req : container 패키지의 CreateImageReq,StartImageReq,StopImageReq,DestroyImageReq 중 택1
