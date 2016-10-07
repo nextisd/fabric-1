@@ -30,7 +30,6 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 
 	"github.com/hyperledger/fabric/core/comm"
@@ -143,6 +142,7 @@ func NewPeerClientConnection() (*grpc.ClientConn, error) {
 }
 
 // GetLocalIP returns the non loopback local IP of the host
+// GetLocalIP()는 Host의 loopback 로컬IP가 아닌 IP를 return.
 func GetLocalIP() string {
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {
@@ -160,6 +160,7 @@ func GetLocalIP() string {
 }
 
 // NewPeerClientConnectionWithAddress Returns a new grpc.ClientConn to the configured local PEER.
+// NewPeerClientConnectionWithAddress()는 신규 grpc.ClientConn을 Return.
 func NewPeerClientConnectionWithAddress(peerAddress string) (*grpc.ClientConn, error) {
 	if comm.TLSEnabled() {
 		return comm.NewClientConnectionWithAddress(peerAddress, true, true, comm.InitTLSForPeer())
@@ -210,6 +211,7 @@ type Engine interface {
 }
 
 // NewPeerWithHandler returns a Peer which uses the supplied handler factory function for creating new handlers on new Chat service invocations.
+// NewPeerWithHandler()는 신규 Chat서비스 호출상에서 신규 Handler들을 생성하기 위하여 제곻된 Handler Factory 기능을 사용하는 Peer를 Return.
 func NewPeerWithHandler(secHelperFunc func() crypto.Peer, handlerFact HandlerFactory) (*Impl, error) {
 	peer := new(Impl)
 	peerNodes := peer.initDiscovery()
@@ -240,6 +242,7 @@ func NewPeerWithHandler(secHelperFunc func() crypto.Peer, handlerFact HandlerFac
 }
 
 // NewPeerWithEngine returns a Peer which uses the supplied handler factory function for creating new handlers on new Chat service invocations.
+// NewPeerWithEngine()는 신규 Chat서비스 호출상에서 신규 Handler들을 생성하기 위하여 제곻된 Handler Factory 기능을 사용하는 Peer를 Return.
 func NewPeerWithEngine(secHelperFunc func() crypto.Peer, engFactory EngineFactory) (peer *Impl, err error) {
 	peer = new(Impl)
 	peerNodes := peer.initDiscovery()
@@ -302,6 +305,7 @@ func (p *Impl) ProcessTransaction(ctx context.Context, tx *pb.Transaction) (resp
 }
 
 // GetPeers returns the currently registered PeerEndpoints
+// GetPeers()는 근래에 등록된 PeerEndPoint들을 return
 func (p *Impl) GetPeers() (*pb.PeersMessage, error) {
 	p.handlerMap.RLock()
 	defer p.handlerMap.RUnlock()
@@ -327,6 +331,7 @@ func getPeerAddresses(peersMsg *pb.PeersMessage) []string {
 }
 
 // GetRemoteLedger returns the RemoteLedger interface for the remote Peer Endpoint
+// GetRemoteLedger() 원겨 Peer Endpoint에 대한 RemoteLedger Interface를 return.
 func (p *Impl) GetRemoteLedger(receiverHandle *pb.PeerID) (RemoteLedger, error) {
 	p.handlerMap.RLock()
 	defer p.handlerMap.RUnlock()

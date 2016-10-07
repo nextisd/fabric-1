@@ -23,7 +23,6 @@ import (
 	"path"
 	"strings"
 
-	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 	"github.com/tecbot/gorocksdb"
 )
@@ -57,31 +56,37 @@ type OpenchainDB struct {
 var openchainDB = create()
 
 // Create create an openchainDB instance
+// create() openchainDB instance 생성
 func create() *OpenchainDB {
 	return &OpenchainDB{}
 }
 
 // GetDBHandle gets an opened openchainDB singleton. Note that method Start must always be invoked before this method.
+// GetDBHandle() 하나의 opened openchainDB 취득(주: 메소드의 시작은 항상 이 메소드 전에 호출되어야 한다)
 func GetDBHandle() *OpenchainDB {
 	return openchainDB
 }
 
 // Start the db, init the openchainDB instance and open the db. Note this method has no guarantee correct behavior concurrent invocation.
+// openchainDB Start
 func Start() {
 	openchainDB.open()
 }
 
 // Stop the db. Note this method has no guarantee correct behavior concurrent invocation.
+// openchainDB Stop
 func Stop() {
 	openchainDB.close()
 }
 
 // GetFromBlockchainCF get value for given key from column family - blockchainCF
+// GetFromBlockchainCF() Column Family로부터 주어진 Key에 대한 Value 취득
 func (openchainDB *OpenchainDB) GetFromBlockchainCF(key []byte) ([]byte, error) {
 	return openchainDB.Get(openchainDB.BlockchainCF, key)
 }
 
 // GetFromBlockchainCFSnapshot get value for given key from column family in a DB snapshot - blockchainCF
+// GetFromBlockchainCFSnapshot() DB snapshot에 있는 Column Family로부터 주어진 Key에 대한 Value 취득
 func (openchainDB *OpenchainDB) GetFromBlockchainCFSnapshot(snapshot *gorocksdb.Snapshot, key []byte) ([]byte, error) {
 	return openchainDB.getFromSnapshot(snapshot, openchainDB.BlockchainCF, key)
 }
@@ -141,6 +146,7 @@ func getDBPath() string {
 }
 
 // Open open underlying rocksdb
+// Rocksdb하에서 Open
 func (openchainDB *OpenchainDB) open() {
 	dbPath := getDBPath()
 	missing, err := dirMissingOrEmpty(dbPath)
@@ -196,6 +202,7 @@ func (openchainDB *OpenchainDB) close() {
 // DeleteState delets ALL state keys/values from the DB. This is generally
 // only used during state synchronization when creating a new state from
 // a snapshot.
+// DB에서 모든 상태 Key/Value들을 삭제(이 함수는 Snapshot으로부터 신규 state를 만들때 State 동기화 동안에만 일반적으로 사용된다.(?))
 func (openchainDB *OpenchainDB) DeleteState() error {
 	err := openchainDB.DB.DropColumnFamily(openchainDB.StateCF)
 	if err != nil {
@@ -223,6 +230,7 @@ func (openchainDB *OpenchainDB) DeleteState() error {
 }
 
 // Get returns the valud for the given column family and key
+// Get() 주어진 CF와 KEY에 대한 Value를 Return.
 func (openchainDB *OpenchainDB) Get(cfHandler *gorocksdb.ColumnFamilyHandle, key []byte) ([]byte, error) {
 	opt := gorocksdb.NewDefaultReadOptions()
 	defer opt.Destroy()
@@ -240,6 +248,7 @@ func (openchainDB *OpenchainDB) Get(cfHandler *gorocksdb.ColumnFamilyHandle, key
 }
 
 // Put saves the key/value in the given column family
+// Put() 주어진 CF에서 Key와 Value 취득
 func (openchainDB *OpenchainDB) Put(cfHandler *gorocksdb.ColumnFamilyHandle, key []byte, value []byte) error {
 	opt := gorocksdb.NewDefaultWriteOptions()
 	defer opt.Destroy()
@@ -252,6 +261,7 @@ func (openchainDB *OpenchainDB) Put(cfHandler *gorocksdb.ColumnFamilyHandle, key
 }
 
 // Delete delets the given key in the specified column family
+// Delete() 특정 CD에 있는 KEY 삭제
 func (openchainDB *OpenchainDB) Delete(cfHandler *gorocksdb.ColumnFamilyHandle, key []byte) error {
 	opt := gorocksdb.NewDefaultWriteOptions()
 	defer opt.Destroy()
@@ -278,6 +288,7 @@ func (openchainDB *OpenchainDB) getFromSnapshot(snapshot *gorocksdb.Snapshot, cf
 }
 
 // GetIterator returns an iterator for the given column family
+// GetIterator() 주어진 CF에 대한 신규 Iterator 취득
 func (openchainDB *OpenchainDB) GetIterator(cfHandler *gorocksdb.ColumnFamilyHandle) *gorocksdb.Iterator {
 	opt := gorocksdb.NewDefaultReadOptions()
 	opt.SetFillCache(true)
