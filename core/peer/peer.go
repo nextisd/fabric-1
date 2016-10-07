@@ -136,7 +136,7 @@ type SecurityAccessor interface {
 var peerLogger = logging.MustGetLogger("peer")
 
 // NewPeerClientConnection Returns a new grpc.ClientConn to the configured local PEER.
-//@ NewPeerClientConnection 는 local peer 와의 grpc 연결을 맺고, grpc.ClientConn 를 리턴한다.
+// NewPeerClientConnection 는 local peer 와의 grpc 연결을 맺고, grpc.ClientConn 를 리턴한다.
 func NewPeerClientConnection() (*grpc.ClientConn, error) {
 	return NewPeerClientConnectionWithAddress(viper.GetString("peer.address"))
 }
@@ -343,6 +343,7 @@ func (p *Impl) GetRemoteLedger(receiverHandle *pb.PeerID) (RemoteLedger, error) 
 }
 
 // PeersDiscovered used by MessageHandlers for notifying this coordinator of discovered PeerEndoints. May include this Peer's PeerEndpoint.
+// ??
 func (p *Impl) PeersDiscovered(peersMessage *pb.PeersMessage) error {
 	thisPeersEndpoint, err := GetPeerEndpoint()
 	if err != nil {
@@ -375,6 +376,7 @@ func getHandlerKeyFromPeerEndpoint(peerEndpoint *pb.PeerEndpoint) *pb.PeerID {
 }
 
 // RegisterHandler register a MessageHandler with this coordinator
+// RegisterHandler() 입력된 MessageHandler를 Handler Map에 등록
 func (p *Impl) RegisterHandler(messageHandler MessageHandler) error {
 	key, err := getHandlerKey(messageHandler)
 	if err != nil {
@@ -392,6 +394,7 @@ func (p *Impl) RegisterHandler(messageHandler MessageHandler) error {
 }
 
 // DeregisterHandler deregisters an already registered MessageHandler for this coordinator
+// DeregisterHandler() 입력된 MessageHandler를 Handler Map에서 삭제
 func (p *Impl) DeregisterHandler(messageHandler MessageHandler) error {
 	key, err := getHandlerKey(messageHandler)
 	if err != nil {
@@ -409,6 +412,7 @@ func (p *Impl) DeregisterHandler(messageHandler MessageHandler) error {
 }
 
 // Clone the handler map to avoid locking across SendMessage
+// cloneHandlerMap() Message Handler복제
 func (p *Impl) cloneHandlerMap(typ pb.PeerEndpoint_Type) map[pb.PeerID]MessageHandler {
 	p.handlerMap.RLock()
 	defer p.handlerMap.RUnlock()
@@ -429,6 +433,7 @@ func (p *Impl) cloneHandlerMap(typ pb.PeerEndpoint_Type) map[pb.PeerID]MessageHa
 
 // Broadcast broadcast a message to each of the currently registered PeerEndpoints of given type
 // Broadcast will broadcast to all registered PeerEndpoints if the type is PeerEndpoint_UNDEFINED
+// Broadcast() 등록된 형식이 PeerEndpoint_UNDEFINED인 모든 PeerEndPoint에 broadcasting
 func (p *Impl) Broadcast(msg *pb.Message, typ pb.PeerEndpoint_Type) []error {
 	cloneMap := p.cloneHandlerMap(typ)
 	errorsFromHandlers := make(chan error, len(cloneMap))
