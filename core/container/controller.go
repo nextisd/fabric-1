@@ -29,7 +29,8 @@ import (
 )
 
 //abstract virtual image for supporting arbitrary virual machines
-//임의의 가상 머신을 지원하기 위한 가상 이미지 abstraction
+//
+// vm interface : 임의의 가상 머신을 지원하기 위한 가상 이미지 인터페이스
 type vm interface {
 	Deploy(ctxt context.Context, ccid ccintf.CCID, args []string, env []string, attachstdin bool, attachstdout bool, reader io.Reader) error
 	Start(ctxt context.Context, ccid ccintf.CCID, args []string, env []string, attachstdin bool, attachstdout bool, reader io.Reader) error
@@ -48,7 +49,7 @@ type refCountedLock struct {
 //   . manage lifecycle of VM (start with build, start, stop ...
 //     eventually probably need fine grained management)
 //
-//VMController - VM들을 관리
+// VMController 구조체 : VM들을 관리
 //   . VM 유형 생성(현재는 Docker만)
 //   . VM lifecycle 관리( build, start, stop 등으로 시작해서 세밀한 관리가 필요함)
 //   .
@@ -96,7 +97,7 @@ func (vmc *VMController) newVM(typ string) vm {
 	return v
 }
 
-//컨테이너를 sync.RWMutex lock 처리
+// 컨테이너를 sync.RWMutex lock 처리
 func (vmc *VMController) lockContainer(id string) {
 	//get the container lock under global lock
 	//global lock 상태에서 컨테이너 lock을 획득
@@ -116,7 +117,7 @@ func (vmc *VMController) lockContainer(id string) {
 	vmLogger.Debugf("got container (%s) lock", id)
 }
 
-//컨테이너의 sync.RWMutex lock 해제(unlock)
+// 컨테이너의 sync.RWMutex lock 해제(unlock)
 func (vmc *VMController) unlockContainer(id string) {
 	vmcontroller.Lock()
 	if refLck, ok := vmcontroller.containerLocks[id]; ok {
@@ -139,7 +140,7 @@ func (vmc *VMController) unlockContainer(id string) {
 //note that we'd stop on the first method on the stack that does not
 //take context
 //
-//VMCReqIntf 인터페이스 - 모든 request 들은 이 인터페이스를 구현해야함
+//VMCReqIntf interface : 모든 request 들은 이 인터페이스를 구현해야함
 //context는 각각의 레이어 구간마다 테스트가 필요함
 type VMCReqIntf interface {
 	do(ctxt context.Context, v vm) VMCResp
@@ -149,7 +150,7 @@ type VMCReqIntf interface {
 //VMCResp - response from requests. resp field is a anon interface.
 //It can hold any response. err should be tested first
 //
-//VMCResp - 요청에 대한 응답 구조체. Resp는 anon interface(anonymous)
+//VMCResp 구조체 : 요청에 대한 응답 구조체. Resp는 anon interface(anonymous)
 //따라서 모든 응답을 처리할 수 있음. Err는 가장 먼저 테스트 되어야함.
 type VMCResp struct {
 	Err  error
@@ -158,7 +159,7 @@ type VMCResp struct {
 
 //CreateImageReq - properties for creating an container image
 //
-//CreateImageReq - 컨테이너 이미지 생성을 위한 속성값 구조체
+//CreateImageReq 구조체 : 컨테이너 이미지 생성을 위한 속성값 구조체
 type CreateImageReq struct {
 	ccintf.CCID
 	Reader       io.Reader
@@ -185,7 +186,7 @@ func (bp CreateImageReq) getCCID() ccintf.CCID {
 }
 
 //StartImageReq - properties for starting a container.
-//StartImageReq - 컨테이너 구동을 위한 속성값 구조체
+//StartImageReq 구조체 - 컨테이너 구동을 위한 속성값 구조체
 type StartImageReq struct {
 	ccintf.CCID
 	Reader       io.Reader
@@ -212,14 +213,16 @@ func (si StartImageReq) getCCID() ccintf.CCID {
 }
 
 //StopImageReq - properties for stopping a container.
-//StopImageReq - 컨테이너 구동 정지를 위한 속성값 구조체
+//StopImageReq 구조체 컨테이너 구동 정지를 위한 속성값 구조체
 type StopImageReq struct {
 	ccintf.CCID
 	Timeout uint
 	//by default we will kill the container after stopping
+	//
 	//default : 컨테이너 stop후 kill 처리
 	Dontkill bool
 	//by default we will remove the container after killing
+	//
 	//default : 컨테이너 kill후 remove 처리
 	Dontremove bool
 }
