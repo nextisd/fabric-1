@@ -67,6 +67,7 @@ func (x ColumnDefinition_Type) String() string {
 }
 func (ColumnDefinition_Type) EnumDescriptor() ([]byte, []int) { return fileDescriptor0, []int{0, 0} }
 
+// @@ ColumnDefinition 구조체
 type ColumnDefinition struct {
 	Name string                `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
 	Type ColumnDefinition_Type `protobuf:"varint,2,opt,name=type,enum=shim.ColumnDefinition_Type" json:"type,omitempty"`
@@ -78,6 +79,7 @@ func (m *ColumnDefinition) String() string            { return proto.CompactText
 func (*ColumnDefinition) ProtoMessage()               {}
 func (*ColumnDefinition) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
 
+// @@ Table 구조체
 type Table struct {
 	Name              string              `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
 	ColumnDefinitions []*ColumnDefinition `protobuf:"bytes,2,rep,name=columnDefinitions" json:"columnDefinitions,omitempty"`
@@ -95,6 +97,7 @@ func (m *Table) GetColumnDefinitions() []*ColumnDefinition {
 	return nil
 }
 
+// @@ column 구조체
 type Column struct {
 	// Types that are valid to be assigned to Value:
 	//	*Column_String_

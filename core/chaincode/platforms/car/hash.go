@@ -32,6 +32,9 @@ import (
 //by the user is equivalent to the path. This method will treat the name
 //as codebytes and compute the hash from it. ie, user cannot run the chaincode
 //with the same (name, ctor, args)
+// 경로상의 체인코드의 해쉬코드를 구함.
+// 만약 경로가 url이라면, 코드를 다운로드 후, 해쉬를 계산한다.
+// 개발모드라면, 체인코드의 빌드와 실행을 manual로 진행하라.
 func generateHashcode(spec *pb.ChaincodeSpec, path string) (string, error) {
 
 	ctor := spec.CtorMsg

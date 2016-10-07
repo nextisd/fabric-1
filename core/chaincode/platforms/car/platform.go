@@ -21,12 +21,14 @@ import (
 )
 
 // Platform for the CAR type
+// CAR라는 타입의 플랫폼을 정의하는 구조체
 type Platform struct {
 }
 
 // ValidateSpec validates the chaincode specification for CAR types to satisfy
 // the platform interface.  This chaincode type currently doesn't
 // require anything specific so we just implicitly approve any spec
+// 플랫폼 인터페이스 규약에 따라 CAR라는 타입의 체인코드 스펙을 검증.
 func (carPlatform *Platform) ValidateSpec(spec *pb.ChaincodeSpec) error {
 	return nil
 }

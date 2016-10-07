@@ -24,21 +24,27 @@ import (
 
 // Chaincode interface must be implemented by all chaincodes. The fabric runs
 // the transactions by calling these functions as specified.
+// @@ Chaincode : 모든 체인코드가 실제 body를 구현해야만 하는 체인코드 인터페이스. 패브릭은 이 펑션들을 호출함으로서 트랜잭션을 실행.
 type Chaincode interface {
 	// Init is called during Deploy transaction after the container has been
 	// established, allowing the chaincode to initialize its internal data
+	// @@ REST API 상에서는 Deploy method에 대응. 체인코드 컨테이너가 생성된 후, Deploy 트랜잭션으로부터 호출된다.
+	// @@ 체인코드의 내부 데이터 초기 구성에 필요.
 	Init(stub ChaincodeStubInterface, function string, args []string) ([]byte, error)
 
 	// Invoke is called for every Invoke transactions. The chaincode may change
 	// its state variables
+	// @@ Invoke는 Invoke 트랜잭션 때마다 호출된다. 체인코드는 상태 변수를 변경한다.
 	Invoke(stub ChaincodeStubInterface, function string, args []string) ([]byte, error)
 
 	// Query is called for Query transactions. The chaincode may only read
 	// (but not modify) its state variables and return the result
+	// @@ Query는 query 트랜잭션 때마다 호출된다. 체인코드는 오로지 read only로 상태 변수에 접근.
 	Query(stub ChaincodeStubInterface, function string, args []string) ([]byte, error)
 }
 
 // ChaincodeStubInterface is used by deployable chaincode apps to access and modify their ledgers
+// @@ ChaincodeStubInterface : 배포 가능한 체인코드가 렛저에 접근하거나 렛저의 내용을 수정하기 위해서 사용된다.
 type ChaincodeStubInterface interface {
 	// Get the arguments to the stub call as a 2D byte array
 	GetArgs() [][]byte
@@ -157,6 +163,7 @@ type ChaincodeStubInterface interface {
 	GetTxTimestamp() (*timestamp.Timestamp, error)
 
 	// SetEvent saves the event to be sent when a transaction is made part of a block
+	// @@ 트랜잭션이 블록에 산입될 때, 발생해야할 이벤트를 정의할 수 있음
 	SetEvent(name string, payload []byte) error
 }
 

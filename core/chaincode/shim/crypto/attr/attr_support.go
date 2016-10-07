@@ -26,12 +26,14 @@ import (
 )
 
 //Attribute defines a name, value pair to be verified.
+// @@ 어트리뷰트는 이름과 값의 쌍으로 정의된다.
 type Attribute struct {
 	Name  string
 	Value []byte
 }
 
 // chaincodeHolder is the struct that hold the certificate and the metadata. An implementation is ChaincodeStub
+// @@ chaincodeHolder : cert와 metadata를 담는 구조체. 이 인터페이스의 구현은 ChaincodeStub.
 type chaincodeHolder interface {
 	// GetCallerCertificate returns caller certificate
 	GetCallerCertificate() ([]byte, error)
@@ -56,25 +58,30 @@ type chaincodeHolder interface {
 //		}
 //		AttributesHandler.VerifyAttribute(attributeName, attributeValue)
 //		... you can make other verifications and/or read attribute values by using the AttributesHandler
+// @@ AttributesHandler : attribute를 검증하고 읽어옴. 복수의 접근이 필요하다면, 펑션을 여러번 호출하는 것 보다는 이 핸들러는 여러 개 선언하고 사용하는 것이 낫다.
 type AttributesHandler interface {
 
 	//VerifyAttributes does the same as VerifyAttribute but it checks for a list of attributes and their respective values instead of a single attribute/value pair
 	// Example:
 	//    containsAttrs, error:= handler.VerifyAttributes(&ac.Attribute{"position",  "Software Engineer"}, &ac.Attribute{"company", "ACompany"})
+	// @@ 복수개의 attribute를 검증
 	VerifyAttributes(attrs ...*Attribute) (bool, error)
 
 	//VerifyAttribute is used to verify if the transaction certificate has an attribute with name *attributeName* and value *attributeValue* which are the input parameters received by this function.
 	//Example:
 	//    containsAttr, error := handler.VerifyAttribute("position", "Software Engineer")
+	// @@ 단수개의 attribute를 검증
 	VerifyAttribute(attributeName string, attributeValue []byte) (bool, error)
 
 	//GetValue is used to read an specific attribute from the transaction certificate, *attributeName* is passed as input parameter to this function.
 	// Example:
 	//  attrValue,error:=handler.GetValue("position")
+	// @@ 특정 attribute의 value를 가져옴
 	GetValue(attributeName string) ([]byte, error)
 }
 
 //AttributesHandlerImpl is an implementation of AttributesHandler interface.
+// @@ AttributesHandlerImpl : AttributesHandler I/F의 구현
 type AttributesHandlerImpl struct {
 	cert      *x509.Certificate
 	cache     map[string][]byte
@@ -88,11 +95,13 @@ type chaincodeHolderImpl struct {
 }
 
 // GetCallerCertificate returns caller certificate
+// @@ GetCallerCertificate : caller의 cert를 리턴.
 func (holderImpl *chaincodeHolderImpl) GetCallerCertificate() ([]byte, error) {
 	return holderImpl.Certificate, nil
 }
 
 //GetValueFrom returns the value of 'attributeName0' from a cert.
+// @@ GetValueFrom : 입력인자로 받은 attribute name에 대응하는 value값을 get
 func GetValueFrom(attributeName string, cert []byte) ([]byte, error) {
 	handler, err := NewAttributesHandlerImpl(&chaincodeHolderImpl{Certificate: cert})
 	if err != nil {
@@ -102,6 +111,7 @@ func GetValueFrom(attributeName string, cert []byte) ([]byte, error) {
 }
 
 //NewAttributesHandlerImpl creates a new AttributesHandlerImpl from a pb.ChaincodeSecurityContext object.
+// @@ NewAttributesHandlerImpl : ChaincodeSecurityContext 객체로부터 새로운 AttributesHandlerImpl을 생성
 func NewAttributesHandlerImpl(holder chaincodeHolder) (*AttributesHandlerImpl, error) {
 	// Getting certificate
 	certRaw, err := holder.GetCallerCertificate()
@@ -159,6 +169,7 @@ func (attributesHandler *AttributesHandlerImpl) readHeader() (map[string]int, bo
 //GetValue is used to read an specific attribute from the transaction certificate, *attributeName* is passed as input parameter to this function.
 //	Example:
 //  	attrValue,error:=handler.GetValue("position")
+// @@ GetValue : 트랜잭션 cert에서 특정 attribute를 읽어온다.
 func (attributesHandler *AttributesHandlerImpl) GetValue(attributeName string) ([]byte, error) {
 	if attributesHandler.cache[attributeName] != nil {
 		return attributesHandler.cache[attributeName], nil
@@ -189,6 +200,7 @@ func (attributesHandler *AttributesHandlerImpl) GetValue(attributeName string) (
 //VerifyAttribute is used to verify if the transaction certificate has an attribute with name *attributeName* and value *attributeValue* which are the input parameters received by this function.
 //	Example:
 //  	containsAttr, error := handler.VerifyAttribute("position", "Software Engineer")
+// @@ tx cert에서 단수개의 attribute를 검증
 func (attributesHandler *AttributesHandlerImpl) VerifyAttribute(attributeName string, attributeValue []byte) (bool, error) {
 	valueHash, err := attributesHandler.GetValue(attributeName)
 	if err != nil {
@@ -200,6 +212,7 @@ func (attributesHandler *AttributesHandlerImpl) VerifyAttribute(attributeName st
 //VerifyAttributes does the same as VerifyAttribute but it checks for a list of attributes and their respective values instead of a single attribute/value pair
 //	Example:
 //  	containsAttrs, error:= handler.VerifyAttributes(&ac.Attribute{"position",  "Software Engineer"}, &ac.Attribute{"company", "ACompany"})
+// @@ tx cert에서 복수개의 attribute를 검증
 func (attributesHandler *AttributesHandlerImpl) VerifyAttributes(attrs ...*Attribute) (bool, error) {
 	for _, attribute := range attrs {
 		val, err := attributesHandler.VerifyAttribute(attribute.Name, attribute.Value)

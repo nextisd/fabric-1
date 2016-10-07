@@ -27,10 +27,12 @@ import (
 )
 
 // Platform for chaincodes written in Go
+// go언어로 작성된 체인코드의 플랫폼
 type Platform struct {
 }
 
 // Returns whether the given file or directory exists or not
+// 입력된 경로가 존재하는지, 해당 경로에 파일이 존재하는지 여부를 체크
 func pathExists(path string) (bool, error) {
 	_, err := os.Stat(path)
 	if err == nil {
@@ -43,6 +45,7 @@ func pathExists(path string) (bool, error) {
 }
 
 // ValidateSpec validates Go chaincodes
+// @@ Go 체인코드 스펙을 검증
 func (goPlatform *Platform) ValidateSpec(spec *pb.ChaincodeSpec) error {
 	url, err := url.Parse(spec.ChaincodeID.Path)
 	if err != nil || url == nil {
@@ -69,6 +72,7 @@ func (goPlatform *Platform) ValidateSpec(spec *pb.ChaincodeSpec) error {
 }
 
 // WritePackage writes the Go chaincode package
+// go 언어 체인코드 패키지를 write
 func (goPlatform *Platform) WritePackage(spec *pb.ChaincodeSpec, tw *tar.Writer) error {
 
 	var err error

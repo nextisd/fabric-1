@@ -27,6 +27,7 @@ import (
 )
 
 // PeerChaincodeStream interface for stream between Peer and chaincode instance.
+// @@ PeerChaincodeStream : 피어와 체인코드 인스턴스간의 stream I/F
 type PeerChaincodeStream interface {
 	Send(*pb.ChaincodeMessage) error
 	Recv() (*pb.ChaincodeMessage, error)
@@ -43,9 +44,11 @@ func (handler *Handler) triggerNextState(msg *pb.ChaincodeMessage, send bool) {
 }
 
 // Handler handler implementation for shim side of chaincode.
+// @@ Handler : shim의 체인코드 핸들러.
 type Handler struct {
 	sync.RWMutex
 	//shim to peer grpc serializer. User only in serialSend
+	// @@ peer쪽에서 rpc 요청에 대한 직렬화
 	serialLock sync.Mutex
 	To         string
 	ChatStream PeerChaincodeStream
@@ -53,6 +56,7 @@ type Handler struct {
 	cc         Chaincode
 	// Multiple queries (and one transaction) with different txids can be executing in parallel for this chaincode
 	// responseChannel is the channel on which responses are communicated by the shim to the chaincodeStub.
+	// 체인코드의 서로 다른 txid에 대한 복수의 쿼리는 병렬로 진행 가능. responseChannel은 shim이 chaincodStub와 통신하며 응답하는 채널.
 	responseChannel map[string]chan pb.ChaincodeMessage
 	// Track which TXIDs are transactions and which are queries, to decide whether get/put state and invoke chaincode are allowed.
 	isTransaction map[string]bool
@@ -76,6 +80,7 @@ func (handler *Handler) serialSend(msg *pb.ChaincodeMessage) error {
 	return nil
 }
 
+// @@ 채널 생성
 func (handler *Handler) createChannel(txid string) (chan pb.ChaincodeMessage, error) {
 	handler.Lock()
 	defer handler.Unlock()
@@ -90,6 +95,7 @@ func (handler *Handler) createChannel(txid string) (chan pb.ChaincodeMessage, er
 	return c, nil
 }
 
+// @@ 송신
 func (handler *Handler) sendChannel(msg *pb.ChaincodeMessage) error {
 	handler.Lock()
 	defer handler.Unlock()
@@ -107,11 +113,13 @@ func (handler *Handler) sendChannel(msg *pb.ChaincodeMessage) error {
 	return nil
 }
 
+// @@ 수신
 func (handler *Handler) receiveChannel(c chan pb.ChaincodeMessage) (pb.ChaincodeMessage, bool) {
 	msg, val := <-c
 	return msg, val
 }
 
+// @@ 채널 삭제
 func (handler *Handler) deleteChannel(txid string) {
 	handler.Lock()
 	defer handler.Unlock()
@@ -121,6 +129,7 @@ func (handler *Handler) deleteChannel(txid string) {
 }
 
 // markIsTransaction marks a TXID as a transaction or a query; true = transaction, false = query
+// @@ markIsTransaction : TXID가 트랜잭션인지 query인지를 구분하여 마킹. true이면 트랜잭션, false이면 query
 func (handler *Handler) markIsTransaction(txid string, isTrans bool) bool {
 	if handler.isTransaction == nil {
 		return false
@@ -131,6 +140,7 @@ func (handler *Handler) markIsTransaction(txid string, isTrans bool) bool {
 	return true
 }
 
+// @@ TXID가 트랜잭션일 경우, 트랜잭션 삭제
 func (handler *Handler) deleteIsTransaction(txid string) {
 	handler.Lock()
 	if handler.isTransaction != nil {
@@ -140,6 +150,7 @@ func (handler *Handler) deleteIsTransaction(txid string) {
 }
 
 // NewChaincodeHandler returns a new instance of the shim side handler.
+// @@ NewChaincodeHandler : 새로운 핸들러 인스턴스를 리턴.
 func newChaincodeHandler(peerChatStream PeerChaincodeStream, chaincode Chaincode) *Handler {
 	v := &Handler{
 		ChatStream: peerChatStream,
@@ -150,6 +161,7 @@ func newChaincodeHandler(peerChatStream PeerChaincodeStream, chaincode Chaincode
 	v.nextState = make(chan *nextStateInfo)
 
 	// Create the shim side FSM
+	// @@ shim FSM 생성(finite state machine)
 	v.FSM = fsm.NewFSM(
 		"created",
 		fsm.Events{
@@ -183,6 +195,7 @@ func newChaincodeHandler(peerChatStream PeerChaincodeStream, chaincode Chaincode
 }
 
 // beforeRegistered is called to handle the REGISTERED message.
+// @@ beforeRegistered : REGISTERED message를 다루기 위해 호출됨.
 func (handler *Handler) beforeRegistered(e *fsm.Event) {
 	if _, ok := e.Args[0].(*pb.ChaincodeMessage); !ok {
 		e.Cancel(fmt.Errorf("Received unexpected message type"))
@@ -192,6 +205,7 @@ func (handler *Handler) beforeRegistered(e *fsm.Event) {
 }
 
 // handleInit handles request to initialize chaincode.
+// handleInit : 체인코드 초기 설정 요청을 다룸.
 func (handler *Handler) handleInit(msg *pb.ChaincodeMessage) {
 	// The defer followed by triggering a go routine dance is needed to ensure that the previous state transition
 	// is completed before the next one is triggered. The previous state transition is deemed complete only when
@@ -206,6 +220,7 @@ func (handler *Handler) handleInit(msg *pb.ChaincodeMessage) {
 		}()
 
 		// Get the function and args from Payload
+		// @@ 메세지의 payload를 구하기
 		input := &pb.ChaincodeInput{}
 		unmarshalErr := proto.Unmarshal(msg.Payload, input)
 		if unmarshalErr != nil {
@@ -217,10 +232,12 @@ func (handler *Handler) handleInit(msg *pb.ChaincodeMessage) {
 		}
 
 		// Mark as a transaction (allow put/del state)
+		// @@ 트랜잭션으로 마킹 -> 상태의 put, delete 허용
 		handler.markIsTransaction(msg.Txid, true)
 
 		// Call chaincode's Run
 		// Create the ChaincodeStub which the chaincode can use to callback
+		// @@ ChaincodeStub 객체를 새로 생성. -> 체인코드가 응답하기 위해 사용됨.
 		stub := new(ChaincodeStub)
 		stub.init(msg.Txid, msg.SecurityContext)
 		function, params := getFunctionAndParams(stub)
@@ -238,6 +255,7 @@ func (handler *Handler) handleInit(msg *pb.ChaincodeMessage) {
 		}
 
 		// Send COMPLETED message to chaincode support and change state
+		// @@ COMPLETED 메세지를 chaincode support에 전달하고, 상태를 변화시킴.
 		nextStateMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_COMPLETED, Payload: res, Txid: msg.Txid, ChaincodeEvent: stub.chaincodeEvent}
 		chaincodeLogger.Debugf("[%s]Init succeeded. Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_COMPLETED)
 	}()
@@ -254,11 +272,13 @@ func (handler *Handler) enterInitState(e *fsm.Event) {
 	chaincodeLogger.Debugf("[%s]Received %s, initializing chaincode", shorttxid(msg.Txid), msg.Type.String())
 	if msg.Type.String() == pb.ChaincodeMessage_INIT.String() {
 		// Call the chaincode's Run function to initialize
+		// @@ 체인코드의 실행 펑션을 호출
 		handler.handleInit(msg)
 	}
 }
 
 // handleTransaction Handles request to execute a transaction.
+// @@ handleTransaction : 트랜잭션을 실행하는 요청을 다룸.
 func (handler *Handler) handleTransaction(msg *pb.ChaincodeMessage) {
 	// The defer followed by triggering a go routine dance is needed to ensure that the previous state transition
 	// is completed before the next one is triggered. The previous state transition is deemed complete only when
@@ -312,8 +332,10 @@ func (handler *Handler) handleTransaction(msg *pb.ChaincodeMessage) {
 }
 
 // handleQuery handles request to execute a query.
+// @@ handleQuery : 쿼리를 실행하는 요청을 다룸
 func (handler *Handler) handleQuery(msg *pb.ChaincodeMessage) {
 	// Query does not transition state. It can happen anytime after Ready
+	// @@ 쿼리는 상태 변화를 일으키지 않음.
 	go func() {
 		var serialSendMsg *pb.ChaincodeMessage
 
@@ -333,10 +355,12 @@ func (handler *Handler) handleQuery(msg *pb.ChaincodeMessage) {
 		}
 
 		// Mark as a query (do not allow put/del state)
+		// @@ 쿼리로 마킹. 상태의 put과 delete를 허용하지 않음
 		handler.markIsTransaction(msg.Txid, false)
 
 		// Call chaincode's Query
 		// Create the ChaincodeStub which the chaincode can use to callback
+		// @@ 체인코드의 쿼리를 호출.
 		stub := new(ChaincodeStub)
 		stub.init(msg.Txid, msg.SecurityContext)
 		function, params := getFunctionAndParams(stub)
@@ -360,6 +384,7 @@ func (handler *Handler) handleQuery(msg *pb.ChaincodeMessage) {
 }
 
 // enterTransactionState will execute chaincode's Run if coming from a TRANSACTION event.
+// @@ enterTransactionState : 트랜잭션 이벤트로 인한 체인코드의 run을 실행
 func (handler *Handler) enterTransactionState(e *fsm.Event) {
 	msg, ok := e.Args[0].(*pb.ChaincodeMessage)
 	if !ok {
@@ -369,6 +394,7 @@ func (handler *Handler) enterTransactionState(e *fsm.Event) {
 	chaincodeLogger.Debugf("[%s]Received %s, invoking transaction on chaincode(Src:%s, Dst:%s)", shorttxid(msg.Txid), msg.Type.String(), e.Src, e.Dst)
 	if msg.Type.String() == pb.ChaincodeMessage_TRANSACTION.String() {
 		// Call the chaincode's Run function to invoke transaction
+		// 트랜잭션을 실행하기 위해 체인코드의 run 펑션을 호출.
 		handler.handleTransaction(msg)
 	}
 }
@@ -377,6 +403,7 @@ func (handler *Handler) enterTransactionState(e *fsm.Event) {
 //func (handler *Handler) enterReadyState(e *fsm.Event) {
 
 // afterCompleted will need to handle COMPLETED event by sending message to the peer
+// @@ afterCompleted : COMPLETED event를 peer에게 전달
 func (handler *Handler) afterCompleted(e *fsm.Event) {
 	msg, ok := e.Args[0].(*pb.ChaincodeMessage)
 	if !ok {
@@ -390,6 +417,7 @@ func (handler *Handler) afterCompleted(e *fsm.Event) {
 }
 
 // beforeQuery is invoked when a query message is received from the validator
+// @@ beforeQuery : validator로부터 쿼리 메세지를 수신했을 때 실행됨.
 func (handler *Handler) beforeQuery(e *fsm.Event) {
 	if e.Args != nil {
 		msg, ok := e.Args[0].(*pb.ChaincodeMessage)
@@ -402,6 +430,7 @@ func (handler *Handler) beforeQuery(e *fsm.Event) {
 }
 
 // afterResponse is called to deliver a response or error to the chaincode stub.
+// @@ afterResponse : chaincode stub에 응답이나 에러를 전달하기 위해 호출됨.
 func (handler *Handler) afterResponse(e *fsm.Event) {
 	msg, ok := e.Args[0].(*pb.ChaincodeMessage)
 	if !ok {
@@ -416,6 +445,7 @@ func (handler *Handler) afterResponse(e *fsm.Event) {
 	}
 }
 
+// @@ validator로부터 에러를 수신했을 경우
 func (handler *Handler) afterError(e *fsm.Event) {
 	msg, ok := e.Args[0].(*pb.ChaincodeMessage)
 	if !ok {
@@ -428,6 +458,8 @@ func (handler *Handler) afterError(e *fsm.Event) {
 	 * 1. When an error is encountered within handleInit or handleTransaction - some issue at the chaincode side; In this case there will be no responseChannel and the message has been sent to the validator.
 	 * 2. The chaincode has initiated a request (get/put/del state) to the validator and is expecting a response on the responseChannel; If ERROR is received from validator, this needs to be notified on the responseChannel.
 	 */
+	// @@ 에러 트리거 : 1.handleInit 또는 handleTransaction시 에러 발생
+	// @@ 체인코드가 validator에게 상태 변경에 대한 요청을 던졌을 때,  responseChannel로 응답을 기대. 만약 validator로부터 에러를 수신하게 되면, 이 에러는 responseChannel을 통해 알려져야 함.
 	if err := handler.sendChannel(msg); err == nil {
 		chaincodeLogger.Debugf("[%s]Error received from validator %s, communicated(state:%s)", shorttxid(msg.Txid), msg.Type, handler.FSM.Current())
 	}
@@ -435,6 +467,7 @@ func (handler *Handler) afterError(e *fsm.Event) {
 
 // TODO: Implement method to get and put entire state map and not one key at a time?
 // handleGetState communicates with the validator to fetch the requested state information from the ledger.
+// @@ handleGetState : validator와 소통하며 요청된 상태 정보를 렛저로부터 get
 func (handler *Handler) handleGetState(key string, txid string) ([]byte, error) {
 	// Create the channel on which to communicate the response from validating peer
 	respChan, uniqueReqErr := handler.createChannel(txid)
@@ -446,6 +479,7 @@ func (handler *Handler) handleGetState(key string, txid string) ([]byte, error) 
 	defer handler.deleteChannel(txid)
 
 	// Send GET_STATE message to validator chaincode support
+	// GET_STATE 메세지를 validator의 chaincode support로 전달
 	payload := []byte(key)
 	msg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_GET_STATE, Payload: payload, Txid: txid}
 	chaincodeLogger.Debugf("[%s]Sending %s", shorttxid(msg.Txid), pb.ChaincodeMessage_GET_STATE)
@@ -743,6 +777,7 @@ func (handler *Handler) handleRangeQueryStateClose(id, txid string) (*pb.RangeQu
 }
 
 // handleInvokeChaincode communicates with the validator to invoke another chaincode.
+// @@ handleInvokeChaincode : 또 다른 체인코드를 실행하기 위해 validator와 통신
 func (handler *Handler) handleInvokeChaincode(chaincodeName string, args [][]byte, txid string) ([]byte, error) {
 	// Check if this is a transaction
 	if !handler.isTransaction[txid] {
@@ -809,6 +844,7 @@ func (handler *Handler) handleInvokeChaincode(chaincodeName string, args [][]byt
 }
 
 // handleQueryChaincode communicates with the validator to query another chaincode.
+// @@ handleQueryChaincode : validator가 또 다른 체인코드에 query를 수행할 수 있도록 통신
 func (handler *Handler) handleQueryChaincode(chaincodeName string, args [][]byte, txid string) ([]byte, error) {
 	chaincodeID := &pb.ChaincodeID{Name: chaincodeName}
 	input := &pb.ChaincodeInput{Args: args}
@@ -868,6 +904,7 @@ func (handler *Handler) handleQueryChaincode(chaincodeName string, args [][]byte
 }
 
 // handleMessage message handles loop for shim side of chaincode/validator stream.
+// @@ handleMessage : chaincode와 validator간의 스트림 유지
 func (handler *Handler) handleMessage(msg *pb.ChaincodeMessage) error {
 	if msg.Type == pb.ChaincodeMessage_KEEPALIVE {
 		// Received a keep alive message, we don't do anything with it for now
@@ -888,6 +925,7 @@ func (handler *Handler) handleMessage(msg *pb.ChaincodeMessage) error {
 }
 
 // filterError filters the errors to allow NoTransitionError and CanceledError to not propagate for cases where embedded Err == nil.
+// @@ filterError : NoTransitionError와 CanceledError가 전파 되지 않도록 필터링
 func filterError(errFromFSMEvent error) error {
 	if errFromFSMEvent != nil {
 		if noTransitionErr, ok := errFromFSMEvent.(*fsm.NoTransitionError); ok {

@@ -28,10 +28,12 @@ type x509ECDSASignatureVerifierImpl struct {
 }
 
 // ECDSASignature represents an ECDSA signature
+// @@ ECDSASignature : ECDSA 서명
 type ECDSASignature struct {
 	R, S *big.Int
 }
 
+// @@ ECDSA 서명 소유자가 해당 서명과의 pair가 맞는지 검증
 func (sv *x509ECDSASignatureVerifierImpl) Verify(certificate, signature, message []byte) (bool, error) {
 	// Interpret vk as an x509 certificate
 	cert, err := derToX509Certificate(certificate)
@@ -47,6 +49,7 @@ func (sv *x509ECDSASignatureVerifierImpl) Verify(certificate, signature, message
 	return sv.verifyImpl(vk, signature, message)
 }
 
+// @@ ECDSA 서명 자체에 대한 검증
 func (sv *x509ECDSASignatureVerifierImpl) verifyImpl(vk *ecdsa.PublicKey, signature, message []byte) (bool, error) {
 	ecdsaSignature := new(ECDSASignature)
 	_, err := asn1.Unmarshal(signature, ecdsaSignature)

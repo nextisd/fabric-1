@@ -16,6 +16,7 @@ limitations under the License.
 
 // Package shim provides APIs for the chaincode to access its state
 // variables, transaction context and call other chaincodes.
+// @@ shim : 체인코드가 해당 코드의 상태 변수나 트랜잭션, 그리고 다른 체인코드에 접근 가능하도록 API를 제공하는 패키지
 package shim
 
 import (
@@ -41,13 +42,16 @@ import (
 )
 
 // Logger for the shim package.
+// @@ shim 패키지에 대한 로깅 객체
 var chaincodeLogger = logging.MustGetLogger("shim")
 
 // Handler to shim that handles all control logic.
+// @@ shim 핸들러 객체
 var handler *Handler
 
 // ChaincodeStub is an object passed to chaincode for shim side handling of
 // APIs.
+// @@ ChaincodeStub : API 핸들링을 위해 chaincode에 전달되는 객체
 type ChaincodeStub struct {
 	TxID            string
 	securityContext *pb.ChaincodeSecurityContext
@@ -56,13 +60,16 @@ type ChaincodeStub struct {
 }
 
 // Peer address derived from command line or env var
+// @@ 코맨드 라인이나 환경 변수에서 파생된 Peer address
 var peerAddress string
 
 // Start is the entry point for chaincodes bootstrap. It is not an API for
 // chaincodes.
+// @@ chaincode 부트스트랩 시작 포인트. 체인코드 API가 아님.
 func Start(cc Chaincode) error {
 	// If Start() is called, we assume this is a standalone chaincode and set
 	// up formatted logging.
+	// @@ Start가 호출되었음은 호출한 체인코드가 standalone인것으로 간주.
 	format := logging.MustStringFormatter("%{time:15:04:05.000} [%{module}] %{level:.4s} : %{message}")
 	backend := logging.NewLogBackend(os.Stderr, "", 0)
 	backendFormatter := logging.NewBackendFormatter(backend, format)
@@ -77,6 +84,7 @@ func Start(cc Chaincode) error {
 	chaincodeLogger.Debugf("Peer address: %s", getPeerAddress())
 
 	// Establish connection with validating peer
+	// @@ vp와 새로운 연결 구성
 	clientConn, err := newPeerClientConnection()
 	if err != nil {
 		chaincodeLogger.Errorf("Error trying to connect to local peer: %s", err)
@@ -88,6 +96,7 @@ func Start(cc Chaincode) error {
 	chaincodeSupportClient := pb.NewChaincodeSupportClient(clientConn)
 
 	// Establish stream with validating peer
+	// @@ vp와 연결 성공(clientConn) 후, stream 구성
 	stream, err := chaincodeSupportClient.Register(context.Background())
 	if err != nil {
 		return fmt.Errorf("Error chatting with leader at address=%s:  %s", getPeerAddress(), err)
@@ -97,6 +106,7 @@ func Start(cc Chaincode) error {
 	if chaincodename == "" {
 		return fmt.Errorf("Error chaincode id not provided")
 	}
+	// @@ KEEPALIVE로 스트림 유지
 	err = chatWithPeer(chaincodename, stream, cc)
 
 	return err
@@ -104,6 +114,7 @@ func Start(cc Chaincode) error {
 
 // IsEnabledForLogLevel checks to see if the chaincodeLogger is enabled for a specific logging level
 // used primarily for testing
+// @@ IsEnabledForLogLevel : 체인코드로거가 특정한 로깅 레벨로 셋업 될수 있는지 체크
 func IsEnabledForLogLevel(logLevel string) bool {
 	lvl, _ := logging.LogLevel(logLevel)
 	return chaincodeLogger.IsEnabledFor(lvl)
@@ -111,6 +122,7 @@ func IsEnabledForLogLevel(logLevel string) bool {
 
 // SetChaincodeLoggingLevel sets the chaincode logging level to the value
 // of CORE_LOGGING_CHAINCODE set from core.yaml by chaincode_support.go
+// @@ SetChaincodeLoggingLevel : 체인코드 로깅레벨을 core.yaml에 정의된 CORE_LOGGING_CHAINCODE값으로 셋
 func SetChaincodeLoggingLevel() {
 	viper.SetEnvPrefix("CORE")
 	viper.AutomaticEnv()
@@ -129,6 +141,7 @@ func SetChaincodeLoggingLevel() {
 
 // StartInProc is an entry point for system chaincodes bootstrap. It is not an
 // API for chaincodes.
+// @@ StartInProc : system chaincode 부트스트랩을 위한 진입 포인트
 func StartInProc(env []string, args []string, cc Chaincode, recv <-chan *pb.ChaincodeMessage, send chan<- *pb.ChaincodeMessage) error {
 	logging.SetLevel(logging.DEBUG, "chaincode")
 	chaincodeLogger.Debugf("in proc %v", args)
@@ -150,6 +163,7 @@ func StartInProc(env []string, args []string, cc Chaincode, recv <-chan *pb.Chai
 	return err
 }
 
+// @@ peerAddress를 구함
 func getPeerAddress() string {
 	if peerAddress != "" {
 		return peerAddress
@@ -162,6 +176,7 @@ func getPeerAddress() string {
 	return peerAddress
 }
 
+// @@ 체인코드를 동작시킬 peer와의 코넥션을 생성
 func newPeerClientConnection() (*grpc.ClientConn, error) {
 	var peerAddress = getPeerAddress()
 	if comm.TLSEnabled() {
@@ -170,6 +185,7 @@ func newPeerClientConnection() (*grpc.ClientConn, error) {
 	return comm.NewClientConnectionWithAddress(peerAddress, true, false, nil)
 }
 
+// @@ 체인코드를 동작시킬 peer와 커뮤니케이션
 func chatWithPeer(chaincodename string, stream PeerChaincodeStream, cc Chaincode) error {
 
 	// Create the shim handler responsible for all control logic
@@ -254,7 +270,6 @@ func chatWithPeer(chaincodename string, stream PeerChaincodeStream, cc Chaincode
 
 // -- init stub ---
 // ChaincodeInvocation functionality
-
 func (stub *ChaincodeStub) init(txid string, secContext *pb.ChaincodeSecurityContext) {
 	stub.TxID = txid
 	stub.securityContext = secContext
@@ -280,6 +295,8 @@ func (stub *ChaincodeStub) GetTxID() string {
 // InvokeChaincode locally calls the specified chaincode `Invoke` using the
 // same transaction context; that is, chaincode calling chaincode doesn't
 // create a new transaction message.
+// @@ InvokeChaincode : 특정 체인코드의 Invoke를 호출,
+// @@ 체인코드가 또 다른 체인코드를 호출할 때에는 새로운 트랜잭션 메세지를 생성하지 않음
 func (stub *ChaincodeStub) InvokeChaincode(chaincodeName string, args [][]byte) ([]byte, error) {
 	return handler.handleInvokeChaincode(chaincodeName, args, stub.TxID)
 }
@@ -287,6 +304,8 @@ func (stub *ChaincodeStub) InvokeChaincode(chaincodeName string, args [][]byte) 
 // QueryChaincode locally calls the specified chaincode `Query` using the
 // same transaction context; that is, chaincode calling chaincode doesn't
 // create a new transaction message.
+// @@ QueryChaincode : 특정 체인코드의 Query를 호출,
+// @@ 체인코드가 또 다른 체인코드를 호출할 때에는 새로운 트랜잭션 메세지를 생성하지 않음
 func (stub *ChaincodeStub) QueryChaincode(chaincodeName string, args [][]byte) ([]byte, error) {
 	return handler.handleQueryChaincode(chaincodeName, args, stub.TxID)
 }
@@ -294,23 +313,28 @@ func (stub *ChaincodeStub) QueryChaincode(chaincodeName string, args [][]byte) (
 // --------- State functions ----------
 
 // GetState returns the byte array value specified by the `key`.
+// @@ GetState : 입력된 key에 해당하는 byte array value를 리턴
 func (stub *ChaincodeStub) GetState(key string) ([]byte, error) {
 	return handler.handleGetState(key, stub.TxID)
 }
 
 // PutState writes the specified `value` and `key` into the ledger.
+// @@ Putstate : 특정 value와 key값을 ledger에 기록
 func (stub *ChaincodeStub) PutState(key string, value []byte) error {
 	return handler.handlePutState(key, value, stub.TxID)
 }
 
 // DelState removes the specified `key` and its value from the ledger.
+// @@ Delstate : 특정 key 입력시, 대응되는 value와 함께 ledger에서 삭제
 func (stub *ChaincodeStub) DelState(key string) error {
 	return handler.handleDelState(key, stub.TxID)
 }
 
-//ReadCertAttribute is used to read an specific attribute from the transaction certificate, *attributeName* is passed as input parameter to this function.
+//ReadCertAttribute is used to read an specific attribute from the transaction certificate,
+//*attributeName* is passed as input parameter to this function.
 // Example:
 //  attrValue,error:=stub.ReadCertAttribute("position")
+// @@ ReadCertAttribute : 특정 attribute를 Tcert에서 읽어내는데 이용됨. attributeName이 이 함수의 입력 파라미터.
 func (stub *ChaincodeStub) ReadCertAttribute(attributeName string) ([]byte, error) {
 	attributesHandler, err := attr.NewAttributesHandlerImpl(stub)
 	if err != nil {
@@ -322,6 +346,7 @@ func (stub *ChaincodeStub) ReadCertAttribute(attributeName string) ([]byte, erro
 //VerifyAttribute is used to verify if the transaction certificate has an attribute with name *attributeName* and value *attributeValue* which are the input parameters received by this function.
 //Example:
 //    containsAttr, error := stub.VerifyAttribute("position", "Software Engineer")
+// @@ VerifyAttribute : Tcert가 입력된 attributeName에 해당하는 attribute를 가졌는지 검증.
 func (stub *ChaincodeStub) VerifyAttribute(attributeName string, attributeValue []byte) (bool, error) {
 	attributesHandler, err := attr.NewAttributesHandlerImpl(stub)
 	if err != nil {
@@ -333,6 +358,7 @@ func (stub *ChaincodeStub) VerifyAttribute(attributeName string, attributeValue 
 //VerifyAttributes does the same as VerifyAttribute but it checks for a list of attributes and their respective values instead of a single attribute/value pair
 // Example:
 //    containsAttrs, error:= stub.VerifyAttributes(&attr.Attribute{"position",  "Software Engineer"}, &attr.Attribute{"company", "ACompany"})
+// @@ VerifyAttributes : VerifyAttribute와 동일한 기능 수행. 다만, 복수개의 attribute를 다룸.
 func (stub *ChaincodeStub) VerifyAttributes(attrs ...*attr.Attribute) (bool, error) {
 	attributesHandler, err := attr.NewAttributesHandlerImpl(stub)
 	if err != nil {
@@ -343,6 +369,7 @@ func (stub *ChaincodeStub) VerifyAttributes(attrs ...*attr.Attribute) (bool, err
 
 // StateRangeQueryIterator allows a chaincode to iterate over a range of
 // key/value pairs in the state.
+// @@ StateRangeQueryIterator : 체인코드가 state의 특정 범위안에 있는 key/value 쌍을 iterate하도록 허용
 type StateRangeQueryIterator struct {
 	handler    *Handler
 	uuid       string
@@ -355,6 +382,8 @@ type StateRangeQueryIterator struct {
 // an iterator will be returned that can be used to iterate over all keys
 // between the startKey and endKey, inclusive. The order in which keys are
 // returned by the iterator is random.
+// @@ RangeQueryState : 체인코드가 state내 특정 범위의 key에 대한 query를 행할 수 있도록 함.
+// @@ lexical ordering된 시작과 종료 키값 내의 모든 key를 iterate하고 iterator가 반환되는데 이 때, 리턴되는 key의 순서는 random이다.
 func (stub *ChaincodeStub) RangeQueryState(startKey, endKey string) (StateRangeQueryIteratorInterface, error) {
 	response, err := handler.handleRangeQueryState(startKey, endKey, stub.TxID)
 	if err != nil {
@@ -365,6 +394,7 @@ func (stub *ChaincodeStub) RangeQueryState(startKey, endKey string) (StateRangeQ
 
 // HasNext returns true if the range query iterator contains additional keys
 // and values.
+// @@ HasNext : range query iterator가 추가적인 key와 value값을 가졌는지 여부를 체크
 func (iter *StateRangeQueryIterator) HasNext() bool {
 	if iter.currentLoc < len(iter.response.KeysAndValues) || iter.response.HasMore {
 		return true
@@ -373,6 +403,7 @@ func (iter *StateRangeQueryIterator) HasNext() bool {
 }
 
 // Next returns the next key and value in the range query iterator.
+// @@ Next : range query iterator의 Next key와 value를 리턴.
 func (iter *StateRangeQueryIterator) Next() (string, []byte, error) {
 	if iter.currentLoc < len(iter.response.KeysAndValues) {
 		keyValue := iter.response.KeysAndValues[iter.currentLoc]
@@ -398,6 +429,7 @@ func (iter *StateRangeQueryIterator) Next() (string, []byte, error) {
 
 // Close closes the range query iterator. This should be called when done
 // reading from the iterator to free up resources.
+// @@ Close : range query iterator를 닫음. iterator로 인해 점유된 자원을 free시킴. iterator사용 후, 꼭 호출해야 함
 func (iter *StateRangeQueryIterator) Close() error {
 	_, err := iter.handler.handleRangeQueryStateClose(iter.response.ID, iter.uuid)
 	return err
@@ -426,6 +458,7 @@ var (
 )
 
 // CreateTable creates a new table given the table name and column definitions
+// @@ CreateTable : 주어진 테이블명과 column definition에 따라 새로운 테이블을 생성
 func (stub *ChaincodeStub) CreateTable(name string, columnDefinitions []*ColumnDefinition) error {
 
 	_, err := stub.getTable(name)
@@ -496,11 +529,13 @@ func (stub *ChaincodeStub) CreateTable(name string, columnDefinitions []*ColumnD
 
 // GetTable returns the table for the specified table name or ErrTableNotFound
 // if the table does not exist.
+// @@ GetTable : 특정 테이블명에 해당하는 테이블을 리턴. 존재하지 않을 경우, ErrTableNotFound가 리턴.
 func (stub *ChaincodeStub) GetTable(tableName string) (*Table, error) {
 	return stub.getTable(tableName)
 }
 
 // DeleteTable deletes an entire table and all associated rows.
+// @@ DeleteTable : 전체 테이블과 관련된 rows를 삭제
 func (stub *ChaincodeStub) DeleteTable(tableName string) error {
 	tableNameKey, err := getTableNameKey(tableName)
 	if err != nil {
@@ -533,6 +568,9 @@ func (stub *ChaincodeStub) DeleteTable(tableName string) error {
 // false and no error if a row already exists for the given key.
 // false and a TableNotFoundError if the specified table name does not exist.
 // false and an error if there is an unexpected error condition.
+// @@ InsertRow : 새로운 row를 특정 테이블에 insert.
+// @@ 성공시(true, no error),
+// @@ 중복시(false, no error), 해당테이블이 존재하지 않을 경우(false, TableNotFoundError), 기타 예상치 못한 에러(false, error)
 func (stub *ChaincodeStub) InsertRow(tableName string, row Row) (bool, error) {
 	return stub.insertRowInternal(tableName, row, false)
 }
@@ -543,11 +581,15 @@ func (stub *ChaincodeStub) InsertRow(tableName string, row Row) (bool, error) {
 // false and no error if a row does not exist the given key.
 // flase and a TableNotFoundError if the specified table name does not exist.
 // false and an error if there is an unexpected error condition.
+// @@ ReplaceRow : 특정 테이블의 row를 update.
+// @@ 성공시(true, no error),
+// @@ 입력key에 해당하는 row가 없을시(false, no error), 해당테이블이 존재하지 않을 경우(false, TableNotFoundError), 기타 예상치 못한 에러(false, error)
 func (stub *ChaincodeStub) ReplaceRow(tableName string, row Row) (bool, error) {
 	return stub.insertRowInternal(tableName, row, true)
 }
 
 // GetRow fetches a row from the specified table for the given key.
+// @@ GetRow : 특정 테이블에서 key값에 해당하는 row를 fetch
 func (stub *ChaincodeStub) GetRow(tableName string, key []Column) (Row, error) {
 
 	var row Row
@@ -577,6 +619,8 @@ func (stub *ChaincodeStub) GetRow(tableName string, key []Column) (Row, error) {
 // all rows that have A, C and any value for D as their key. GetRows could
 // also be called with A only to return all rows that have A and any value
 // for C and D as their key.
+// @@ GetRows : key값에 해당하는 복수개의 rows를 리턴.
+// @@ 예를 들어, A,B,C,D라는 4개의 컬럼을 둔 테이블에서 A,C,D가 key로 셋팅되어 있다면, (A,C) 또는 (A)로 Getrows를 호출가능.
 func (stub *ChaincodeStub) GetRows(tableName string, key []Column) (<-chan Row, error) {
 
 	keyString, err := buildKeyString(tableName, key)
@@ -636,6 +680,7 @@ func (stub *ChaincodeStub) GetRows(tableName string, key []Column) (<-chan Row, 
 }
 
 // DeleteRow deletes the row for the given key from the specified table.
+// @@ DeleteRow : 특정 테이블의 주어진 key에 해당하는 row를 삭제.
 func (stub *ChaincodeStub) DeleteRow(tableName string, key []Column) error {
 
 	keyString, err := buildKeyString(tableName, key)
@@ -653,6 +698,7 @@ func (stub *ChaincodeStub) DeleteRow(tableName string, key []Column) error {
 
 // VerifySignature verifies the transaction signature and returns `true` if
 // correct and `false` otherwise
+// @@ VerifySignature : 트랜잭션 서명을 검증하고 만약 정상이라면 true를 리턴.
 func (stub *ChaincodeStub) VerifySignature(certificate, signature, message []byte) (bool, error) {
 	// Instantiate a new SignatureVerifier
 	sv := ecdsa.NewX509ECDSASignatureVerifier()
@@ -662,22 +708,26 @@ func (stub *ChaincodeStub) VerifySignature(certificate, signature, message []byt
 }
 
 // GetCallerCertificate returns caller certificate
+// @@ GetCallerCertificate : 호출자의 cert를 리턴 -- /protos/chaincode.proto에 정의된 message ChaincodeSecurityContext 타입의 속성 중 하나
 func (stub *ChaincodeStub) GetCallerCertificate() ([]byte, error) {
 	return stub.securityContext.CallerCert, nil
 }
 
 // GetCallerMetadata returns caller metadata
+// @@ GetCallerMetadata : 호출자의 metadata를 리턴 -- /protos/chaincode.proto에 정의된 message ChaincodeSecurityContext 타입의 속성 중 하나
 func (stub *ChaincodeStub) GetCallerMetadata() ([]byte, error) {
 	return stub.securityContext.Metadata, nil
 }
 
 // GetBinding returns the transaction binding
+// @@ GetBinding : 트랜잭션 바인딩을 리턴 -- /protos/chaincode.proto에 정의된 message ChaincodeSecurityContext 타입의 속성 중 하나
 func (stub *ChaincodeStub) GetBinding() ([]byte, error) {
 	return stub.securityContext.Binding, nil
 }
 
 // GetPayload returns transaction payload, which is a `ChaincodeSpec` defined
 // in fabric/protos/chaincode.proto
+// @@ GetPayload : fabric/protos/chaincode.proto에 체인코드 스펙(ChaincodeSpec)으로 정의된 트랜잭션 payload를 리턴.
 func (stub *ChaincodeStub) GetPayload() ([]byte, error) {
 	return stub.securityContext.Payload, nil
 }
@@ -685,6 +735,8 @@ func (stub *ChaincodeStub) GetPayload() ([]byte, error) {
 // GetTxTimestamp returns transaction created timestamp, which is currently
 // taken from the peer receiving the transaction. Note that this timestamp
 // may not be the same with the other peers' time.
+// @@ GetTxTimestamp : 트랜잭션의 생성 시점의 타임스탬프를 리턴. 이 시각은 피어가 트랜잭션을 수신시 필요.
+// @@ 이 시각은 다른 피어들의 시각과 다를 수 있음.
 func (stub *ChaincodeStub) GetTxTimestamp() (*timestamp.Timestamp, error) {
 	return stub.securityContext.TxTimestamp, nil
 }
@@ -828,6 +880,7 @@ func (stub *ChaincodeStub) isRowPresent(tableName string, key []Column) (bool, e
 		return true, nil
 	}
 	return false, nil
+
 }
 
 // insertRowInternal inserts a new row into the specified table.
@@ -836,6 +889,10 @@ func (stub *ChaincodeStub) isRowPresent(tableName string, key []Column) (bool, e
 // false and no error if a row already exists for the given key.
 // false and a TableNotFoundError if the specified table name does not exist.
 // false and an error if there is an unexpected error condition.
+// @@ insertRowInternal : 새로운 row를 특정 테이블에 insert
+// @@ 성공시(true, no error),
+// @@ 중복시(false, no error), 해당테이블이 존재하지 않을 경우(false, TableNotFoundError), 기타 예상치 못한 에러(false, error)
+// @@ func InsertRow와 func ReplaceRow가 insertRowInternal을 호출
 func (stub *ChaincodeStub) insertRowInternal(tableName string, row Row, update bool) (bool, error) {
 
 	table, err := stub.getTable(tableName)
@@ -876,6 +933,7 @@ func (stub *ChaincodeStub) insertRowInternal(tableName string, row Row, update b
 // ------------- ChaincodeEvent API ----------------------
 
 // SetEvent saves the event to be sent when a transaction is made part of a block
+// @@ SetEvent : 트랜잭션이 만들어질 때, 송신되어야할 이벤트를 저장
 func (stub *ChaincodeStub) SetEvent(name string, payload []byte) error {
 	stub.chaincodeEvent = &pb.ChaincodeEvent{EventName: name, Payload: payload}
 	return nil
@@ -911,8 +969,12 @@ func (stub *ChaincodeStub) SetEvent(name string, payload []byte) error {
 // the NewLogger() API, and allows the chaincode to control the severity level
 // of shim logs using the SetLoggingLevel() API.
 
+// @@ shim은 NewLogger() API를 통해 추상화된 로깅 객체를 체인코드에 제공.
+// @@ 체인코드가 shim log의 레벨을 컨트롤할 수 있도록 SetLoggingLevel() API를 제공.
+
 // LoggingLevel is an enumerated type of severity levels that control
 // chaincode logging.
+// @@ LoggingLevel : enumeration type의 체인코드 로깅 레벨
 type LoggingLevel logging.Level
 
 // These constants comprise the LoggingLevel enumeration
@@ -929,6 +991,7 @@ var shimLoggingLevel = LogDebug // Necessary for correct initialization; See Sta
 
 // SetLoggingLevel allows a Go language chaincode to set the logging level of
 // its shim.
+// @@ SetLoggingLevel : go언어 체인코드가 shim의 로깅 레벨을 정의할 수 있도록 함
 func SetLoggingLevel(level LoggingLevel) {
 	shimLoggingLevel = level
 	logging.SetLevel(logging.Level(level), "shim")
@@ -937,6 +1000,7 @@ func SetLoggingLevel(level LoggingLevel) {
 // LogLevel converts a case-insensitive string chosen from CRITICAL, ERROR,
 // WARNING, NOTICE, INFO or DEBUG into an element of the LoggingLevel
 // type. In the event of errors the level returned is LogError.
+// @@ LogLevel : 대소문자를 구분하는 로깅 문자열을 LoggingLevel로 정의된 6개의 엘리먼트 타입으로 변환
 func LogLevel(levelString string) (LoggingLevel, error) {
 	l, err := logging.LogLevel(levelString)
 	level := LoggingLevel(l)
@@ -950,6 +1014,7 @@ func LogLevel(levelString string) (LoggingLevel, error) {
 
 // ChaincodeLogger is an abstraction of a logging object for use by
 // chaincodes. These objects are created by the NewLogger API.
+// @@ ChaincodeLogger : 체인코드가 사용하는 로깅 객체. 이 객체는 NewLogger API로 생성됨.
 type ChaincodeLogger struct {
 	logger *logging.Logger
 }
@@ -959,6 +1024,8 @@ type ChaincodeLogger struct {
 // interleaved with the logs created by the shim interface. The logs created
 // by this object can be distinguished from shim logs by the name provided,
 // which will appear in the logs.
+// @@ NewLogger : go언어 체인코드가 하나 이상의 로깅 객체를 생성하도록 허용. 이 로깅 객체의 로그는 정형화되어 있으며, shim interface에 의해
+// @@ 생성된 로그가 일시적으로 사이에 껴 있기도 하다. 이 로깅 객체로 인해 생성된 로그는 shim log와 이름으로 구분될 수 있다.
 func NewLogger(name string) *ChaincodeLogger {
 	return &ChaincodeLogger{logging.MustGetLogger(name)}
 }
@@ -966,18 +1033,22 @@ func NewLogger(name string) *ChaincodeLogger {
 // SetLevel sets the logging level for a chaincode logger. Note that currently
 // the levels are actually controlled by the name given when the logger is
 // created, so loggers should be given unique names other than "shim".
+// @@ SetLevel : 체인코드 로거의 로깅 레벨을 정의. 이 레벨은 로거의 생성 시점에 붙여진 이름에 의해서 컨트롤되므로
+// @@ 로거는 shim이 아닌 고유한 이름을 부여 받아야 한다.
 func (c *ChaincodeLogger) SetLevel(level LoggingLevel) {
 	logging.SetLevel(logging.Level(level), c.logger.Module)
 }
 
 // IsEnabledFor returns true if the logger is enabled to creates logs at the
 // given logging level.
+// @@ IsEnabledFor : 로거가 주어진 로깅 레벨에 맞춰 로그를 생성 가능하다면 참을 리턴.
 func (c *ChaincodeLogger) IsEnabledFor(level LoggingLevel) bool {
 	return c.logger.IsEnabledFor(logging.Level(level))
 }
 
 // Debug logs will only appear if the ChaincodeLogger LoggingLevel is set to
 // LogDebug.
+// @@ Debug : ChaincodeLogger의 로깅 레벨이 LogDebug로 설정되어 있을 때 debug log가 나타난다.
 func (c *ChaincodeLogger) Debug(args ...interface{}) {
 	c.logger.Debug(args...)
 }
@@ -1042,6 +1113,7 @@ func (c *ChaincodeLogger) Errorf(format string, args ...interface{}) {
 }
 
 // Criticalf logs always appear; They can not be disabled.
+// @@ Criticalf : critical 레벨의 로그는 언제나 나타난다. 이 레벨의 로그는 disable될 수 없다.
 func (c *ChaincodeLogger) Criticalf(format string, args ...interface{}) {
 	c.logger.Criticalf(format, args...)
 }
