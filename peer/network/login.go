@@ -41,6 +41,7 @@ func loginCmd() *cobra.Command {
 	return networkLoginCmd
 }
 
+//@@ "peer network login <username>" 실행하면, networkLogin() 실행
 var networkLoginCmd = &cobra.Command{
 	Use:   "login <username>",
 	Short: "Logs in user to CLI.",
