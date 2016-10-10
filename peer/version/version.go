@@ -28,6 +28,7 @@ func Cmd() *cobra.Command {
 	return cobraCommand
 }
 
+//@@ "peer version" 실행하면, print() 실행
 var cobraCommand = &cobra.Command{
 	Use:   "version",
 	Short: "Print fabric peer version.",
@@ -38,6 +39,7 @@ var cobraCommand = &cobra.Command{
 }
 
 // Print outputs the current executable version to stdout
+//@@ 표준출력으로 fabric version print
 func Print() {
 	fmt.Printf("Fabric peer server version %s\n", metadata.Version)
 }
