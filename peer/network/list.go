@@ -44,6 +44,8 @@ var networkListCmd = &cobra.Command{
 
 // Show a list of all existing network connections for the target peer node,
 // includes both validating and non-validating peers
+//@@ 대상 peer node 에 연결된 모든 N/W connection 을 보여줌 ( VP, NVP 모두 포함 )
+//@@ "/protos.Openchain/GetPeers" 로 REST 요청 보냄 (msg 세팅 X)
 func networkList() (err error) {
 	clientConn, err := peer.NewPeerClientConnection()
 	if err != nil {
