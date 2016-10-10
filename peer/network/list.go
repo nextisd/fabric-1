@@ -31,6 +31,7 @@ func listCmd() *cobra.Command {
 	return networkListCmd
 }
 
+//@@ "peer network list" 실행하면, networkList() 실행
 var networkListCmd = &cobra.Command{
 	Use:     "list",
 	Aliases: []string{"ls"},
@@ -62,6 +63,9 @@ func networkList() (err error) {
 
 	// The generated pb.PeersMessage struct will be added "omitempty" tag automatically.
 	// But we still want to print it when pb.PeersMessage is empty.
+	//@@ protobuf 에서는 자동으로 "omitempty" tag 가 추가됨
+	//@@ --> 이 옵션이 있으면, 값이 없는 field 는 marshaling 되지 않음
+	//@@ 실제 실행결과 : {"Peers":[]}
 	jsonOutput, _ := json.Marshal(struct{ Peers []*pb.PeerEndpoint }{append([]*pb.PeerEndpoint{}, peers.GetPeers()...)})
 	fmt.Println(string(jsonOutput))
 	return nil
