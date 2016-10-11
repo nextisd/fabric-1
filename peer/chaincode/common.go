@@ -33,6 +33,7 @@ import (
 	"golang.org/x/net/context"
 )
 
+// kkk
 func getChaincodeSpecification(cmd *cobra.Command) (*pb.ChaincodeSpec, error) {
 	spec := &pb.ChaincodeSpec{}
 	if err := checkChaincodeCmdParams(cmd); err != nil {
