@@ -36,23 +36,27 @@ import (
 //@@ 
 func getChaincodeSpecification(cmd *cobra.Command) (*pb.ChaincodeSpec, error) {
 	spec := &pb.ChaincodeSpec{}
-	//@@ 
+	//@@ command line 에서 들어온 실행인자들을 check
 	if err := checkChaincodeCmdParams(cmd); err != nil {
 		return spec, err
 	}
 
 	// Build the spec
+	//@@ ChaincodeInput (protobuf) 에 chaincodeCtorJSON (string) 를 unmarshal
 	input := &pb.ChaincodeInput{}
 	if err := json.Unmarshal([]byte(chaincodeCtorJSON), &input); err != nil {
 		return spec, fmt.Errorf("Chaincode argument error: %s", err)
 	}
 
+	//@@ attributes (string) 에 chaincodeAttributesJSON (string) 를 unmarshal
 	var attributes []string
 	if err := json.Unmarshal([]byte(chaincodeAttributesJSON), &attributes); err != nil {
 		return spec, fmt.Errorf("Chaincode argument error: %s", err)
 	}
 
+	//@@ chaincodeLang (string) 의 문자들을 모두 대문자로 변경
 	chaincodeLang = strings.ToUpper(chaincodeLang)
+	//@@ ChaincodeSpec (protobuf) 에 입력된 인자들을 세팅
 	spec = &pb.ChaincodeSpec{
 		Type:        pb.ChaincodeSpec_Type(pb.ChaincodeSpec_Type_value[chaincodeLang]),
 		ChaincodeID: &pb.ChaincodeID{Path: chaincodePath, Name: chaincodeName},
@@ -61,12 +65,14 @@ func getChaincodeSpecification(cmd *cobra.Command) (*pb.ChaincodeSpec, error) {
 	}
 	// If security is enabled, add client login token
 	if core.SecurityEnabled() {
+		//@@ chaincodeUsr (string) 이 "" 이면 에러 (입력 인자 없음)  
 		if chaincodeUsr == common.UndefinedParamValue {
 			return spec, errors.New("Must supply username for chaincode when security is enabled")
 		}
 
 		// Retrieve the CLI data storage path
 		// Returns /var/openchain/production/client/
+		//@@ CliFile  
 		localStore := util.GetCliFilePath()
 
 		// Check if the user is logged in before sending transaction
@@ -115,7 +121,7 @@ func getChaincodeSpecification(cmd *cobra.Command) (*pb.ChaincodeSpec, error) {
 //@@ chaincodeInvokeOrQuery() 는 chaincode 를 invoke / query
 //@@ invoke 성공 : 표준출력에 Tx ID 를 출력
 //@@ query  성공 : 표준출력에 조회 결과를 출력 (조회결과 없으면 출력없음)
-//@@                     command-line flag 로 출력 방식 결정 (-r, --raw) : (raw byte) / (printable string)
+//@@                   command-line flag 로 출력 방식 결정 (-r, --raw) : (raw byte) / (printable string)
 //@@ (printable string) 은 선택적으로 (-x, --hex) - 16진수 표현 있음
 func chaincodeInvokeOrQuery(cmd *cobra.Command, args []string, invoke bool) (err error) {
 	spec, err := getChaincodeSpecification(cmd)
@@ -174,9 +180,13 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, args []string, invoke bool) (err
 	return nil
 }
 
-//@@ 
+//@@ chaincode command 에 들어오는 flag 를 검사
+//@@ ( -a, --attributes ) 와 ( -c, --ctor ) flag 만 검사
 func checkChaincodeCmdParams(cmd *cobra.Command) error {
 
+	//@@ chaincodeName (chaincode name ) : --name, -n 플래그로 들어온 string 보관
+	//@@ chaincodePath (chaincode path ) : --path, -p 플래그로 들어온 string 보관 
+	//@@ chaincode name 또는 path 가 "" 이면 에러처리 (즉, 필수)
 	if chaincodeName == common.UndefinedParamValue {
 		if chaincodePath == common.UndefinedParamValue {
 			return fmt.Errorf("Must supply value for %s path parameter.\n", chainFuncName)
@@ -188,10 +198,9 @@ func checkChaincodeCmdParams(cmd *cobra.Command) error {
 	// into a pb.ChaincodeInput. To better understand what's going
 	// on here with JSON parsing see http://blog.golang.org/json-and-go -
 	// Generic JSON with interface{}
-	//@@ chaincode parameter 가, key 로써 Args 만 담고 있는지 확인
+	//@@ chaincodeCtorJSON (chaincode 생성시 msg) : --ctor, -c 플래그로 들어온 string 보관 
+	//@@ JSON 으로 unmarshal 하여 "args", "function" 있는지 확인 --> 없으면 에러처리
 	//@@ JSON 이 실제로 pb.ChaincodeInput 에 들어가고 나서, Type 검사가 수행됨
-	//@@ JSON 파싱과 관련되어, 어떤일을 하는지 더 잘 이해하기 위해서는 아래 참조
-	//@@ http://blog.golang.org/json-and-go-Generic JSON with interface{} --> page 없음
 	if chaincodeCtorJSON != "{}" {
 		var f interface{}
 		err := json.Unmarshal([]byte(chaincodeCtorJSON), &f)
@@ -212,6 +221,8 @@ func checkChaincodeCmdParams(cmd *cobra.Command) error {
 		return errors.New("Empty JSON chaincode parameters must contain the following keys: 'Args' or 'Function' and 'Args'")
 	}
 
+	//@@ chaincodeAttributesJSON (chaincode attribute) : ----attributes, -a 플래그로 들어온 string 보관 
+	//@@ JSON 으로 unmarshal --> 실패시 에러처리
 	if chaincodeAttributesJSON != "[]" {
 		var f interface{}
 		err := json.Unmarshal([]byte(chaincodeAttributesJSON), &f)

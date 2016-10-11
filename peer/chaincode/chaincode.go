@@ -33,22 +33,14 @@ var logger = logging.MustGetLogger("chaincodeCmd")
 // Cmd returns the cobra command for Chaincode
 //@@ chaincode command 에 대한 플래그 값을 전역변수에 세팅
 //@@ chaincode command 에 (deploy, invoke, query) command add
-//@@ 여기 옵션 사용예 : "peer chaincode --lang golang"
-//@@ chaincodeLang			: --lang, -l 플래그 값, default = "golang"
-//@@ chaincodeCtorJSON		: --ctor, -c 플래그 값,  default = "{}"
-//@@ chaincodeAttributesJSON	: --attributes, -a 플래그 값,  default = "[]"
-//@@ chaincodePath			: --path, -p 플래그 값,  default = ""
-//@@ chaincodeName			: --name, -n 플래그 값,  default = ""
-//@@ chaincodeUsr			: --username, -u 플래그 값,  default = ""
-//@@ customIDGenAlg			: --tid, -t 플래그 값,  default = ""
-dd
-  -a, --attributes string   User attributes for the chaincode in JSON format (default "[]")
-  -c, --ctor string         Constructor message for the chaincode in JSON format (default "{}")
-  -l, --lang string         Language the chaincode is written in (default "golang")
-  -n, --name string         Name of the chaincode returned by the deploy transaction
-  -p, --path string         Path to chaincode
-  -t, --tid string          Name of a custom ID generation algorithm (hashing and decoding) e.g. sha256base64
-  -u, --username string     Username for chaincode operations when security is enabled
+//@@ flag 사용법 확인 : "./peer chaincode --help"
+//@@ -a, --attributes string   User attributes for the chaincode in JSON format (default "[]")
+//@@ -c, --ctor string         Constructor message for the chaincode in JSON format (default "{}")
+//@@ -l, --lang string         Language the chaincode is written in (default "golang")
+//@@ -n, --name string         Name of the chaincode returned by the deploy transaction
+//@@ -p, --path string         Path to chaincode
+//@@ -t, --tid string          Name of a custom ID generation algorithm (hashing and decoding) e.g. sha256base64
+//@@ -u, --username string     Username for chaincode operations when security is enabled
 
 func Cmd() *cobra.Command {
 	flags := chaincodeCmd.PersistentFlags()
