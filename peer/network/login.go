@@ -75,10 +75,14 @@ func networkLogin(args []string) error {
 
 	// Retrieve the CLI data storage path
 	// Returns /var/openchain/production/client/
+	//@@ client login token 을 보관하는 local path 를 얻기위한 helper function.
+	//@@ path : "peer.fileSystemPath" (core.yaml) + "/client/"
 	localStore := util.GetCliFilePath()
 	logger.Infof("Local data store for client loginToken: %s", localStore)
 
 	// If the user is already logged in, return
+	//@@ file 유무 체크 : "peer.fileSystemPath" (core.yaml) + "/client/" + username
+	//@@ 있다면, 이미 로그인했다는 것... 에러 리턴
 	if _, err := os.Stat(localStore + "loginToken_" + args[0]); err == nil {
 		logger.Infof("User '%s' is already logged in.\n", args[0])
 		return err
