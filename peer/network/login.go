@@ -112,11 +112,12 @@ func networkLogin(args []string) error {
 	if err != nil {
 		return fmt.Errorf("Error trying to connect to local peer: %s", err)
 	}
-	//@@ clientConn 생성 : "peer.address" 에 정의된 local peer address 로 grpc client connection 맺고,
-	//@@                   grpc.ClientConn 생성하여 리턴
+	//@@ GetDevopsClient peer 의 새로운 client connection 을 리턴
+	//@@ see "github.com/hyperledger/fabric/protos" NewDevopsClient()
 	devopsClient := pb.NewDevopsClient(clientConn)
 
 	// Build the login spec and login
+	//@@ 
 	loginSpec := &pb.Secret{EnrollId: args[0], EnrollSecret: loginPW}
 	loginResult, err := devopsClient.Login(context.Background(), loginSpec)
 
