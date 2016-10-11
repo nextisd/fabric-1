@@ -33,7 +33,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-//@@ 
+//@@ ChaincodeSpec (protobuf) 를 생성하고 field 값 세팅
 func getChaincodeSpecification(cmd *cobra.Command) (*pb.ChaincodeSpec, error) {
 	spec := &pb.ChaincodeSpec{}
 	//@@ command line 에서 들어온 실행인자들을 check
@@ -135,11 +135,14 @@ func getChaincodeSpecification(cmd *cobra.Command) (*pb.ChaincodeSpec, error) {
 //@@                   command-line flag 로 출력 방식 결정 (-r, --raw) : (raw byte) / (printable string)
 //@@ (printable string) 은 선택적으로 (-x, --hex) - 16진수 표현 있음
 func chaincodeInvokeOrQuery(cmd *cobra.Command, args []string, invoke bool) (err error) {
+	//@@ ChaincodeSpec (protobuf) 를 생성하고 field 값 세팅
 	spec, err := getChaincodeSpecification(cmd)
 	if err != nil {
 		return err
 	}
 
+	//@@ GetDevopsClient peer 의 새로운 client connection 을 리턴
+	//@@ see "github.com/hyperledger/fabric/protos" NewDevopsClient()
 	devopsClient, err := common.GetDevopsClient(cmd)
 	if err != nil {
 		return fmt.Errorf("Error building %s: %s", chainFuncName, err)

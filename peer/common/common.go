@@ -28,7 +28,8 @@ import (
 const UndefinedParamValue = ""
 
 // GetDevopsClient returns a new client connection for this peer
-//@@ GetDevopsClient peer 의 새로운 client connection 을 리턴
+//@@ GetDevopsClient local peer 와 새로운 gRPC connection 을 맺고,
+//@@ DevopsClient object 를 생성하여 리턴
 //@@ see "github.com/hyperledger/fabric/protos" NewDevopsClient()
 func GetDevopsClient(cmd *cobra.Command) (pb.DevopsClient, error) {
 	clientConn, err := peer.NewPeerClientConnection()
