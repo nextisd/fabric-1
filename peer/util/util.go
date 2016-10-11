@@ -25,7 +25,7 @@ import (
 // GetCliFilePath is a helper function to retrieve the local storage directory
 // of client login tokens.
 //@@ client login token 을 보관하는 local path 를 얻기위한 helper function.
-//@@ path : "peer.fileSystemPath" (core.yaml) + "/client"
+//@@ path : "peer.fileSystemPath" (core.yaml) + "/client/"
 func GetCliFilePath() string {
 	localStore := viper.GetString("peer.fileSystemPath")
 	if !strings.HasSuffix(localStore, "/") {
