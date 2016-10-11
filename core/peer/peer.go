@@ -281,16 +281,20 @@ func NewPeerWithEngine(secHelperFunc func() crypto.Peer, engFactory EngineFactor
 }
 
 // Chat implementation of the the Chat bidi streaming RPC function
+// Chat() Streaming RPC 기능의 양방향 채팅의 이행
 func (p *Impl) Chat(stream pb.Peer_ChatServer) error {
 	return p.handleChat(stream.Context(), stream, false)
 }
 
 // ProcessTransaction implementation of the ProcessTransaction RPC function
+// ProcessTransaction() RPC함수 ProcessTransaction 적용
 func (p *Impl) ProcessTransaction(ctx context.Context, tx *pb.Transaction) (response *pb.Response, err error) {
 	peerLogger.Debugf("ProcessTransaction processing transaction txid = %s", tx.Txid)
 	// Need to validate the Tx's signature if we are a validator.
+	// 만일 검증자인 경우 Tx 서명을 검증할 필요가 있다
 	if p.isValidator {
 		// Verify transaction signature if security is enabled
+		// 보안이 필요하면 Tx서명을 검증한다.
 		secHelper := p.secHelper
 		if nil != secHelper {
 			peerLogger.Debugf("Verifying transaction signature %s", tx.Txid)
@@ -331,7 +335,7 @@ func getPeerAddresses(peersMsg *pb.PeersMessage) []string {
 }
 
 // GetRemoteLedger returns the RemoteLedger interface for the remote Peer Endpoint
-// GetRemoteLedger() 원겨 Peer Endpoint에 대한 RemoteLedger Interface를 return.
+// GetRemoteLedger() 원격 Peer Endpoint에 대한 RemoteLedger Interface를 return.
 func (p *Impl) GetRemoteLedger(receiverHandle *pb.PeerID) (RemoteLedger, error) {
 	p.handlerMap.RLock()
 	defer p.handlerMap.RUnlock()

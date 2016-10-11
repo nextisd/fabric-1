@@ -21,6 +21,7 @@ import (
 )
 
 // Is the configuration cached?
+// 설정이 저장되어 있나?
 var configurationCached = false
 
 // Cached values of commonly used configuration constants.
@@ -28,6 +29,7 @@ var tlsEnabled bool
 
 // CacheConfiguration computes and caches commonly-used constants and
 // computed constants as package variables. Routines which were previously
+// CacheConfiguration()는 패키지의 변수호서 통상적으로 사용되는 상수들과 계산된 상수들을 산출하고 저장한다.
 func CacheConfiguration() (err error) {
 
 	tlsEnabled = viper.GetBool("peer.tls.enabled")
@@ -45,6 +47,7 @@ func cacheConfiguration() {
 }
 
 // TLSEnabled return cached value for "peer.tls.enabled" configuration value
+// TLSEnabled() "peer.tls.enabled"설정값에 대한 저장된 값을 Return한다.
 func TLSEnabled() bool {
 	if !configurationCached {
 		cacheConfiguration()

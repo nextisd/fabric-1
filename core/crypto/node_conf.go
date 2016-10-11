@@ -23,6 +23,7 @@ import (
 	"github.com/spf13/viper"
 )
 
+// initConfiguration() 설정값 초기화
 func (node *nodeImpl) initConfiguration(name string) (err error) {
 	// Set logger
 	prefix := eTypeToString(node.eType)
@@ -67,6 +68,7 @@ type configuration struct {
 	tCertBatchSize int
 }
 
+// init() Configuration 초기값 설정
 func (conf *configuration) init() error {
 	conf.configurationPathProperty = "peer.fileSystemPath"
 	conf.ecaPAddressProperty = "peer.pki.eca.paddr"

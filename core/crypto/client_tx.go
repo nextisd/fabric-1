@@ -25,6 +25,7 @@ import (
 	obc "github.com/hyperledger/fabric/protos"
 )
 
+// createTransactionNonce() 임의의 Tx 생성
 func (client *clientImpl) createTransactionNonce() ([]byte, error) {
 	nonce, err := primitives.GetRandomNonce()
 	if err != nil {
@@ -35,8 +36,10 @@ func (client *clientImpl) createTransactionNonce() ([]byte, error) {
 	return nonce, err
 }
 
+// createDeployTx()
 func (client *clientImpl) createDeployTx(chaincodeDeploymentSpec *obc.ChaincodeDeploymentSpec, uuid string, nonce []byte, tCert tCert, attrs ...string) (*obc.Transaction, error) {
 	// Create a new transaction
+	// 신규 Tx 생성
 	tx, err := obc.NewChaincodeDeployTransaction(chaincodeDeploymentSpec, uuid)
 	if err != nil {
 		client.Errorf("Failed creating new transaction [%s].", err.Error())
@@ -44,6 +47,7 @@ func (client *clientImpl) createDeployTx(chaincodeDeploymentSpec *obc.ChaincodeD
 	}
 
 	// Copy metadata from ChaincodeSpec
+	// ChaincodeSpec에서 Metadata 복사
 	tx.Metadata, err = getMetadata(chaincodeDeploymentSpec.GetChaincodeSpec(), tCert, attrs...)
 	if err != nil {
 		client.Errorf("Failed creating new transaction [%s].", err.Error())
@@ -62,14 +66,19 @@ func (client *clientImpl) createDeployTx(chaincodeDeploymentSpec *obc.ChaincodeD
 	}
 
 	// Handle confidentiality
+	// Handle 암호화
+
 	if chaincodeDeploymentSpec.ChaincodeSpec.ConfidentialityLevel == obc.ConfidentialityLevel_CONFIDENTIAL {
 		// 1. set confidentiality level and nonce
+		// 1. 암호레벨 Set
 		tx.ConfidentialityLevel = obc.ConfidentialityLevel_CONFIDENTIAL
 
 		// 2. set confidentiality protocol version
+		// 2. 암호프로토콜 버전 Set
 		tx.ConfidentialityProtocolVersion = client.conf.GetConfidentialityProtocolVersion()
 
 		// 3. encrypt tx
+		// 3. Tx 암호화
 		err = client.encryptTx(tx)
 		if err != nil {
 			client.Errorf("Failed encrypting payload [%s].", err.Error())
@@ -81,6 +90,7 @@ func (client *clientImpl) createDeployTx(chaincodeDeploymentSpec *obc.ChaincodeD
 	return tx, nil
 }
 
+// getMetadata() Chaincode Spec의 Metadata 취득
 func getMetadata(chaincodeSpec *obc.ChaincodeSpec, tCert tCert, attrs ...string) ([]byte, error) {
 	//TODO this code is being commented due temporarily is not enabled attributes encryption.
 	/*
@@ -98,8 +108,10 @@ func getMetadata(chaincodeSpec *obc.ChaincodeSpec, tCert tCert, attrs ...string)
 	return chaincodeSpec.Metadata, nil
 }
 
+// createExecuteTx() 실행 Tx 생성
 func (client *clientImpl) createExecuteTx(chaincodeInvocation *obc.ChaincodeInvocationSpec, uuid string, nonce []byte, tCert tCert, attrs ...string) (*obc.Transaction, error) {
 	/// Create a new transaction
+	/// 신규 Tx 생성
 	tx, err := obc.NewChaincodeExecute(chaincodeInvocation, uuid, obc.Transaction_CHAINCODE_INVOKE)
 	if err != nil {
 		client.Errorf("Failed creating new transaction [%s].", err.Error())
@@ -107,6 +119,7 @@ func (client *clientImpl) createExecuteTx(chaincodeInvocation *obc.ChaincodeInvo
 	}
 
 	// Copy metadata from ChaincodeSpec
+	// ChaincodeSpec으로부터 Metadata 복사
 	tx.Metadata, err = getMetadata(chaincodeInvocation.GetChaincodeSpec(), tCert, attrs...)
 	if err != nil {
 		client.Errorf("Failed creating new transaction [%s].", err.Error())
@@ -124,6 +137,7 @@ func (client *clientImpl) createExecuteTx(chaincodeInvocation *obc.ChaincodeInvo
 	}
 
 	// Handle confidentiality
+	// Handle 암호화
 	if chaincodeInvocation.ChaincodeSpec.ConfidentialityLevel == obc.ConfidentialityLevel_CONFIDENTIAL {
 		// 1. set confidentiality level and nonce
 		tx.ConfidentialityLevel = obc.ConfidentialityLevel_CONFIDENTIAL
@@ -199,6 +213,7 @@ func (client *clientImpl) newChaincodeDeployUsingTCert(chaincodeDeploymentSpec *
 	// Sign the transaction
 
 	// Append the certificate to the transaction
+	// Tx에 인증서 추가
 	client.Debugf("Appending certificate [% x].", tCert.GetCertificate().Raw)
 	tx.Cert = tCert.GetCertificate().Raw
 
@@ -413,6 +428,7 @@ func (client *clientImpl) newChaincodeQueryUsingECert(chaincodeInvocation *obc.C
 // CheckTransaction is used to verify that a transaction
 // is well formed with the respect to the security layer
 // prescriptions. To be used for internal verifications.
+// checkTransaction() 하나의 Tx가 보안계층 규정에 관련하여 잘 형성되었는지를 검증하는데 사용된다.
 func (client *clientImpl) checkTransaction(tx *obc.Transaction) error {
 	if !client.isInitialized {
 		return utils.ErrNotInitialized
@@ -424,7 +440,8 @@ func (client *clientImpl) checkTransaction(tx *obc.Transaction) error {
 
 	if tx.Cert != nil && tx.Signature != nil {
 		// Verify the transaction
-		// 1. Unmarshal cert
+		// Tx 검증
+		// 1. 인증서 Decode (Unmarshal cert)
 		cert, err := primitives.DERToX509Certificate(tx.Cert)
 		if err != nil {
 			client.Errorf("Failed unmarshalling cert [%s].", err.Error())

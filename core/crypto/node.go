@@ -17,7 +17,7 @@ limitations under the License.
 package crypto
 
 // Utility functions
-
+// NodeType을 문자열로 변환
 func eTypeToString(eType NodeType) string {
 	switch eType {
 	case NodeClient:
