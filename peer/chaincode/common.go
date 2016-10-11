@@ -77,24 +77,31 @@ func getChaincodeSpecification(cmd *cobra.Command) (*pb.ChaincodeSpec, error) {
 		localStore := util.GetCliFilePath()
 
 		// Check if the user is logged in before sending transaction
+		//@@ 파일이 있는지 check --> 없으면 에러 (아직 로그인 안 했음)
+		//@@ "peer.fileSystemPath" (core.yaml) + "/client/" + "loginToken_" + "username"
 		if _, err := os.Stat(localStore + "loginToken_" + chaincodeUsr); err == nil {
 			logger.Infof("Local user '%s' is already logged in. Retrieving login token.\n", chaincodeUsr)
 
 			// Read in the login token
+			//@@ login token 파일에서 token 읽기
 			token, err := ioutil.ReadFile(localStore + "loginToken_" + chaincodeUsr)
 			if err != nil {
 				panic(fmt.Errorf("Fatal error when reading client login token: %s\n", err))
 			}
 
 			// Add the login token to the chaincodeSpec
+			//@@ ChaincodeSpec 에 읽은 token 세팅
 			spec.SecureContext = string(token)
 
 			// If privacy is enabled, mark chaincode as confidential
+			//@@ "security.privacy" (core.yaml) 이 true 면,
+			//@@ ChaincodeSpec 의 ConfidentialityLevel = ConfidentialityLevel_CONFIDENTIAL
 			if viper.GetBool("security.privacy") {
 				logger.Info("Set confidentiality level to CONFIDENTIAL.\n")
 				spec.ConfidentialityLevel = pb.ConfidentialityLevel_CONFIDENTIAL
 			}
 		} else {
+			//@@ login token 파일이 없으면 에러 (아직 로그인 안 했음)
 			// Check if the token is not there and fail
 			if os.IsNotExist(err) {
 				return spec, fmt.Errorf("User '%s' not logged in. Use the 'peer network login' command to obtain a security token.", chaincodeUsr)
@@ -103,9 +110,12 @@ func getChaincodeSpecification(cmd *cobra.Command) (*pb.ChaincodeSpec, error) {
 			panic(fmt.Errorf("Fatal error when checking for client login token: %s\n", err))
 		}
 	} else {
+		//@@ chaincodeUsr (string) 이 "" 이면 warning
 		if chaincodeUsr != common.UndefinedParamValue {
 			logger.Warning("Username supplied but security is disabled.")
 		}
+		//@@ "security.privacy" (core.yaml) 이 true 면, 에러처리
+		//@@ 상위인 core.SecurityEnabled() 가 true 아님
 		if viper.GetBool("security.privacy") {
 			panic(errors.New("Privacy cannot be enabled as requested because security is disabled"))
 		}
