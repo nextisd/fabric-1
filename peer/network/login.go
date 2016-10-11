@@ -58,6 +58,8 @@ var (
 
 // login confirms the enrollmentID and secret password of the client with the
 // CA and stores the enrollment certificate and key in the Devops server.
+//@@ login 은 CA 와 client 의 (enrollment ID, secret password) 를 확인하고
+//@@ ECert 와 Key 를 Devops 서버에 보관
 func networkLogin(args []string) error {
 	logger.Info("CLI client login...")
 
