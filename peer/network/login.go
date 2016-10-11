@@ -89,9 +89,11 @@ func networkLogin(args []string) error {
 	}
 
 	// If the '--password' flag is not specified, need read it from the terminal
+	//@@ --password 또는 -p flag 가 없다면, 터미널로부터 password 읽기
 	if loginPW == "" {
 		// User is not logged in, prompt for password
 		fmt.Printf("Enter password for user '%s': ", args[0])
+		//@@ 사용자가 입력하는 password 읽음 ( 화면에는 password 가 * 로 표시 )
 		pw, err := gopass.GetPasswdMasked()
 		if err != nil {
 			return fmt.Errorf("Error trying to read password from console: %s", err)
