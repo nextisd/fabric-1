@@ -33,9 +33,10 @@ import (
 	"golang.org/x/net/context"
 )
 
-//@@ test 입니다. 입니다. 
+//@@ 
 func getChaincodeSpecification(cmd *cobra.Command) (*pb.ChaincodeSpec, error) {
 	spec := &pb.ChaincodeSpec{}
+	//@@ 
 	if err := checkChaincodeCmdParams(cmd); err != nil {
 		return spec, err
 	}
@@ -111,6 +112,11 @@ func getChaincodeSpecification(cmd *cobra.Command) (*pb.ChaincodeSpec, error) {
 // whether the query result is output as raw bytes, or as a printable string.
 // The printable form is optionally (-x, --hex) a hexadecimal representation
 // of the query response. If the query response is NIL, nothing is output.
+//@@ chaincodeInvokeOrQuery() 는 chaincode 를 invoke / query
+//@@ invoke 성공 : 표준출력에 Tx ID 를 출력
+//@@ query  성공 : 표준출력에 조회 결과를 출력 (조회결과 없으면 출력없음)
+//@@                     command-line flag 로 출력 방식 결정 (-r, --raw) : (raw byte) / (printable string)
+//@@ (printable string) 은 선택적으로 (-x, --hex) - 16진수 표현 있음
 func chaincodeInvokeOrQuery(cmd *cobra.Command, args []string, invoke bool) (err error) {
 	spec, err := getChaincodeSpecification(cmd)
 	if err != nil {
@@ -168,6 +174,7 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, args []string, invoke bool) (err
 	return nil
 }
 
+//@@ 
 func checkChaincodeCmdParams(cmd *cobra.Command) error {
 
 	if chaincodeName == common.UndefinedParamValue {
@@ -181,6 +188,10 @@ func checkChaincodeCmdParams(cmd *cobra.Command) error {
 	// into a pb.ChaincodeInput. To better understand what's going
 	// on here with JSON parsing see http://blog.golang.org/json-and-go -
 	// Generic JSON with interface{}
+	//@@ chaincode parameter 가, key 로써 Args 만 담고 있는지 확인
+	//@@ JSON 이 실제로 pb.ChaincodeInput 에 들어가고 나서, Type 검사가 수행됨
+	//@@ JSON 파싱과 관련되어, 어떤일을 하는지 더 잘 이해하기 위해서는 아래 참조
+	//@@ http://blog.golang.org/json-and-go-Generic JSON with interface{} --> page 없음
 	if chaincodeCtorJSON != "{}" {
 		var f interface{}
 		err := json.Unmarshal([]byte(chaincodeCtorJSON), &f)

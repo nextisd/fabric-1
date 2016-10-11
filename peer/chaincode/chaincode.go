@@ -31,11 +31,20 @@ const (
 var logger = logging.MustGetLogger("chaincodeCmd")
 
 // Cmd returns the cobra command for Chaincode
-//@@ test for egit commit & push
+//@@ chaincode command 에 대한 플래그 값을 전역변수에 세팅
+//@@ chaincode command 에 (deploy, invoke, query) command add
+//@@ 전역변수 chaincodeLang				: --lang, -l 플래그 값, default = "golang"
+//@@ 전역변수 chaincodeCtorJSON			: --ctor, -c 플래그 값,  default = "{}"
+//@@ 전역변수 chaincodeAttributesJSON	: --attributes, -a 플래그 값,  default = "[]"
+//@@ 전역변수 chaincodePath				: --path, -p 플래그 값,  default = ""
+//@@ 전역변수 chaincodeName				: --name, -n 플래그 값,  default = ""
+//@@ 전역변수 chaincodeUsr					: --username, -u 플래그 값,  default = ""
+//@@ 전역변수 customIDGenAlg				: --tid, -t 플래그 값,  default = ""
 func Cmd() *cobra.Command {
 	flags := chaincodeCmd.PersistentFlags()
 
-	flags.StringVarP(&chaincodeLang, "lang", "l", "golang",
+	//@@ chaincodeLang : --lang 또는 -l 플래그값, default = "golang", usage func. = Sprintf
+		flags.StringVarP(&chaincodeLang, "lang", "l", "golang",
 		fmt.Sprintf("Language the %s is written in", chainFuncName))
 	flags.StringVarP(&chaincodeCtorJSON, "ctor", "c", "{}",
 		fmt.Sprintf("Constructor message for the %s in JSON format", chainFuncName))
