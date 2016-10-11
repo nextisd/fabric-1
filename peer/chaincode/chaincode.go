@@ -41,7 +41,7 @@ var logger = logging.MustGetLogger("chaincodeCmd")
 //@@ chaincodeName			: --name, -n 플래그 값,  default = ""
 //@@ chaincodeUsr			: --username, -u 플래그 값,  default = ""
 //@@ customIDGenAlg			: --tid, -t 플래그 값,  default = ""
-
+dd
   -a, --attributes string   User attributes for the chaincode in JSON format (default "[]")
   -c, --ctor string         Constructor message for the chaincode in JSON format (default "{}")
   -l, --lang string         Language the chaincode is written in (default "golang")
