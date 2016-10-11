@@ -118,7 +118,8 @@ func networkLogin(args []string) error {
 
 	// Build the login spec and login
 	loginSpec := &pb.Secret{EnrollId: args[0], EnrollSecret: loginPW}
-	//@@ see "github.com/hyperledger/fabric/core/devops.go" Login() --> core/crypto/client.go:RegisterClient()
+	//@@ see "github.com/hyperledger/fabric/core/devops.go" Login()
+	//@@ 실-> core/crypto/client.go:RegisterClient()
 	loginResult, err := devopsClient.Login(context.Background(), loginSpec)
 
 	// Check if login is successful
