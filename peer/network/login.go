@@ -117,8 +117,8 @@ func networkLogin(args []string) error {
 	devopsClient := pb.NewDevopsClient(clientConn)
 
 	// Build the login spec and login
-	//@@ 
 	loginSpec := &pb.Secret{EnrollId: args[0], EnrollSecret: loginPW}
+	//@@ see "github.com/hyperledger/fabric/core/devops.go" Login() --> core/crypto/client.go:RegisterClient()
 	loginResult, err := devopsClient.Login(context.Background(), loginSpec)
 
 	// Check if login is successful
