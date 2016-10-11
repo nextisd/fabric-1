@@ -72,7 +72,8 @@ func getChaincodeSpecification(cmd *cobra.Command) (*pb.ChaincodeSpec, error) {
 
 		// Retrieve the CLI data storage path
 		// Returns /var/openchain/production/client/
-		//@@ CliFile  
+		//@@ client login token 을 보관하는 local path 를 받음
+		//@@ path : "peer.fileSystemPath" (core.yaml) + "/client/"
 		localStore := util.GetCliFilePath()
 
 		// Check if the user is logged in before sending transaction
