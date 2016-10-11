@@ -119,7 +119,8 @@ func networkLogin(args []string) error {
 	// Build the login spec and login
 	loginSpec := &pb.Secret{EnrollId: args[0], EnrollSecret: loginPW}
 	//@@ see "github.com/hyperledger/fabric/core/devops.go" Login()
-	//@@ 실-> core/crypto/client.go:RegisterClient()
+	//@@ 내부에서 core/crypto/client.go:RegisterClient() 호출
+	//@@ core/crypto/client.go:RegisterClient() : Client 를 PKI 에 등록
 	loginResult, err := devopsClient.Login(context.Background(), loginSpec)
 
 	// Check if login is successful
