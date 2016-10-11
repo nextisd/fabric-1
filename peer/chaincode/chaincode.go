@@ -31,6 +31,7 @@ const (
 var logger = logging.MustGetLogger("chaincodeCmd")
 
 // Cmd returns the cobra command for Chaincode
+//@@ test for egit commit & push
 func Cmd() *cobra.Command {
 	flags := chaincodeCmd.PersistentFlags()
 
