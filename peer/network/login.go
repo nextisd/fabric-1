@@ -106,10 +106,14 @@ func networkLogin(args []string) error {
 	logger.Infof("Logging in user '%s' on CLI interface...\n", args[0])
 
 	// Get a devopsClient to perform the login
+	//@@ clientConn 생성 : "peer.address" 에 정의된 local peer address 로 grpc client connection 맺고,
+	//@@                   grpc.ClientConn 생성하여 리턴
 	clientConn, err := peer.NewPeerClientConnection()
 	if err != nil {
 		return fmt.Errorf("Error trying to connect to local peer: %s", err)
 	}
+	//@@ clientConn 생성 : "peer.address" 에 정의된 local peer address 로 grpc client connection 맺고,
+	//@@                   grpc.ClientConn 생성하여 리턴
 	devopsClient := pb.NewDevopsClient(clientConn)
 
 	// Build the login spec and login
