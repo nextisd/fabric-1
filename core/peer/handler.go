@@ -49,8 +49,8 @@ type Handler struct {
 	lastIgnoredSnapshotCID        *uint64
 }
 
-// NewPeerHandler returns a new Peer handler
-// Is instance of HandlerFactory
+// NewPeerHandler returns a new Peer handler is instance of HandlerFactory
+// NewPeerHandler() 신규 Peer Handler를 리턴(instance of HandlerFactory)
 func NewPeerHandler(coord MessageHandlerCoordinator, stream ChatStream, initiatedStream bool) (MessageHandler, error) {
 
 	d := &Handler{
@@ -129,6 +129,7 @@ func (d *Handler) deregister() error {
 }
 
 // To return the PeerEndpoint this Handler is connected to.
+// 당 핸들러가 연결되는 Peer Endpoint를 Return
 func (d *Handler) To() (pb.PeerEndpoint, error) {
 	if d.ToPeerEndpoint == nil {
 		return pb.PeerEndpoint{}, fmt.Errorf("No peer endpoint for handler")
@@ -136,7 +137,7 @@ func (d *Handler) To() (pb.PeerEndpoint, error) {
 	return *(d.ToPeerEndpoint), nil
 }
 
-// Stop stops this handler, which will trigger the Deregister from the MessageHandlerCoordinator.
+// Stop() 이핸들러를 Stop, which will trigger the Deregister from the MessageHandlerCoordinator.
 func (d *Handler) Stop() error {
 	// Deregister the handler
 	err := d.deregister()
@@ -285,6 +286,7 @@ func (d *Handler) HandleMessage(msg *pb.Message) error {
 }
 
 // SendMessage sends a message to the remote PEER through the stream
+// SendMessage() STREAM을 통해 원격PEER에게 메시지를 전송한다.
 func (d *Handler) SendMessage(msg *pb.Message) error {
 	//make sure Sends are serialized. Also make sure everyone uses SendMessage
 	//instead of calling Send directly on the grpc stream
@@ -299,6 +301,7 @@ func (d *Handler) SendMessage(msg *pb.Message) error {
 }
 
 // start starts the Peer server function
+// start() Peer서버기능을 Start
 func (d *Handler) start() error {
 	discPeriod := viper.GetDuration("peer.discovery.period")
 	tickChan := time.NewTicker(discPeriod).C
@@ -318,6 +321,8 @@ func (d *Handler) start() error {
 
 // RequestBlocks get the blocks from the other PeerEndpoint based upon supplied SyncBlockRange, will provide them through the returned channel.
 // this will also stop writing any received blocks to channels created from Prior calls to RequestBlocks(..)
+// RequestBlocks()은 제공된 SyncBlockRange 기반의 다른 PeerEndpoint로부터 블럭들을 취하고, 리턴된 체널을 통해 그들에게 제공할것이다.
+// 아는 또한 모든 수신된 블럭들을 쓰기를 중지할 것이다(??).
 func (d *Handler) RequestBlocks(syncBlockRange *pb.SyncBlockRange) (<-chan *pb.SyncBlocks, error) {
 	d.syncBlocksRequestHandler.Lock()
 	defer d.syncBlocksRequestHandler.Unlock()
@@ -396,6 +401,7 @@ func (d *Handler) beforeSyncBlocks(e *fsm.Event) {
 }
 
 // sendBlocks sends the blocks based upon the supplied SyncBlockRange over the stream.
+// sendBlocks() Stream상에서 제공된 syncBlockRange기반의 블럭들을 전송한다.
 func (d *Handler) sendBlocks(syncBlockRange *pb.SyncBlockRange) {
 	peerLogger.Debugf("Sending blocks %d-%d", syncBlockRange.Start, syncBlockRange.End)
 	var blockNums []uint64
@@ -442,6 +448,7 @@ func (d *Handler) sendBlocks(syncBlockRange *pb.SyncBlockRange) {
 
 // RequestStateSnapshot request the state snapshot deltas from the other PeerEndpoint, will provide them through the returned channel.
 // this will also stop writing any received syncStateSnapshot(s) to channels created from Prior calls to RequestStateSnapshot()
+// RequestStateSnapshot() 다른 PeerEndpoint로부터 State Snapshot Deltas를 요청
 func (d *Handler) RequestStateSnapshot() (<-chan *pb.SyncStateSnapshot, error) {
 	d.snapshotRequestHandler.Lock()
 	defer d.snapshotRequestHandler.Unlock()
@@ -463,6 +470,7 @@ func (d *Handler) RequestStateSnapshot() (<-chan *pb.SyncStateSnapshot, error) {
 }
 
 // beforeSyncStateGetSnapshot triggers the sending of State Snapshot deltas to remote Peer.
+// beforeSyncStateGetSnapshot() 원격 Peer에게 State Snapshot Delta들의 전송을 Trigger한다.
 func (d *Handler) beforeSyncStateGetSnapshot(e *fsm.Event) {
 	peerLogger.Debugf("Received message: %s", e.Event)
 	msg, ok := e.Args[0].(*pb.Message)
@@ -483,6 +491,7 @@ func (d *Handler) beforeSyncStateGetSnapshot(e *fsm.Event) {
 }
 
 // beforeSyncStateSnapshot will write the State Snapshot deltas to the respective channel.
+// beforeSyncStateSnapshot() 각각의 체널에 State Snapshot delta들을 작성
 func (d *Handler) beforeSyncStateSnapshot(e *fsm.Event) {
 	peerLogger.Debugf("Received message: %s", e.Event)
 	msg, ok := e.Args[0].(*pb.Message)
@@ -528,6 +537,7 @@ func (d *Handler) beforeSyncStateSnapshot(e *fsm.Event) {
 }
 
 // sendBlocks sends the blocks based upon the supplied SyncBlockRange over the stream.
+// sendBlocks() Stream상에서 제공된 syncBlockRange기반의 블럭들을 전송한다.
 func (d *Handler) sendStateSnapshot(syncStateSnapshotRequest *pb.SyncStateSnapshotRequest) {
 	peerLogger.Debugf("Sending state snapshot with correlationId = %d", syncStateSnapshotRequest.CorrelationId)
 

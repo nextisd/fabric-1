@@ -18,7 +18,6 @@ package crypto
 
 import (
 	"github.com/hyperledger/fabric/core/crypto/primitives"
-	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 )
 
@@ -28,6 +27,7 @@ var (
 
 // Init initializes the crypto layer. It load from viper the security level
 // and the logging setting.
+// Init() Cryto 계층을 초기화
 func Init() (err error) {
 	// Init security level
 	securityLevel := 256

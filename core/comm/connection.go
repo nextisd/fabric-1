@@ -7,7 +7,6 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/grpclog"
 
-	"github.com/op/go-logging"
 	"github.com/spf13/viper"
 )
 
@@ -16,6 +15,7 @@ const defaultTimeout = time.Second * 3
 var commLogger = logging.MustGetLogger("comm")
 
 // NewClientConnectionWithAddress Returns a new grpc.ClientConn to the given address.
+// NewClientConnectionWithAddress() 주어진 Address에 연결된 새 grpc.ClientConn을 Return한다.
 func NewClientConnectionWithAddress(peerAddress string, block bool, tslEnabled bool, creds credentials.TransportCredentials) (*grpc.ClientConn, error) {
 	var opts []grpc.DialOption
 	if tslEnabled {
@@ -35,6 +35,7 @@ func NewClientConnectionWithAddress(peerAddress string, block bool, tslEnabled b
 }
 
 // InitTLSForPeer returns TLS credentials for peer
+// InitTLSForPeer() 피어에 대한 TLS 신임장을 Return한다.
 func InitTLSForPeer() credentials.TransportCredentials {
 	var sn string
 	if viper.GetString("peer.tls.serverhostoverride") != "" {

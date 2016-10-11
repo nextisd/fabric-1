@@ -39,16 +39,19 @@ import (
 )
 
 // Is the configuration cached?
+// 설정이 저장되어 있나?
 var configurationCached = false
 
 // Cached values and error values of the computed constants getLocalAddress(),
 // getValidatorStreamAddress(), and getPeerEndpoint()
+// getLocalAddress() 산출 상수의 저장값과 에러값
 var localAddress string
 var localAddressError error
 var peerEndpoint *pb.PeerEndpoint
 var peerEndpointError error
 
 // Cached values of commonly used configuration constants.
+// 보편적으로 사용되는 설정 상수 저장값
 var syncStateSnapshotChannelSize int
 var syncStateDeltasChannelSize int
 var syncBlocksChannelSize int
@@ -58,14 +61,18 @@ var validatorEnabled bool
 // importing the "core" package into the "peer" package. The
 // 'peer.SecurityEnabled' bit is a duplicate of the 'core.SecurityEnabled'
 // bit.
+// 주의: 그 "peer"패키지 내에 "core"패키지를 Importing으로부터 우리를 방지하는 원형 Importing 문제의  몇가지 종류가 있다.
+//      'peer.SecurityEnabled' Bit는 'core.SecurityEnabled' bit의 복제이다.
 var securityEnabled bool
 
 // CacheConfiguration computes and caches commonly-used constants and
 // computed constants as package variables. Routines which were previously
 // global have been embedded here to preserve the original abstraction.
+// CacheConfiguration()는 패키지의 변수호서 통상적으로 사용되는 상수들과 계산된 상수들을 산출하고 저장한다.
 func CacheConfiguration() (err error) {
 
 	// getLocalAddress returns the address:port the local peer is operating on.  Affected by env:peer.addressAutoDetect
+	// getLocalAddress 는 로컬 피어가 운영중인 주소와 포트를 Return한다.
 	getLocalAddress := func() (peerAddress string, err error) {
 		if viper.GetBool("peer.addressAutoDetect") {
 			// Need to get the port from the peer.address setting, and append to the determined host IP
@@ -83,6 +90,7 @@ func CacheConfiguration() (err error) {
 	}
 
 	// getPeerEndpoint returns the PeerEndpoint for this Peer instance.  Affected by env:peer.addressAutoDetect
+	// 피어 인스탄스에 대한 PeerEndpoint를 Return한다.
 	getPeerEndpoint := func() (*pb.PeerEndpoint, error) {
 		var peerAddress string
 		var peerType pb.PeerEndpoint_Type
@@ -119,6 +127,7 @@ func CacheConfiguration() (err error) {
 }
 
 // cacheConfiguration logs an error if error checks have failed.
+// cacheConfiguration() 에러 체크들이 실패한 경우 에러를 log
 func cacheConfiguration() {
 	if err := CacheConfiguration(); err != nil {
 		peerLogger.Errorf("Execution continues after CacheConfiguration() failure : %s", err)

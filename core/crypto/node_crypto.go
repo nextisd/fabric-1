@@ -22,6 +22,10 @@ import (
 	ecies "github.com/hyperledger/fabric/core/crypto/primitives/ecies"
 )
 
+// registerCryptoEngine() Node 암호화 엔진 등록 기능
+//		IN)		enrollID		ID
+//				enrollPWD		Password
+//		OUT)	error			정상:nil
 func (node *nodeImpl) registerCryptoEngine(enrollID, enrollPWD string) error {
 	node.Debug("Registering node crypto engine...")
 
@@ -63,6 +67,7 @@ func (node *nodeImpl) registerCryptoEngine(enrollID, enrollPWD string) error {
 	return nil
 }
 
+// initCryptoEngine() 압호화엔진 초기화
 func (node *nodeImpl) initCryptoEngine() error {
 	node.Debug("Initializing node crypto engine...")
 

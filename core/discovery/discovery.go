@@ -49,6 +49,7 @@ func NewDiscoveryImpl() *DiscoveryImpl {
 }
 
 // AddNode adds an address to the discovery list
+// AddNode() Discovery List에 주소를 추가한다.
 func (di *DiscoveryImpl) AddNode(address string) bool {
 	di.Lock()
 	defer di.Unlock()
@@ -60,6 +61,7 @@ func (di *DiscoveryImpl) AddNode(address string) bool {
 }
 
 // RemoveNode removes an address from the discovery list
+// RemoveNode() Discovery List에서 주소 삭제
 func (di *DiscoveryImpl) RemoveNode(address string) bool {
 	di.Lock()
 	defer di.Unlock()
@@ -71,6 +73,7 @@ func (di *DiscoveryImpl) RemoveNode(address string) bool {
 }
 
 // GetAllNodes returns an array of all addresses saved in the discovery list
+// GetAllNodes() discovery list에 보관중인 모든 주소의 어레이를 Return
 func (di *DiscoveryImpl) GetAllNodes() []string {
 	di.RLock()
 	defer di.RUnlock()
@@ -84,6 +87,7 @@ func (di *DiscoveryImpl) GetAllNodes() []string {
 }
 
 // GetRandomNodes returns n random nodes
+// GetRandomNodes() n개의 Random Nodes를 Return
 func (di *DiscoveryImpl) GetRandomNodes(n int) []string {
 	var pick string
 	randomNodes := make([]string, n)
