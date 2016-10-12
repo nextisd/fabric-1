@@ -38,18 +38,28 @@ func init() {
 }
 
 // Noops is a plugin object implementing the consensus.Consenter interface.
+//
+// Noops 구조체 : consensus.Consenter 인터페이스 구현.
+// 현재는 PBFT/Noops 2개의 컨센서스 알고리즘을 플러그인으로 제공.
+// Noops : 개발용 dummy 플러그인, 컨센서스를 하지 않지만 모든 컨센서스 메시지를 처리함.
 type Noops struct {
+	// 컨센서스에서 사용하는 method들의 스택 인터페이스
+	// NetworkStack, SecurityUtils, Executor, LegacyExecutor, LedgerManager, ReadOnlyLedger, StatePersistor.
 	stack    consensus.Stack
-	txQ      *txq
+	txQ      *txq // 트랜잭션 큐
 	timer    *time.Timer
 	duration time.Duration
 	channel  chan *pb.Transaction
 }
 
 // Setting up a singleton NOOPS consenter
+//
+// consensus.Consenter : N/W에서 메시지를 수신하는 인터페이스
 var iNoops consensus.Consenter
 
 // GetNoops returns a singleton of NOOPS
+//
+// GetNoops() : Noops 싱글턴(consensus.Consenter) 객체 리턴
 func GetNoops(c consensus.Stack) consensus.Consenter {
 	if iNoops == nil {
 		iNoops = newNoops(c)
@@ -58,6 +68,8 @@ func GetNoops(c consensus.Stack) consensus.Consenter {
 }
 
 // newNoops is a constructor returning a consensus.Consenter object.
+//
+// newNoops() : consensus.Consenter 객체 생성
 func newNoops(c consensus.Stack) consensus.Consenter {
 	var err error
 	if logger.IsEnabledFor(logging.DEBUG) {
@@ -66,8 +78,8 @@ func newNoops(c consensus.Stack) consensus.Consenter {
 	i := &Noops{}
 	i.stack = c
 	config := loadConfig()
-	blockSize := config.GetInt("block.size")
-	blockWait := config.GetString("block.wait")
+	blockSize := config.GetInt("block.size")    // 블록에 들어갈 트랜잭션 개수 세팅값
+	blockWait := config.GetString("block.wait") // 블록생성주기
 	if _, err = strconv.Atoi(blockWait); err == nil {
 		blockWait = blockWait + "s" //if string does not have unit of measure, default to seconds
 	}
@@ -80,16 +92,20 @@ func newNoops(c consensus.Stack) consensus.Consenter {
 	logger.Infof("NOOPS block size = %v", blockSize)
 	logger.Infof("NOOPS block wait = %v", i.duration)
 
-	i.txQ = newTXQ(blockSize)
+	i.txQ = newTXQ(blockSize) // 트랜잭션 큐 생성
 
-	i.channel = make(chan *pb.Transaction, 100)
-	i.timer = time.NewTimer(i.duration) // start timer now so we can just reset it
-	i.timer.Stop()
-	go i.handleChannels()
+	i.channel = make(chan *pb.Transaction, 100) // 트랜잭션 채널 생성
+	i.timer = time.NewTimer(i.duration)         // start timer now so we can just reset it
+	i.timer.Stop()                              // 타이머 생성
+	go i.handleChannels()                       // 고루틴: tx 채널 상태를 확인후 블록생성 및 전파(to NVPs)
 	return i
 }
 
 // RecvMsg is called for Message_CHAIN_TRANSACTION and Message_CONSENSUS messages.
+//
+// i.RecvMsg() : consenter.RecvMsg() 구현, 메시지 수신시마다 gRPC로 부터 호출됨
+// 	Message_CHAIN_TRANSACTION :
+// 	Message_CONSENSUS :
 func (i *Noops) RecvMsg(msg *pb.Message, senderHandle *pb.PeerID) error {
 	if logger.IsEnabledFor(logging.DEBUG) {
 		logger.Debugf("Handling Message of type: %s ", msg.Type)
@@ -112,6 +128,7 @@ func (i *Noops) RecvMsg(msg *pb.Message, senderHandle *pb.PeerID) error {
 	return nil
 }
 
+// i.broadcastConsensusMsg() :
 func (i *Noops) broadcastConsensusMsg(msg *pb.Message) error {
 	t := &pb.Transaction{}
 	if err := proto.Unmarshal(msg.Payload, t); err != nil {
@@ -136,40 +153,55 @@ func (i *Noops) broadcastConsensusMsg(msg *pb.Message) error {
 	return nil
 }
 
+// i.canProcessBlock() :
 func (i *Noops) canProcessBlock(tx *pb.Transaction) bool {
 	// For NOOPS, if we have completed the sync since we last connected,
 	// we can assume that we are at the current state; otherwise, we need to
 	// wait for the sync process to complete before we can exec the transactions
+	//
+	// Noops에서는 동기화(sync)가 완료되었을 경우, current state가 되었다고 가정할 수 있다.
+	// 그렇지 않다면, 트랜잭션 실행전에 sync process가 종료되기를 기다려야 한다.
 
 	// TODO: Ask coordinator if we need to start sync
 
 	i.txQ.append(tx)
 
 	// start timer if we get a tx
+	//
+	// tx가 들어오면 타이머 시작
 	if i.txQ.size() == 1 {
 		i.timer.Reset(i.duration)
 	}
-	return i.txQ.isFull()
+	return i.txQ.isFull() // tx 개수가 가득찼을경우 true
 }
 
+// i.handleChannels() : tx 채널 상태를 확인후 블록생성 및 전파(to NVPs)
 func (i *Noops) handleChannels() {
 	// Noops is a singleton object and only exits when peer exits, so we
 	// don't need a condition to exit this loop
+	//
+	// Noops은 싱글턴 객체로서 피어가 종료될때 같이 종료되므로,
+	// 아래 루프의 종료 조건을 설정할 필요가 없음.
 	for {
 		select {
+		// 채널에 tx가 있을경우
 		case tx := <-i.channel:
+			// tx 개수가 가득찼을경우(config.yaml: block.size)
 			if i.canProcessBlock(tx) {
 				if logger.IsEnabledFor(logging.DEBUG) {
 					logger.Debug("Process block due to size")
 				}
+				// tx실행, 블록생성, 네트워크에 전파
 				if err := i.processBlock(); nil != err {
 					logger.Error(err.Error())
 				}
 			}
+		// 타이머가 duration(config.yaml : block.wait) 경과시
 		case <-i.timer.C:
 			if logger.IsEnabledFor(logging.DEBUG) {
 				logger.Debug("Process block due to time")
 			}
+			// tx실행, 블록생성, 네트워크에 전파
 			if err := i.processBlock(); nil != err {
 				logger.Error(err.Error())
 			}
@@ -177,7 +209,9 @@ func (i *Noops) handleChannels() {
 	}
 }
 
+// i.processBlock() : tx실행, 블록생성, 네트워크에 전파까지 실행.
 func (i *Noops) processBlock() error {
+	// 타이머 종료
 	i.timer.Stop()
 
 	if i.txQ.size() < 1 {
@@ -190,34 +224,50 @@ func (i *Noops) processBlock() error {
 	var delta *statemgmt.StateDelta
 	var err error
 
+	// 블록에 들어갈 트랜잭션들을 state/ledger에 반영(tx-batch execute/commit)
 	if err = i.processTransactions(); nil != err {
 		return err
 	}
+	// 위에서 생성한 신규 블록정보 데이터 및 그 사이 발생한 state delta 확인
 	if data, delta, err = i.getBlockData(); nil != err {
 		return err
 	}
+	// 신규 생성된 블록을 NVP들에게 Broadcast 처리
 	go i.notifyBlockAdded(data, delta)
 	return nil
 }
 
+// i.processTransactions() : 트랜잭션들을 트랜잭션 배치 처리 실행(state/ledger에 반영)
 func (i *Noops) processTransactions() error {
 	timestamp := util.CreateUtcTimestamp()
 	if logger.IsEnabledFor(logging.DEBUG) {
 		logger.Debugf("Starting TX batch with timestamp: %v", timestamp)
 	}
+	// 트랜잭션 배치 시작 마킹
 	if err := i.stack.BeginTxBatch(timestamp); err != nil {
 		return err
 	}
 
 	// Grab all transactions from the FIFO queue and run them in order
+	//
+	// 트랜잭션 FIFO 큐에서 모든 트랜잭션을 가져와서 순서대로 실행
 	txarr := i.txQ.getTXs()
 	if logger.IsEnabledFor(logging.DEBUG) {
 		logger.Debugf("Executing batch of %d transactions with timestamp %v", len(txarr), timestamp)
 	}
+	// ExecTxs() : tx 배열을 입력받아서, 현재의 ledger state에 반영(chaincode.ExecuteTransactions()
+	// 정상 처리시 current state hash를 리턴.
+	// tx 처리중 에러 발생시 tx array에 대응되는 에러도 리턴하지만, 에러가 tx batch의 commit에 영향을 주지는 못함.
+	// tx 에러에 대한 처리는 플러그인에서 정의해야 함.
 	_, err := i.stack.ExecTxs(timestamp, txarr)
 
 	//consensus does not need to understand transaction errors, errors here are
 	//actual ledger errors, and often irrecoverable
+	//
+	// 컨센서스에서 tx 에러에 대해 이해할 필요는 없음.
+	// 여기 발생한 에러들은 실제 ledger에서의 에러이고 복구불가일수도 있음.
+
+	// tx 처리중 에러 발생시 트랜잭션 배치 롤백 후 에러 리턴
 	if err != nil {
 		logger.Debugf("Rolling back TX batch with timestamp: %v", timestamp)
 		i.stack.RollbackTxBatch(timestamp)
@@ -226,6 +276,7 @@ func (i *Noops) processTransactions() error {
 	if logger.IsEnabledFor(logging.DEBUG) {
 		logger.Debugf("Committing TX batch with timestamp: %v", timestamp)
 	}
+	// tx 정상처리시 트랜잭션 배치 커밋.
 	if _, err := i.stack.CommitTxBatch(timestamp, nil); err != nil {
 		logger.Debugf("Rolling back TX batch with timestamp: %v", timestamp)
 		i.stack.RollbackTxBatch(timestamp)
@@ -242,6 +293,7 @@ func (i *Noops) getTxFromMsg(msg *pb.Message) (*pb.Transaction, error) {
 	return txs.GetTransactions()[0], nil
 }
 
+// i.getBlockData() : 트랜잭션 큐로부터 생성한 신규 블록정보 리턴
 func (i *Noops) getBlockData() (*pb.Block, *statemgmt.StateDelta, error) {
 	ledger, err := ledger.GetLedger()
 	if err != nil {
@@ -268,9 +320,13 @@ func (i *Noops) getBlockData() (*pb.Block, *statemgmt.StateDelta, error) {
 	return block, delta, nil
 }
 
+// i.notifyBlockAdded() : 신규 생성된 블록을 NVP들에게 Broadcast 처리.
 func (i *Noops) notifyBlockAdded(block *pb.Block, delta *statemgmt.StateDelta) error {
 	//make Payload nil to reduce block size..
 	//anything else to remove .. do we need StateDelta ?
+	//
+	// 블록 사이즈를 줄이기 위해 tx.Payload를 nil로 설정
+	// 또 줄일게 없나? stateDelta 필요한가??
 	for _, tx := range block.Transactions {
 		tx.Payload = nil
 	}
@@ -286,6 +342,10 @@ func (i *Noops) notifyBlockAdded(block *pb.Block, delta *statemgmt.StateDelta) e
 	// VPs already know about this newly added block since they participate
 	// in the execution. That is, they can compare their current block with
 	// the network block
+	//
+	// SYNC_BLOCK_ADDED 메시지를 연결된 NVP들에게 Broadcast.
+	// VP들은 신규 추가된 블록의 execution(컨센서스 중 실행)에 참여했기 때문에 이미 이 블록을 알고 있음.
+	// 즉, VP들은 네트워트 블록과 현재의 블록을 비교할 수 있다.
 	msg := &pb.Message{Type: pb.Message_SYNC_BLOCK_ADDED,
 		Payload: data, Timestamp: util.CreateUtcTimestamp()}
 	if errs := i.stack.Broadcast(msg, pb.PeerEndpoint_NON_VALIDATOR); nil != errs {

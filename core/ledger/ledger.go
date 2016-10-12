@@ -233,9 +233,11 @@ func (ledger *Ledger) CommitTxBatch(id interface{}, transactions []*protos.Trans
 		ledger.blockchain.blockPersistenceStatus(false)
 		return err
 	}
+	// 신규 블록에 key-value 쌍들을 반영. 해당블록 컬럼패밀리에 key-value 큐잉.
 	ledger.state.AddChangesForPersistence(newBlockNumber, writeBatch)
 	opt := gorocksdb.NewDefaultWriteOptions()
 	defer opt.Destroy()
+	// DB에 Batch-Write
 	dbErr := db.GetDBHandle().DB.Write(opt, writeBatch)
 	if dbErr != nil {
 		ledger.resetForNextTxGroup(false)
@@ -246,6 +248,7 @@ func (ledger *Ledger) CommitTxBatch(id interface{}, transactions []*protos.Trans
 	ledger.resetForNextTxGroup(true)
 	ledger.blockchain.blockPersistenceStatus(true)
 
+	// 블록생성 이벤트 전송
 	sendProducerBlockEvent(block)
 
 	//send chaincode events from transaction results
@@ -297,7 +300,7 @@ func (ledger *Ledger) TxFinished(txID string, txSuccessful bool) {
 // GetTempStateHash - Computes state hash by taking into account the state changes that may have taken
 // place during the execution of current transaction-batch
 //
-// GetTempStateHash() : account에 현재 transaction-batch를 처리하는 동안 상태 변화를 포함한 state hash값을 계산.
+// GetTempStateHash() : 현재 transaction-batch를 처리하는 동안 상태 변화를 포함한 state hash값을 계산.
 func (ledger *Ledger) GetTempStateHash() ([]byte, error) {
 	return ledger.state.GetHash()
 }
@@ -624,6 +627,7 @@ func (ledger *Ledger) resetForNextTxGroup(txCommited bool) {
 	ledger.state.ClearInMemoryChanges(txCommited)
 }
 
+// block.sendProducerBlockEvent() : 블록생성 이벤트를 전송
 func sendProducerBlockEvent(block *protos.Block) {
 
 	// Remove payload from deploy transactions. This is done to make block

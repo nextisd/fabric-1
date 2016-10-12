@@ -23,20 +23,28 @@ import (
 )
 
 // SampleSysCC example simple Chaincode implementation
+//
+// SampleSysCC 구초제 : 간단한 시스템 체인코드 샘플 구현
 type SampleSysCC struct {
 }
 
 // Init initializes the sample system chaincode by storing the key and value
 // arguments passed in as parameters
+//
+// t.Init() : 샘플 시스템 체인코드초기화,입력 파라미터들을 key/value로 저장.
 func (t *SampleSysCC) Init(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	//as system chaincodes do not take part in consensus and are part of the system,
 	//best practice to do nothing (or very little) in Init.
+	//
+	// 컨센서스가 필요없고, 시스템 내부를 위한 시스템 체인코드라면 초기화(Init)에서 아무것도 하지 않는게 가장 좋음.
 
 	return nil, nil
 }
 
 // Invoke gets the supplied key and if it exists, updates the key with the newly
 // supplied value.
+//
+// t.Invoke() : 입력받은 key에 해당하는 value 업데이트
 func (t *SampleSysCC) Invoke(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	var key, val string // Entities
 
@@ -64,6 +72,8 @@ func (t *SampleSysCC) Invoke(stub shim.ChaincodeStubInterface, function string, 
 }
 
 // Query callback representing the query of a chaincode
+//
+// t.Query() : 입력하는 key에 해당하는 value 리턴
 func (t *SampleSysCC) Query(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	if function != "getval" {
 		return nil, errors.New("Invalid query function name. Expecting \"getval\"")

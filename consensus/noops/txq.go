@@ -20,6 +20,7 @@ import (
 	pb "github.com/hyperledger/fabric/protos"
 )
 
+// txq 구조체 : 트랜잭션 FIFO Queue 처리
 type txq struct {
 	i int
 	q []*pb.Transaction

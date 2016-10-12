@@ -107,7 +107,9 @@ type StateSnapshotIterator interface {
 
 	// GetRawKeyValue returns next key-value
 	//
-	// GetRawKeyValue() : 다음 key-value 리턴.
+	// GetRawKeyValue() : 다음 key-value 리턴??
+	// KTODO, /ledger/statemgmt/state/state_snapshot.go에는 현재 iterator의 위치에 해당하는 k/v를 리턴하라고 되어있는데..
+	//        실제로 3가지 statemgmt 구현을 찾아봐도 현재 위치꺼 가져오는 것으로 보임.
 	GetRawKeyValue() ([]byte, []byte)
 
 	// Close releases resources occupied by the iterator

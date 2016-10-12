@@ -22,13 +22,17 @@ import (
 )
 
 // StateSnapshot encapsulates StateSnapshotIterator given by actual state implementation and the db snapshot
+//
+// StateSnapshot 구조체 : StateSnapshotIterator(state 구현 인터페이스), DB 스냅샷.
 type StateSnapshot struct {
 	blockNumber  uint64
-	stateImplItr statemgmt.StateSnapshotIterator
-	dbSnapshot   *gorocksdb.Snapshot
+	stateImplItr statemgmt.StateSnapshotIterator // (Get(), RawKeyValue(k,v),close() 인터페이스)
+	dbSnapshot   *gorocksdb.Snapshot             // RocksDB consistent view 제공
 }
 
 // newStateSnapshot creates a new snapshot of the global state for the current block.
+//
+// newStateSnapshot() : 현재 블록의 global state의 스냅샷 생성후 리턴
 func newStateSnapshot(blockNumber uint64, dbSnapshot *gorocksdb.Snapshot) (*StateSnapshot, error) {
 	itr, err := stateImpl.GetStateSnapshotIterator(dbSnapshot)
 	if err != nil {
@@ -39,6 +43,9 @@ func newStateSnapshot(blockNumber uint64, dbSnapshot *gorocksdb.Snapshot) (*Stat
 }
 
 // Release the snapshot. This MUST be called when you are done with this resouce.
+//
+// ss.Release() 스냅샷 release. 자원 반환용으로 스냅샷 사용후 반드시 호출해야됨!
+// defer snapshot.Release() <== 이런식이면 될듯.
 func (ss *StateSnapshot) Release() {
 	ss.stateImplItr.Close()
 	ss.dbSnapshot.Release()
