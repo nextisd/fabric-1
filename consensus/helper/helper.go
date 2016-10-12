@@ -34,6 +34,9 @@ import (
 )
 
 // Helper contains the reference to the peer's MessageHandlerCoordinator
+//
+// Helper 구조체 : 피어의shim과 consensus.stack간의 메시지 핸들링, 타 노드와의 메시지 처리 지원.
+
 type Helper struct {
 	consenter    consensus.Consenter
 	coordinator  peer.MessageHandlerCoordinator

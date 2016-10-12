@@ -54,6 +54,7 @@ func EncodeOrderPreservingVarUint64(number uint64) []byte {
 
 // DecodeOrderPreservingVarUint64 decodes the number from the bytes obtained from method 'EncodeOrderPreservingVarUint64'.
 // Also, returns the number of bytes that are consumed in the process
+//
 // DecodeOrderPreservingVarUint64() : Byte array를 Uint64로 디코딩후 리턴
 func DecodeOrderPreservingVarUint64(bytes []byte) (uint64, int) {
 	s, _ := proto.DecodeVarint(bytes)

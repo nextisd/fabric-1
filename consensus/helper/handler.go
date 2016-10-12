@@ -41,6 +41,8 @@ const (
 
 // ConsensusHandler handles consensus messages.
 // It also implements the Stack.
+//
+// ConsensusHandler 구조체 : 컨센서스 메시지 핸들링, consensus.stack 구현.
 type ConsensusHandler struct {
 	peer.MessageHandler
 	consenterChan chan *util.Message
