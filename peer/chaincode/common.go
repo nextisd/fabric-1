@@ -90,7 +90,7 @@ func getChaincodeSpecification(cmd *cobra.Command) (*pb.ChaincodeSpec, error) {
 			}
 
 			// Add the login token to the chaincodeSpec
-			//@@ ChaincodeSpec 에 읽은 token 세팅
+			//@@ ChaincodeSpec 에 읽은 token 세팅 -
 			spec.SecureContext = string(token)
 
 			// If privacy is enabled, mark chaincode as confidential
