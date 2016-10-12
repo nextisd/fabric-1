@@ -37,7 +37,8 @@ var chaincodeInvokeCmd = &cobra.Command{
 }
 
 //@@ chaincodeInvoke() 는 chaincode 를 invoke
-//@@ invoke 성공 : 표준출력에 Tx ID 를 출력
+//@@ devopsClient 의 gRPC 세션으로 gRPC 요청전송/응답수신 후 성공시, Tx ID 출력
+//@@ 요청 method : "/protos.Devops/Invoke"
 func chaincodeInvoke(cmd *cobra.Command, args []string) error {
 	return chaincodeInvokeOrQuery(cmd, args, true)
 }

@@ -42,7 +42,8 @@ var chaincodeQueryCmd = &cobra.Command{
 }
 
 //@@ chaincodeQuery() 는 chaincode 를 query
-//@@ query  성공 : 표준출력에 조회 결과를 출력 (조회결과 없으면 출력없음)
+//@@ devopsClient 의 gRPC 세션으로 gRPC 요청전송/응답수신 후 성공시, 조회 결과 출력 (결과 없으면 출력없음) 
+//@@ 요청 method : "/protos.Devops/Query"
 func chaincodeQuery(cmd *cobra.Command, args []string) error {
 	return chaincodeInvokeOrQuery(cmd, args, false)
 }
