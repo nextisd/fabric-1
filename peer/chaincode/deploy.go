@@ -53,11 +53,14 @@ func chaincodeDeploy(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	//@@ GetDevopsClient local peer 와 새로운 gRPC connection 을 맺고,
+	//@@ DevopsClient object 를 생성하여 리턴
 	devopsClient, err := common.GetDevopsClient(cmd)
 	if err != nil {
 		return fmt.Errorf("Error building %s: %s", chainFuncName, err)
 	}
 
+	//@@ "/protos.Devops/Deploy"
 	chaincodeDeploymentSpec, err := devopsClient.Deploy(context.Background(), spec)
 	if err != nil {
 		return fmt.Errorf("Error building %s: %s\n", chainFuncName, err)

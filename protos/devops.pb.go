@@ -44,6 +44,8 @@ func (BuildResult_StatusCode) EnumDescriptor() ([]byte, []int) { return fileDesc
 
 // Secret is a temporary object to establish security with the Devops.
 // A better solution using certificate will be introduced later
+//@@ Secret : Devops 와의 security 를 설정하기 위한 임시 object
+//@@ 인증서를 이용한 더나은 방법은 후에 설명
 type Secret struct {
 	EnrollId     string `protobuf:"bytes,1,opt,name=enrollId" json:"enrollId,omitempty"`
 	EnrollSecret string `protobuf:"bytes,2,opt,name=enrollSecret" json:"enrollSecret,omitempty"`
@@ -111,6 +113,7 @@ func (m *BuildResult) String() string            { return proto.CompactTextStrin
 func (*BuildResult) ProtoMessage()               {}
 func (*BuildResult) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{4} }
 
+//@@ GetDeploymentSpec() 는 ChaincodeDeploymentSpec 를 리턴
 func (m *BuildResult) GetDeploymentSpec() *ChaincodeDeploymentSpec {
 	if m != nil {
 		return m.DeploymentSpec
@@ -127,6 +130,8 @@ func (m *TransactionRequest) String() string            { return proto.CompactTe
 func (*TransactionRequest) ProtoMessage()               {}
 func (*TransactionRequest) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{5} }
 
+//@@ cobra 에서 제공되는 frame
+//@@ 
 func init() {
 	proto.RegisterType((*Secret)(nil), "protos.Secret")
 	proto.RegisterType((*SigmaInput)(nil), "protos.SigmaInput")
