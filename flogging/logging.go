@@ -38,8 +38,11 @@ var loggingDefaultLevel = logging.INFO
 // change module logging levels at runtime call `logging.SetLevel(level,
 // module)`.  To debug this routine include logging=debug as the first
 // term of the logging specification.
-//@@ LoggingInit() 은 log 를 초기화 (level, ...)
+//@@ LoggingInit() 은 log-level 을 초기화
 //@@ 호출되는 곳 : peer, membersrvc 에서 호출 (membersrvc 내에서도 aca / ca / eca / tca / tlsca 에서 호출)
+//@@ core.yaml 에서 log-level 지정 방법
+//@@ "logging_level" 에 전체 log-level 지정
+//@@ "logging." + <command> 에 command 별 log-level 지정 
 func LoggingInit(command string) {
 	// Parse the logging specification in the form
 	//     [<module>[,<module>...]=]<level>[:[<module>[,<module>...]=]<level>...]
@@ -90,6 +93,7 @@ func DefaultLoggingLevel() logging.Level {
 }
 
 // Initiate 'leveled' logging to stderr.
+//@@ 아마 LoggingInit() 실행이후 호출해야 할 듯 
 func init() {
 
 	format := logging.MustStringFormatter(
