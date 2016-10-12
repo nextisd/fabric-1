@@ -105,7 +105,11 @@ func sendRequest(ctx context.Context, codec Codec, compressor Compressor, callHd
 // is really needed in their use cases.
 //@@ RPC 요청을 보내고 응답 수신 (sync 모드, connection close/error 인 경우 retry)
 //@@ 함수 인자 설명
-//@@
+//@@ ctx : 이거는...
+//@@ method : 호출할 method 명
+//@@ reply : 응답 버퍼 (interface {} --> 형지정을 하지 않을 때)
+//@@ cc : gRPC ClientConn
+//@@ opts : 콤마(,)로 여러 CallOption 넣을 수 있음
 func Invoke(ctx context.Context, method string, args, reply interface{}, cc *ClientConn, opts ...CallOption) (err error) {
 	c := defaultCallInfo
 	for _, o := range opts {
