@@ -200,6 +200,8 @@ func (c *devopsClient) Build(ctx context.Context, in *ChaincodeSpec, opts ...grp
 	return out, nil
 }
 
+//@@ Blockchain 에 chaincode 를 deploy
+//@@ "/protos.Devops/Deploy"
 func (c *devopsClient) Deploy(ctx context.Context, in *ChaincodeSpec, opts ...grpc.CallOption) (*ChaincodeDeploymentSpec, error) {
 	out := new(ChaincodeDeploymentSpec)
 	err := grpc.Invoke(ctx, "/protos.Devops/Deploy", in, out, c.cc, opts...)

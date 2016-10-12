@@ -60,7 +60,7 @@ func chaincodeDeploy(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("Error building %s: %s", chainFuncName, err)
 	}
 
-	//@@ "/protos.Devops/Deploy"
+	//@@ "/protos.Devops/Deploy" 로 gRPC 요청 보냄
 	chaincodeDeploymentSpec, err := devopsClient.Deploy(context.Background(), spec)
 	if err != nil {
 		return fmt.Errorf("Error building %s: %s\n", chainFuncName, err)
