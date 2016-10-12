@@ -149,6 +149,7 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, args []string, invoke bool) (err
 	}
 
 	// Build the ChaincodeInvocationSpec message
+	//@@ ChaincodeInvocationSpec (protobuf) 생성
 	invocation := &pb.ChaincodeInvocationSpec{ChaincodeSpec: spec}
 	if customIDGenAlg != common.UndefinedParamValue {
 		invocation.IdGenerationAlg = customIDGenAlg
@@ -156,8 +157,10 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, args []string, invoke bool) (err
 
 	var resp *pb.Response
 	if invoke {
+		//@@ "/protos.Devops/Invoke" 로 gRPC 요청 보냄
 		resp, err = devopsClient.Invoke(context.Background(), invocation)
 	} else {
+		//@@ "/protos.Devops/Query" 로 gRPC 요청 보냄
 		resp, err = devopsClient.Query(context.Background(), invocation)
 	}
 
@@ -169,23 +172,33 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, args []string, invoke bool) (err
 		}
 		return
 	}
+
+	//@ invoke 면, 성공시 Tx ID 를 리턴함 
 	if invoke {
 		transactionID := string(resp.Msg)
 		logger.Infof("Successfully invoked transaction: %s(%s)", invocation, transactionID)
 	} else {
 		logger.Infof("Successfully queried transaction: %s", invocation)
+		
+		//@ 해당 데이터가 없으면 output == nil 
 		if resp != nil {
+			//@ output 형식이 Raw 인 경우 
 			if chaincodeQueryRaw {
+				//@ output 형식이 Hexa 인 경우 --> Raw 에는 Hexa 미지원, 에러 
 				if chaincodeQueryHex {
 					err = errors.New("Options --raw (-r) and --hex (-x) are not compatible\n")
 					return
 				}
 				fmt.Print("Query Result (Raw): ")
 				os.Stdout.Write(resp.Msg)
+
+			//@ output 형식이 Raw 가 아닌 경우 
 			} else {
+				//@ output 형식이 Hexa 인 경우 --> Hexa Code 로 출력 
 				if chaincodeQueryHex {
 					fmt.Printf("Query Result: %x\n", resp.Msg)
 				} else {
+				//@ output 형식이 Hexa 가 아닌 경우 --> String 으로 출력 
 					fmt.Printf("Query Result: %s\n", string(resp.Msg))
 				}
 			}
