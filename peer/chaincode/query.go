@@ -41,6 +41,8 @@ var chaincodeQueryCmd = &cobra.Command{
 	},
 }
 
+//@@ chaincodeQuery() 는 chaincode 를 query
+//@@ query  성공 : 표준출력에 조회 결과를 출력 (조회결과 없으면 출력없음)
 func chaincodeQuery(cmd *cobra.Command, args []string) error {
 	return chaincodeInvokeOrQuery(cmd, args, false)
 }

@@ -36,6 +36,8 @@ var chaincodeInvokeCmd = &cobra.Command{
 	},
 }
 
+//@@ chaincodeInvoke() 는 chaincode 를 invoke
+//@@ invoke 성공 : 표준출력에 Tx ID 를 출력
 func chaincodeInvoke(cmd *cobra.Command, args []string) error {
 	return chaincodeInvokeOrQuery(cmd, args, true)
 }

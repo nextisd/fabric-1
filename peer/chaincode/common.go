@@ -157,10 +157,10 @@ func chaincodeInvokeOrQuery(cmd *cobra.Command, args []string, invoke bool) (err
 
 	var resp *pb.Response
 	if invoke {
-		//@@ "/protos.Devops/Invoke" 로 gRPC 요청 보냄
+		//@@ "/protos.Devops/Invoke" 로 gRPC 요청전송/응답수신, 응답 리턴
 		resp, err = devopsClient.Invoke(context.Background(), invocation)
 	} else {
-		//@@ "/protos.Devops/Query" 로 gRPC 요청 보냄
+		//@@ "/protos.Devops/Query" 로 gRPC 요청전송/응답수신, 응답 리턴
 		resp, err = devopsClient.Query(context.Background(), invocation)
 	}
 
