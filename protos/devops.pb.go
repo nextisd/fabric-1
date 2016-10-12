@@ -130,7 +130,7 @@ func (m *TransactionRequest) String() string            { return proto.CompactTe
 func (*TransactionRequest) ProtoMessage()               {}
 func (*TransactionRequest) Descriptor() ([]byte, []int) { return fileDescriptor3, []int{5} }
 
-//@@ cobra 에서 제공되는 frame
+//@@ cobra 에서 호출해주는 기본함수인 init() 구현
 //@@ 
 func init() {
 	proto.RegisterType((*Secret)(nil), "protos.Secret")
@@ -182,6 +182,8 @@ func NewDevopsClient(cc *grpc.ClientConn) DevopsClient {
 	return &devopsClient{cc}
 }
 
+//@@ devopsClient 의 gRPC 세션으로 gRPC 요청전송/응답수신 후 응답 리턴
+//@@ 요청 method : "/protos.Devops/Login"
 func (c *devopsClient) Login(ctx context.Context, in *Secret, opts ...grpc.CallOption) (*Response, error) {
 	out := new(Response)
 	err := grpc.Invoke(ctx, "/protos.Devops/Login", in, out, c.cc, opts...)
@@ -191,6 +193,8 @@ func (c *devopsClient) Login(ctx context.Context, in *Secret, opts ...grpc.CallO
 	return out, nil
 }
 
+//@@ devopsClient 의 gRPC 세션으로 gRPC 요청전송/응답수신 후 응답 리턴
+//@@ 요청 method : "/protos.Devops/Build"
 func (c *devopsClient) Build(ctx context.Context, in *ChaincodeSpec, opts ...grpc.CallOption) (*ChaincodeDeploymentSpec, error) {
 	out := new(ChaincodeDeploymentSpec)
 	err := grpc.Invoke(ctx, "/protos.Devops/Build", in, out, c.cc, opts...)
@@ -200,8 +204,8 @@ func (c *devopsClient) Build(ctx context.Context, in *ChaincodeSpec, opts ...grp
 	return out, nil
 }
 
-//@@ Blockchain 에 chaincode 를 deploy
-//@@ "/protos.Devops/Deploy"
+//@@ devopsClient 의 gRPC 세션으로 gRPC 요청전송/응답수신 후 응답 리턴
+//@@ 요청 method : "/protos.Devops/Deploy"
 func (c *devopsClient) Deploy(ctx context.Context, in *ChaincodeSpec, opts ...grpc.CallOption) (*ChaincodeDeploymentSpec, error) {
 	out := new(ChaincodeDeploymentSpec)
 	err := grpc.Invoke(ctx, "/protos.Devops/Deploy", in, out, c.cc, opts...)
@@ -211,6 +215,8 @@ func (c *devopsClient) Deploy(ctx context.Context, in *ChaincodeSpec, opts ...gr
 	return out, nil
 }
 
+//@@ devopsClient 의 gRPC 세션으로 gRPC 요청전송/응답수신 후 응답 리턴
+//@@ 요청 method : "/protos.Devops/Invoke"
 func (c *devopsClient) Invoke(ctx context.Context, in *ChaincodeInvocationSpec, opts ...grpc.CallOption) (*Response, error) {
 	out := new(Response)
 	err := grpc.Invoke(ctx, "/protos.Devops/Invoke", in, out, c.cc, opts...)
@@ -220,6 +226,8 @@ func (c *devopsClient) Invoke(ctx context.Context, in *ChaincodeInvocationSpec, 
 	return out, nil
 }
 
+//@@ devopsClient 의 gRPC 세션으로 gRPC 요청전송/응답수신 후 응답 리턴
+//@@ 요청 method : "/protos.Devops/Query"
 func (c *devopsClient) Query(ctx context.Context, in *ChaincodeInvocationSpec, opts ...grpc.CallOption) (*Response, error) {
 	out := new(Response)
 	err := grpc.Invoke(ctx, "/protos.Devops/Query", in, out, c.cc, opts...)
@@ -229,6 +237,8 @@ func (c *devopsClient) Query(ctx context.Context, in *ChaincodeInvocationSpec, o
 	return out, nil
 }
 
+//@@ devopsClient 의 gRPC 세션으로 gRPC 요청전송/응답수신 후 응답 리턴
+//@@ 요청 method : "/protos.Devops/EXP_GetApplicationTCert"
 func (c *devopsClient) EXP_GetApplicationTCert(ctx context.Context, in *Secret, opts ...grpc.CallOption) (*Response, error) {
 	out := new(Response)
 	err := grpc.Invoke(ctx, "/protos.Devops/EXP_GetApplicationTCert", in, out, c.cc, opts...)
@@ -238,6 +248,8 @@ func (c *devopsClient) EXP_GetApplicationTCert(ctx context.Context, in *Secret, 
 	return out, nil
 }
 
+//@@ devopsClient 의 gRPC 세션으로 gRPC 요청전송/응답수신 후 응답 리턴
+//@@ 요청 method : "/protos.Devops/EXP_PrepareForTx"
 func (c *devopsClient) EXP_PrepareForTx(ctx context.Context, in *Secret, opts ...grpc.CallOption) (*Response, error) {
 	out := new(Response)
 	err := grpc.Invoke(ctx, "/protos.Devops/EXP_PrepareForTx", in, out, c.cc, opts...)
@@ -247,6 +259,8 @@ func (c *devopsClient) EXP_PrepareForTx(ctx context.Context, in *Secret, opts ..
 	return out, nil
 }
 
+//@@ devopsClient 의 gRPC 세션으로 gRPC 요청전송/응답수신 후 응답 리턴
+//@@ 요청 method : "/protos.Devops/EXP_ProduceSigma"
 func (c *devopsClient) EXP_ProduceSigma(ctx context.Context, in *SigmaInput, opts ...grpc.CallOption) (*Response, error) {
 	out := new(Response)
 	err := grpc.Invoke(ctx, "/protos.Devops/EXP_ProduceSigma", in, out, c.cc, opts...)
@@ -256,6 +270,8 @@ func (c *devopsClient) EXP_ProduceSigma(ctx context.Context, in *SigmaInput, opt
 	return out, nil
 }
 
+//@@ devopsClient 의 gRPC 세션으로 gRPC 요청전송/응답수신 후 응답 리턴
+//@@ 요청 method : "/protos.Devops/EXP_ExecuteWithBinding"
 func (c *devopsClient) EXP_ExecuteWithBinding(ctx context.Context, in *ExecuteWithBinding, opts ...grpc.CallOption) (*Response, error) {
 	out := new(Response)
 	err := grpc.Invoke(ctx, "/protos.Devops/EXP_ExecuteWithBinding", in, out, c.cc, opts...)
