@@ -43,6 +43,9 @@ var chaincodeDeployCmd = &cobra.Command{
 // chaincodeDeploy deploys the chaincode. On success, the chaincode name
 // (hash) is printed to STDOUT for use by subsequent chaincode-related CLI
 // commands.
+//@@ chaincodeDeploy() 는 chaincode 를 deploy
+//@@ 성공시 chaincode name (hash 값) 을 표준출력으로 print (
+//@@ CLI 를 통해 해당 chaincode invoke/query 시 필수 인자로 사용됨
 func chaincodeDeploy(cmd *cobra.Command, args []string) error {
 	spec, err := getChaincodeSpecification(cmd)
 	if err != nil {
