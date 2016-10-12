@@ -46,21 +46,29 @@ func Cmd() *cobra.Command {
 	flags := chaincodeCmd.PersistentFlags()
 
 	//@@ chaincodeLang : --lang 또는 -l 플래그값, default = "golang", usage func. = Sprintf
-		flags.StringVarP(&chaincodeLang, "lang", "l", "golang",
+	flags.StringVarP(&chaincodeLang, "lang", "l", "golang",
 		fmt.Sprintf("Language the %s is written in", chainFuncName))
+	//@@ chaincodeCtorJSON : --ctor 또는 -c 플래그값, default = "{}", usage func. = Sprintf
 	flags.StringVarP(&chaincodeCtorJSON, "ctor", "c", "{}",
 		fmt.Sprintf("Constructor message for the %s in JSON format", chainFuncName))
+	//@@ chaincodeAttributesJSON : --attributes 또는 -a 플래그값, default = "[]", usage func. = Sprintf
 	flags.StringVarP(&chaincodeAttributesJSON, "attributes", "a", "[]",
 		fmt.Sprintf("User attributes for the %s in JSON format", chainFuncName))
+	//@@ chaincodePath : --path 또는 -p 플래그값, default = "", usage func. = Sprintf
 	flags.StringVarP(&chaincodePath, "path", "p", common.UndefinedParamValue,
 		fmt.Sprintf("Path to %s", chainFuncName))
+	//@@ chaincodeName : --name 또는 -n 플래그값, default = "", usage func. = Sprintf
 	flags.StringVarP(&chaincodeName, "name", "n", common.UndefinedParamValue,
 		fmt.Sprint("Name of the chaincode returned by the deploy transaction"))
+	//@@ chaincodeUsr : --username 또는 -u 플래그값, default = "", usage func. = Sprintf
 	flags.StringVarP(&chaincodeUsr, "username", "u", common.UndefinedParamValue,
 		fmt.Sprint("Username for chaincode operations when security is enabled"))
+	//@@ customIDGenAlg : --tid 또는 -t 플래그값, default = "", usage func. = Sprintf
 	flags.StringVarP(&customIDGenAlg, "tid", "t", common.UndefinedParamValue,
 		fmt.Sprint("Name of a custom ID generation algorithm (hashing and decoding) e.g. sha256base64"))
 
+	//@@ chaincode command 의 child command 등록
+	//@@ 예 : "peer chaincode [deploy | invoke | query]" 
 	chaincodeCmd.AddCommand(deployCmd())
 	chaincodeCmd.AddCommand(invokeCmd())
 	chaincodeCmd.AddCommand(queryCmd())
