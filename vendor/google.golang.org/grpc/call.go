@@ -122,6 +122,9 @@ func Invoke(ctx context.Context, method string, args, reply interface{}, cc *Cli
 			o.after(&c)
 		}
 	}()
+	
+	//@@ EnableTracing == true : Trace Log 쌓는거 같음
+	//@@ 파일시스템에서 찾아봐라.. : "grpc.Sent." + <method Family명>
 	if EnableTracing {
 		c.traceInfo.tr = trace.New("grpc.Sent."+methodFamily(method), method)
 		defer c.traceInfo.tr.Finish()
@@ -142,6 +145,8 @@ func Invoke(ctx context.Context, method string, args, reply interface{}, cc *Cli
 		Last:  true,
 		Delay: false,
 	}
+	
+	// retry 를 위한 for loop : connection close/error 인 경우 retry
 	for {
 		var (
 			err    error
