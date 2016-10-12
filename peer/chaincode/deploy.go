@@ -47,6 +47,7 @@ var chaincodeDeployCmd = &cobra.Command{
 //@@ 성공시 chaincode name (hash 값) 을 표준출력으로 print
 //@@ chaincode name : CLI 를 통해 해당 chaincode invoke/query 시 필수 인자로 사용됨
 func chaincodeDeploy(cmd *cobra.Command, args []string) error {
+	//@@ ChaincodeSpec (protobuf) 를 생성하고 field 값 세팅
 	spec, err := getChaincodeSpecification(cmd)
 	if err != nil {
 		return err
