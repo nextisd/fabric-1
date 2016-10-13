@@ -36,7 +36,6 @@ import (
 // Helper contains the reference to the peer's MessageHandlerCoordinator
 //
 // Helper 구조체 : 피어의shim과 consensus.stack간의 메시지 핸들링, 타 노드와의 메시지 처리 지원.
-
 type Helper struct {
 	consenter    consensus.Consenter
 	coordinator  peer.MessageHandlerCoordinator
@@ -51,14 +50,26 @@ type Helper struct {
 }
 
 // NewHelper constructs the consensus helper object
+//
+// NewHelper() : consensus helper 객체 생성
 func NewHelper(mhc peer.MessageHandlerCoordinator) *Helper {
 	h := &Helper{
 		coordinator: mhc,
 		secOn:       viper.GetBool("security.enabled"),
 		secHelper:   mhc.GetSecHelper(),
 		valid:       true, // Assume our state is consistent until we are told otherwise, actual consensus (pbft) will invalidate this immediately, but noops will not
+		// state가 consistent하다고 가정함, 만약 아니라면 pbft에서는 바로 invalidate 상태로 변경해야 하지만 noops는 그럴 필요 없음.
 	}
 
+	// executor.NewImpl() : coordinatorImpl 생성
+	// type coordinatorImpl struct {
+	//	manager         events.Manager              // event thread 관리, coordinator에게 event 전송처리
+	//	rawExecutor     PartialStack                // ledger에 직접 액세스
+	//	consumer        consensus.ExecutionConsumer // callback 수신
+	//	stc             statetransfer.Coordinator   // state 전송 객체
+	//	batchInProgress bool                        // Are we mid execution batch
+	//	skipInProgress  bool                        // Are we mid state transfer
+	// }
 	h.executor = executor.NewImpl(h, h, mhc)
 	return h
 }
@@ -66,9 +77,12 @@ func NewHelper(mhc peer.MessageHandlerCoordinator) *Helper {
 func (h *Helper) setConsenter(c consensus.Consenter) {
 	h.consenter = c
 	h.executor.Start() // The consenter may be expecting a callback from the executor because of state transfer completing, it will miss this if we start the executor too early
+	// state 전송 완료시 consenter는 executor로부터의 callback을 수신할 것으로 예상되지만, executor를 너무 일찍 시작하면 callback 수신을 놓칠 수도 있다.
 }
 
 // GetNetworkInfo returns the PeerEndpoints of the current validator and the entire validating network
+//
+// h.GetNetworkInfo() : 현재 VP와 전체 네트워크의 VP들의 PeerEndpoint를 리턴
 func (h *Helper) GetNetworkInfo() (self *pb.PeerEndpoint, network []*pb.PeerEndpoint, err error) {
 	ep, err := h.coordinator.GetPeerEndpoint()
 	if err != nil {
@@ -92,6 +106,8 @@ func (h *Helper) GetNetworkInfo() (self *pb.PeerEndpoint, network []*pb.PeerEndp
 }
 
 // GetNetworkHandles returns the PeerIDs of the current validator and the entire validating network
+//
+// h.GetNetworkHandles() : 현재 VP와 전체 네트워크의 VP들의 PeerID를 리턴
 func (h *Helper) GetNetworkHandles() (self *pb.PeerID, network []*pb.PeerID, err error) {
 	selfEP, networkEP, err := h.GetNetworkInfo()
 	if err != nil {
@@ -109,6 +125,8 @@ func (h *Helper) GetNetworkHandles() (self *pb.PeerID, network []*pb.PeerID, err
 }
 
 // Broadcast sends a message to all validating peers
+//
+// h.Broadcast() : 모든 VP들에게 메시지 전송 처리.
 func (h *Helper) Broadcast(msg *pb.Message, peerType pb.PeerEndpoint_Type) error {
 	errors := h.coordinator.Broadcast(msg, peerType)
 	if len(errors) > 0 {
@@ -134,6 +152,10 @@ func (h *Helper) Sign(msg []byte) ([]byte, error) {
 // Verify that the given signature is valid under the given replicaID's verification key
 // If replicaID is nil, use this validator's verification key
 // If the signature is valid, the function should return nil
+//
+// h.Verify() : 주어진 signature가 주어진 ReplicaID의 verification key에 유효한지를 검증.
+// 만약 replicaID가 nil 이면 이 VP의 verification key를 사용한다.
+// 만약 signature가 유효하면, 이 함수는 nil를 리턴해야 한다.
 func (h *Helper) Verify(replicaID *pb.PeerID, signature []byte, message []byte) error {
 	if !h.secOn {
 		logger.Debug("Security is disabled")
@@ -148,6 +170,9 @@ func (h *Helper) Verify(replicaID *pb.PeerID, signature []byte, message []byte) 
 
 	// check that the sender is a valid replica
 	// if so, call crypto verify() with that endpoint's pkiID
+	//
+	// sender가 valid replica인지 체크한다.
+	// 만약 그렇다면 crypto.Peer.Verify(Endpoint의 pkiID)를 호출한다.
 	for _, endpoint := range network {
 		logger.Debugf("Endpoint name: %v", endpoint.ID.Name)
 		if *replicaID == *endpoint.ID {
@@ -160,6 +185,8 @@ func (h *Helper) Verify(replicaID *pb.PeerID, signature []byte, message []byte) 
 
 // BeginTxBatch gets invoked when the next round
 // of transaction-batch execution begins
+//
+// h.BeginTxBatch() : 다음 라운드 tx-batch가 시작할때 호출됨.
 func (h *Helper) BeginTxBatch(id interface{}) error {
 	ledger, err := ledger.GetLedger()
 	if err != nil {
@@ -176,13 +203,19 @@ func (h *Helper) BeginTxBatch(id interface{}) error {
 // ExecTxs executes all the transactions listed in the txs array
 // one-by-one. If all the executions are successful, it returns
 // the candidate global state hash, and nil error array.
+//
+// h.ExecTxs() : @txs 에 리스팅된 모든 트랜잭션들을 하나 하나씩 execute 처리.
+// 모든 execution이 성공하면, candidate global state hash와 nil error를 리턴.
 func (h *Helper) ExecTxs(id interface{}, txs []*pb.Transaction) ([]byte, error) {
 	// TODO id is currently ignored, fix once the underlying implementation accepts id
+	// TODO @id는 현재는 무시됨, 아래 코드에서 처리 수정 예정.
 
 	// The secHelper is set during creat ChaincodeSupport, so we don't need this step
 	// cxt := context.WithValue(context.Background(), "security", h.coordinator.GetSecHelper())
 	// TODO return directly once underlying implementation no longer returns []error
-
+	//
+	// secHelper는 ChaincodeSupport 생성중에 세팅됨, 그래서 이 과정이 필요 없음
+	// cxt := context.WithValue(context.Background(), "security", h.coordinator.GetSecHelper())
 	succeededTxs, res, ccevents, txerrs, err := chaincode.ExecuteTransactions(context.Background(), chaincode.DefaultChain, txs)
 
 	h.curBatch = append(h.curBatch, succeededTxs...) // TODO, remove after issue 579
@@ -209,6 +242,9 @@ func (h *Helper) ExecTxs(id interface{}, txs []*pb.Transaction) ([]byte, error) 
 // transactions details and state changes (that may have happened
 // during execution of this transaction-batch) have been committed to
 // permanent storage.
+//
+// h.CommitTxBatch() : 현재의 tx-batch를 커밋할때 호출됨.
+// transaction detail과 state delta(tx-batch executing중에 발생한)들이 영구 스토리지에 커밋되었을때 정상 리턴
 func (h *Helper) CommitTxBatch(id interface{}, metadata []byte) (*pb.Block, error) {
 	ledger, err := ledger.GetLedger()
 	if err != nil {
@@ -237,6 +273,8 @@ func (h *Helper) CommitTxBatch(id interface{}, metadata []byte) (*pb.Block, erro
 
 // RollbackTxBatch discards all the state changes that may have taken
 // place during the execution of current transaction-batch
+//
+// h.RollbackTxBatch() : 현재 tx-batch 실행중 변경된 state delta들을 롤백.
 func (h *Helper) RollbackTxBatch(id interface{}) error {
 	ledger, err := ledger.GetLedger()
 	if err != nil {
@@ -254,6 +292,8 @@ func (h *Helper) RollbackTxBatch(id interface{}) error {
 // returned by GetBlockchainInfoBlob) that would describe the
 // blockchain if CommitTxBatch were invoked.  The blockinfo will
 // change if additional ExecTXs calls are invoked.
+//
+// h.PreviewCommitTxBatch() : CommitTxBatch가 처리되었다고 가정하고 Block info를 리턴.
 func (h *Helper) PreviewCommitTxBatch(id interface{}, metadata []byte) ([]byte, error) {
 	ledger, err := ledger.GetLedger()
 	if err != nil {
@@ -299,6 +339,8 @@ func (h *Helper) GetBlockchainInfo() *pb.BlockchainInfo {
 }
 
 // GetBlockchainInfoBlob marshals a ledger's BlockchainInfo into a protobuf
+//
+// h.GetBlockchainInfoBlob() : ledger의 BlockchainInfo를 protobuf로 마샬링
 func (h *Helper) GetBlockchainInfoBlob() []byte {
 	ledger, _ := ledger.GetLedger()
 	info, _ := ledger.GetBlockchainInfo()
@@ -321,33 +363,45 @@ func (h *Helper) GetBlockHeadMetadata() ([]byte, error) {
 }
 
 // InvalidateState is invoked to tell us that consensus realizes the ledger is out of sync
+//
+// h.InvalidateState() : 컨센서스가 ledger의 sync가 맞지 않다는 것이 확인되었을때 호출됨
 func (h *Helper) InvalidateState() {
 	logger.Debug("Invalidating the current state")
 	h.valid = false
 }
 
 // ValidateState is invoked to tell us that consensus has the ledger back in sync
+//
+// h.ValidateState() : 컨센서스가 ledger가 sync되었다는걸 확인했을때 호출됨
 func (h *Helper) ValidateState() {
 	logger.Debug("Validating the current state")
 	h.valid = true
 }
 
 // Execute will execute a set of transactions, this may be called in succession
+//
+// h.Execute() : @txs들을 execute, 연속적으로 호출될 수 있음.
 func (h *Helper) Execute(tag interface{}, txs []*pb.Transaction) {
 	h.executor.Execute(tag, txs)
 }
 
 // Commit will commit whatever transactions have been executed
+//
+// h.Commit() : execute된 tx들을 커밋
 func (h *Helper) Commit(tag interface{}, metadata []byte) {
 	h.executor.Commit(tag, metadata)
 }
 
 // Rollback will roll back whatever transactions have been executed
+//
+// h.Rollback() : execute된 tx들을 롤백.
 func (h *Helper) Rollback(tag interface{}) {
 	h.executor.Rollback(tag)
 }
 
 // UpdateState attempts to synchronize state to a particular target, implicitly calls rollback if needed
+//
+// h.UpdateState() : @target에 state 동기화를 시도, 필요한 경우 롤백 처리.
 func (h *Helper) UpdateState(tag interface{}, target *pb.BlockchainInfo, peers []*pb.PeerID) {
 	if h.valid {
 		logger.Warning("State transfer is being called for, but the state has not been invalidated")
@@ -378,6 +432,8 @@ func (h *Helper) RolledBack(tag interface{}) {
 }
 
 // StateUpdated is called when state transfer completes, if target is nil, this indicates a failure and a new target should be supplied
+//
+// h.StateUpdate() : state 전송이 완료되었을때 호출됨. @target이 nil이면 전송 실패를 뜻하고 새로운 @target이 필요함.
 func (h *Helper) StateUpdated(tag interface{}, target *pb.BlockchainInfo) {
 	if h.consenter != nil {
 		h.consenter.StateUpdated(tag, target)

@@ -22,9 +22,13 @@ import (
 
 // Helper provides an abstraction to access the Persist column family
 // in the database.
+//
+// Helper 구조체 : DB의 Persist 컬럼 패밀리(persistCF) 액세스 구현.
 type Helper struct{}
 
 // StoreState stores a key,value pair
+//
+// h.StoreState() : key-value쌍 저장
 func (h *Helper) StoreState(key string, value []byte) error {
 	db := db.GetDBHandle()
 	return db.Put(db.PersistCF, []byte("consensus."+key), value)
@@ -43,6 +47,8 @@ func (h *Helper) ReadState(key string) ([]byte, error) {
 }
 
 // ReadStateSet retrieves all key,value pairs where the key starts with prefix
+//
+// h.ReadStateSet() : @prefix로 시작하는 모든 key의 key-value들 리턴
 func (h *Helper) ReadStateSet(prefix string) (map[string][]byte, error) {
 	db := db.GetDBHandle()
 	prefixRaw := []byte("consensus." + prefix)

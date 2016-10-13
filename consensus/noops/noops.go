@@ -104,18 +104,20 @@ func newNoops(c consensus.Stack) consensus.Consenter {
 // RecvMsg is called for Message_CHAIN_TRANSACTION and Message_CONSENSUS messages.
 //
 // i.RecvMsg() : consenter.RecvMsg() 구현, 메시지 수신시마다 gRPC로 부터 호출됨
-// 	Message_CHAIN_TRANSACTION :
-// 	Message_CONSENSUS :
+// 	Message_CHAIN_TRANSACTION : 유저에게 response 메시지를 먼저 보내주고, consentor.RecvMsg(msg) 호출(e.g. external deploy request)
+// 	Message_CONSENSUS : consenter.RecvMsg(msg) 바로 호출
 func (i *Noops) RecvMsg(msg *pb.Message, senderHandle *pb.PeerID) error {
 	if logger.IsEnabledFor(logging.DEBUG) {
 		logger.Debugf("Handling Message of type: %s ", msg.Type)
 	}
 	if msg.Type == pb.Message_CHAIN_TRANSACTION {
+		// VP들에게 CONSENSUS 메시지를 Broadcast
 		if err := i.broadcastConsensusMsg(msg); nil != err {
 			return err
 		}
 	}
 	if msg.Type == pb.Message_CONSENSUS {
+		// @msg로부터 tx 추출
 		tx, err := i.getTxFromMsg(msg)
 		if nil != err {
 			return err
@@ -123,12 +125,13 @@ func (i *Noops) RecvMsg(msg *pb.Message, senderHandle *pb.PeerID) error {
 		if logger.IsEnabledFor(logging.DEBUG) {
 			logger.Debugf("Sending to channel tx uuid: %s", tx.Txid)
 		}
+		// 추출된 tx를 Noops 채널에 던짐
 		i.channel <- tx
 	}
 	return nil
 }
 
-// i.broadcastConsensusMsg() :
+// i.broadcastConsensusMsg() : CONSENSUS 메시지를 VP들에게 Broadcast.
 func (i *Noops) broadcastConsensusMsg(msg *pb.Message) error {
 	t := &pb.Transaction{}
 	if err := proto.Unmarshal(msg.Payload, t); err != nil {
@@ -137,6 +140,7 @@ func (i *Noops) broadcastConsensusMsg(msg *pb.Message) error {
 
 	// Change the msg type to consensus and broadcast to the network so that
 	// other validators may execute the transaction
+	// 메시지 타입을 Message_CONSENSUS로 변경하고, 다른 VP들이 트랜잭션을 execute 할수 있도록, broadcast 처리.
 	msg.Type = pb.Message_CONSENSUS
 	if logger.IsEnabledFor(logging.DEBUG) {
 		logger.Debugf("Broadcasting %s", msg.Type)
@@ -147,13 +151,14 @@ func (i *Noops) broadcastConsensusMsg(msg *pb.Message) error {
 		return err
 	}
 	msg.Payload = payload
+	// 모든 VP에게 broadcast
 	if errs := i.stack.Broadcast(msg, pb.PeerEndpoint_VALIDATOR); nil != errs {
 		return fmt.Errorf("Failed to broadcast with errors: %v", errs)
 	}
 	return nil
 }
 
-// i.canProcessBlock() :
+// i.canProcessBlock() : 블록생성처리를 할지 체크(blocksize 체크)
 func (i *Noops) canProcessBlock(tx *pb.Transaction) bool {
 	// For NOOPS, if we have completed the sync since we last connected,
 	// we can assume that we are at the current state; otherwise, we need to
@@ -285,6 +290,7 @@ func (i *Noops) processTransactions() error {
 	return nil
 }
 
+// i.getTxFromMsg() : @msg로부터 tx들을 추출해 낸뒤, 첫번째 tx를 리턴
 func (i *Noops) getTxFromMsg(msg *pb.Message) (*pb.Transaction, error) {
 	txs := &pb.TransactionBlock{}
 	if err := proto.Unmarshal(msg.Payload, txs); err != nil {
