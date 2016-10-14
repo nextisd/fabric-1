@@ -84,8 +84,22 @@ func addIndexDataForPersistence(block *protos.Block, blockNumber uint64, blockHa
 	openchainDB := db.GetDBHandle()
 	// IndexesCF : 인덱스 컬럼패밀리 핸들러
 	// 컬럼패밀리(column family) : 하나의 key에 여러개의 컬럼이 달려 있는 형태로서, RDBMS의 테이블과 유사.
-	// e.g. users { user1 = {k:"v",  k:"v"}, user2 = {k:"v", k:"v"} }
-	// user1, user2가 각각의 row의 key가 되며 users는 컬럼패밀리.
+	//
+	// e.g. 1.컬럼 :	key-value 로 이루어진 데이터 구조체
+	//					{ name:"James", asset:"Money" }
+	//
+	//      2.슈퍼컬럼 : 컬럼 구조체 안에 다시 컬럼이 들어가 있는 구조체.
+	//					{ name: { first:"Michael", last:"Jackson" }
+	//
+	//      3.컬럼패밀리 : PersonalInfo={
+	//						Info1={name:"James", age:"20"}
+	//						Info2={name:"Smith", age:"25", email:"smith@smith.com"}
+	//						Info3={name:"Jack",  age:"30", address:"Korea Seoul"}
+	//					 }
+	//
+	//		==> 	컬럼패밀리는 PersonalInfo, 각 행(row)에 대한 key들은 Info1,Info2,Info3
+	//			각 행들은 여러개의 컬럼으로 구성되어 있음.
+	//
 	//	*fabric/core/db/db.go
 	//	var columnfamilies = []string{
 	//		blockchainCF, // blocks of the block chain
@@ -101,24 +115,31 @@ func addIndexDataForPersistence(block *protos.Block, blockNumber uint64, blockHa
 	//
 	// blockHash(key),blockNumber(value)를 indexesCF 컬럼패밀리에 추가
 	indexLogger.Debugf("Indexing block number [%d] by hash = [%x]", blockNumber, blockHash)
+
+	// writeBatch.putCF() 함수 처리 인자 참고.
+	// endor/github.com/tecbot/gorocksdb/write_batch.go :
+	//	==> rocksdb_writebatch_put_cf(wb.c, cf.c, cKey, C.size_t(len(key)), cValue, C.size_t(len(value)))
+	//	==> rocksdb_writebatch_put_cf(batch: DBWriteBatch, cf: DBCFHandle, key: *const u8, klen: size_t, val: *const u8, vlen: size_t)
 	writeBatch.PutCF(cf, encodeBlockHashKey(blockHash), encodeBlockNumber(blockNumber))
 
 	addressToTxIndexesMap := make(map[string][]uint64)
 	addressToChaincodeIDsMap := make(map[string][]*protos.ChaincodeID)
 
 	transactions := block.GetTransactions()
+	// 블록내의 모든 트랜잭션을 읽어서 처리
 	for txIndex, tx := range transactions {
 		// add TxID -> (blockNumber,indexWithinBlock)
-		// 트랜잭션들을 모두 처리 : Txid(key),Blocknumber+txIndex(value)를 indexesCF에 추가
+		//
+		// 트랜잭션들을 모두 인덱싱 : Txid(key),Blocknumber+txIndex(value)를 indexesCF에 추가
 		writeBatch.PutCF(cf, encodeTxIDKey(tx.Txid), encodeBlockNumTxIndex(blockNumber, uint64(txIndex)))
 
 		// tx index Map 생성 및 추가
-		txExecutingAddress := getTxExecutingAddress(tx)
+		txExecutingAddress := getTxExecutingAddress(tx) // "address1"로 하드코딩되어 있음...
 		addressToTxIndexesMap[txExecutingAddress] = append(addressToTxIndexesMap[txExecutingAddress], uint64(txIndex))
 
 		switch tx.Type {
 		case protos.Transaction_CHAINCODE_DEPLOY, protos.Transaction_CHAINCODE_INVOKE:
-			authroizedAddresses, chaincodeID := getAuthorisedAddresses(tx)
+			authroizedAddresses, chaincodeID := getAuthorisedAddresses(tx) // "address1","address2" 하드코딩되어 있음...
 			for _, authroizedAddress := range authroizedAddresses {
 				// ChaincodeID Map 생성
 				addressToChaincodeIDsMap[authroizedAddress] = append(addressToChaincodeIDsMap[authroizedAddress], chaincodeID)
@@ -126,7 +147,7 @@ func addIndexDataForPersistence(block *protos.Block, blockNumber uint64, blockHa
 		}
 	}
 	for address, txsIndexes := range addressToTxIndexesMap {
-
+		// address+block번호(key) txIndex(value)를 IndexesCF에 추가
 		writeBatch.PutCF(cf, encodeAddressBlockNumCompositeKey(address, blockNumber), encodeListTxIndexes(txsIndexes))
 	}
 	return nil

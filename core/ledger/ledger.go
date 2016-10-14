@@ -98,6 +98,22 @@ var (
 // Ledger - the struct for openchain ledger
 //
 // Ledger - openchain ledger 구조체
+//
+// 	type blockchain struct {
+//		size               uint64
+//		previousBlockHash  []byte
+//		indexer            blockchainIndexer
+//		lastProcessedBlock *lastProcessedBlock
+// 	}
+// 	type State struct {
+//		stateImpl             statemgmt.HashableState
+//		stateDelta            *statemgmt.StateDelta
+//		currentTxStateDelta   *statemgmt.StateDelta
+//		currentTxID           string
+//		txStateDeltaHash      map[string][]byte
+//		updateStateImpl       bool
+//		historyStateDeltaSize uint64
+//	}
 type Ledger struct {
 	blockchain *blockchain
 	state      *state.State
