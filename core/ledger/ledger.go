@@ -44,18 +44,22 @@ const (
 	//ErrorType 정의
 
 	//ErrorTypeInvalidArgument used to indicate the invalid input to ledger method
+	//
 	//잘못된 입력 인자값
 	ErrorTypeInvalidArgument = ErrorType("InvalidArgument")
 
 	//ErrorTypeOutOfBounds used to indicate that a request is out of bounds
+	//
 	//요청한도초과
 	ErrorTypeOutOfBounds = ErrorType("OutOfBounds")
 
 	//ErrorTypeResourceNotFound used to indicate if a resource is not found
+	//
 	//리소스부족
 	ErrorTypeResourceNotFound = ErrorType("ResourceNotFound")
 
 	//ErrorTypeBlockNotFound used to indicate if a block is not found when looked up by it's hash
+	//
 	//hash값으로 블록이 검색되지 않을때
 	ErrorTypeBlockNotFound = ErrorType("ErrorTypeBlockNotFound")
 )
