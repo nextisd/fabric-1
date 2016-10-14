@@ -30,6 +30,7 @@ type AuthorizableCounterChaincode struct {
 }
 
 //Init the chaincode asigned the value "0" to the counter in the state.
+// Init시 상태 렛저에는 counter = 0으로 데이터가 insert
 func (t *AuthorizableCounterChaincode) Init(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	err := stub.PutState("counter", []byte("0"))
 	return nil, err

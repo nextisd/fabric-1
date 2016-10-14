@@ -34,17 +34,21 @@ import (
 type SimpleChaincode struct {
 }
 
+//@@ protocol spec에서 예제로 계속 언급되고 있는 example02.
+//@@ 아래의 calling cli로 인풋 파라미터를 가늠.
+//@@ peer chaincode deploy -p github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02 -c '{"Function":"init", "Args": ["a","100", "b", "200"]}'
 func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
-	var A, B string    // Entities
-	var Aval, Bval int // Asset holdings
+	var A, B string    // Entities //@@인풋 파라미터의 A,B.
+	var Aval, Bval int // Asset holdings //@@인풋 파라미터의 value, 100, 200.
 	var err error
 
-	if len(args) != 4 {
+	if len(args) != 4 { //@@4개의 인풋 인자가 들어왔는지 검증.
 		return nil, errors.New("Incorrect number of arguments. Expecting 4")
 	}
 
 	// Initialize the chaincode
-	A = args[0]
+	//@@ 체인코드의 init
+	A = args[0] // 두번째, 네번째 아규먼트는 int여야 하므로 이에 대한 검증을 하고, A와 B에 해당 값을 Aval, Bval로 매핑
 	Aval, err = strconv.Atoi(args[1])
 	if err != nil {
 		return nil, errors.New("Expecting integer value for asset holding")
@@ -57,6 +61,7 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 	fmt.Printf("Aval = %d, Bval = %d\n", Aval, Bval)
 
 	// Write the state to the ledger
+	//@@ 상태 렛저에 A와 B의 상태를 write -> 키와 밸류
 	err = stub.PutState(A, []byte(strconv.Itoa(Aval)))
 	if err != nil {
 		return nil, err
@@ -71,6 +76,8 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 }
 
 // Transaction makes payment of X units from A to B
+// Invoke는 A로부터 B로, X의 수량이 이체.
+// peer chaincode invoke -n <name_value_returned_from_deploy_command> -c '{"Function": "invoke", "Args": ["a", "b", "10"]}'
 func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	if function == "delete" {
 		// Deletes an entity from its state
@@ -82,7 +89,7 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
 	var X int          // Transaction value
 	var err error
 
-	if len(args) != 3 {
+	if len(args) != 3 { //3개의 아규먼트 검증
 		return nil, errors.New("Incorrect number of arguments. Expecting 3")
 	}
 
@@ -90,6 +97,7 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
 	B = args[1]
 
 	// Get the state from the ledger
+	// 현재 A와 B 엔티티의 상태를 조회하고 value를 저장
 	// TODO: will be nice to have a GetAllState call to ledger
 	Avalbytes, err := stub.GetState(A)
 	if err != nil {
@@ -110,15 +118,17 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
 	Bval, _ = strconv.Atoi(string(Bvalbytes))
 
 	// Perform the execution
+	// X 수량(10)을 A로부터 B로 이동
 	X, err = strconv.Atoi(args[2])
 	if err != nil {
 		return nil, errors.New("Invalid transaction amount, expecting a integer value")
 	}
-	Aval = Aval - X
-	Bval = Bval + X
+	Aval = Aval - X //A 엔티티의 밸류값을 X만큼 차감
+	Bval = Bval + X //B 엔티티의 밸류값을 X만큼 증가
 	fmt.Printf("Aval = %d, Bval = %d\n", Aval, Bval)
 
 	// Write the state back to the ledger
+	// 변경된 A와 B의 상태를 다시 상태 렛저에 write
 	err = stub.PutState(A, []byte(strconv.Itoa(Aval)))
 	if err != nil {
 		return nil, err
@@ -133,6 +143,7 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
 }
 
 // Deletes an entity from state
+// Invoke 함수에 의해 호출되는 내부 함수. 입력받은 키값에 해당하는 데이터를 상태 렛저에서 삭제.
 func (t *SimpleChaincode) delete(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	if len(args) != 1 {
 		return nil, errors.New("Incorrect number of arguments. Expecting 1")
@@ -150,6 +161,8 @@ func (t *SimpleChaincode) delete(stub shim.ChaincodeStubInterface, args []string
 }
 
 // Query callback representing the query of a chaincode
+// 조회 펑션 키값이 입력되면, 해당 키의 value값을 리턴.
+// peer chaincode query -l golang -n <name_value_returned_from_deploy_command> -c '{"Function": "query", "Args": ["a"]}'
 func (t *SimpleChaincode) Query(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	if function != "query" {
 		return nil, errors.New("Invalid query function name. Expecting \"query\"")
@@ -180,6 +193,7 @@ func (t *SimpleChaincode) Query(stub shim.ChaincodeStubInterface, function strin
 	return Avalbytes, nil
 }
 
+// 체인코드 실행
 func main() {
 	err := shim.Start(new(SimpleChaincode))
 	if err != nil {

@@ -39,16 +39,19 @@ type handlerList interface {
 	foreach(ie *pb.Event, action func(h *handler))
 }
 
+//블록과 트랜잭션 거부 타입의 이벤트에 적용되는 구조체
 type genericHandlerList struct {
 	sync.RWMutex
 	handlers map[*handler]bool
 }
 
+//체인코드 이벤트 타입의 이벤트에 적용되는 구조체
 type chaincodeHandlerList struct {
 	sync.RWMutex
 	handlers map[string]map[string]map[*handler]bool
 }
 
+//체인코드 핸들러 리스트에 새로운 핸들러를 추가
 func (hl *chaincodeHandlerList) add(ie *pb.Interest, h *handler) (bool, error) {
 	hl.Lock()
 	defer hl.Unlock()
@@ -62,6 +65,7 @@ func (hl *chaincodeHandlerList) add(ie *pb.Interest, h *handler) (bool, error) {
 		return false, fmt.Errorf("chaincode ID not provided for registering")
 	}
 	//is there a event type map for the chaincode
+	//해당 체인코드의 이벤트 맵이 없다면, 생성. (chaincodeid - eventname) == emap
 	emap, ok := hl.handlers[ie.GetChaincodeRegInfo().ChaincodeID]
 	if !ok {
 		emap = make(map[string]map[*handler]bool)
@@ -69,6 +73,8 @@ func (hl *chaincodeHandlerList) add(ie *pb.Interest, h *handler) (bool, error) {
 	}
 
 	//create handler map if this is the first handler for the type
+	//해당 타입에 대한 첫번째 핸들러라면, 핸들러 맵을 생성.
+	// (chaincodeid - eventname)emap, handler == handlermap
 	var handlerMap map[*handler]bool
 	if handlerMap, _ = emap[ie.GetChaincodeRegInfo().EventName]; handlerMap == nil {
 		handlerMap = make(map[*handler]bool)
@@ -82,6 +88,8 @@ func (hl *chaincodeHandlerList) add(ie *pb.Interest, h *handler) (bool, error) {
 
 	return true, nil
 }
+
+//체인코드 핸들러 리스트에서 핸들러를 삭제
 func (hl *chaincodeHandlerList) del(ie *pb.Interest, h *handler) (bool, error) {
 	hl.Lock()
 	defer hl.Unlock()
@@ -117,6 +125,8 @@ func (hl *chaincodeHandlerList) del(ie *pb.Interest, h *handler) (bool, error) {
 	//remove the event map.
 	//if the last map of events have been removed for the chaincode UUID
 	//remove the chaincode UUID map
+	//체인코드 이벤트를 위한 랜들러 맵으로부터 마지막 핸들러가 삭제되면, 이벤트 맵도 삭제 된다.
+	//(핸들러리스트, event)(event, chaincode id)
 	if len(handlerMap) == 0 {
 		delete(emap, ie.GetChaincodeRegInfo().EventName)
 		if len(emap) == 0 {
@@ -127,6 +137,7 @@ func (hl *chaincodeHandlerList) del(ie *pb.Interest, h *handler) (bool, error) {
 	return true, nil
 }
 
+//체인코드 이벤트의 경우,
 func (hl *chaincodeHandlerList) foreach(e *pb.Event, action func(h *handler)) {
 	hl.Lock()
 	defer hl.Unlock()
@@ -156,6 +167,7 @@ func (hl *chaincodeHandlerList) foreach(e *pb.Event, action func(h *handler)) {
 	}
 }
 
+//체인코드가 아닌 제네릭 핸들러 리스트에 핸들러 추가
 func (hl *genericHandlerList) add(ie *pb.Interest, h *handler) (bool, error) {
 	hl.Lock()
 	if _, ok := hl.handlers[h]; ok {
@@ -167,6 +179,7 @@ func (hl *genericHandlerList) add(ie *pb.Interest, h *handler) (bool, error) {
 	return true, nil
 }
 
+//체인코드가 아닌 제네릭 핸들러 리스트에 핸들러 삭제
 func (hl *genericHandlerList) del(ie *pb.Interest, h *handler) (bool, error) {
 	hl.Lock()
 	if _, ok := hl.handlers[h]; !ok {
@@ -178,6 +191,7 @@ func (hl *genericHandlerList) del(ie *pb.Interest, h *handler) (bool, error) {
 	return true, nil
 }
 
+//체인코드가 아닌 제네릭 핸들러 리스트를 loop도는 함수.
 func (hl *genericHandlerList) foreach(e *pb.Event, action func(h *handler)) {
 	hl.Lock()
 	for h := range hl.handlers {
@@ -190,12 +204,14 @@ func (hl *genericHandlerList) foreach(e *pb.Event, action func(h *handler)) {
 //event type. start() kicks of the event processor where it waits for Events
 //from producers. We could easily generalize the one event handling loop to one
 //per handlerMap if necessary.
-//
+//이벤트 프로세서는 이벤트 타입과 해당 이벤트 타입을 관심 이벤트로 가진 핸들러 맵을 가지고 있다.
+//start()는 이 이벤트 프로세서를 기동킨다.
 type eventProcessor struct {
 	sync.RWMutex
 	eventConsumers map[pb.EventType]handlerList
 
 	//we could generalize this with mutiple channels each with its own size
+	//이벤트를 수신하는 채널.
 	eventChannel chan *pb.Event
 
 	//milliseconds timeout for producer to send an event.
@@ -205,27 +221,32 @@ type eventProcessor struct {
 	timeout int
 }
 
+//어플리케이션 전 영역의 걸쳐 하나의 클래스의 단 하나의 인스턴스만을 생성하는 것 -> 싱글톤
 //global eventProcessor singleton created by initializeEvents. Openchain producers
 //send events simply over a reentrant static method
+//이벤트 프로세서는 싱글톤으로 선언됨.
 var gEventProcessor *eventProcessor
 
 func (ep *eventProcessor) start() {
 	producerLogger.Info("event processor started")
 	for {
 		//wait for event
+		//이벤트 채널이 이벤트 수신 대기
 		e := <-ep.eventChannel
 
 		var hl handlerList
-		eType := getMessageType(e)
+		eType := getMessageType(e) //이벤트 타입 확인
 		ep.Lock()
+		//해당 이벤트 타입을 수신하기로한 이벤트 컨수머들을 담당하는 핸들러
 		if hl, _ = ep.eventConsumers[eType]; hl == nil {
 			producerLogger.Errorf("Event of type %s does not exist", eType)
 			ep.Unlock()
 			continue
 		}
 		//lock the handler map lock
-		ep.Unlock()
 
+		ep.Unlock()
+		//loop를 돌면서 핸들러가 이벤트를 송신
 		hl.foreach(e, func(h *handler) {
 			if e.Event != nil {
 				h.SendMessage(e)
@@ -236,11 +257,12 @@ func (ep *eventProcessor) start() {
 }
 
 //initialize and start
+//이벤트 프로세서 시작
 func initializeEvents(bufferSize uint, tout int) {
 	if gEventProcessor != nil {
 		panic("should not be called twice")
 	}
-
+	//(event consumer, channel, timeout set)
 	gEventProcessor = &eventProcessor{eventConsumers: make(map[pb.EventType]handlerList), eventChannel: make(chan *pb.Event, bufferSize), timeout: tout}
 
 	addInternalEventTypes()
@@ -250,6 +272,7 @@ func initializeEvents(bufferSize uint, tout int) {
 }
 
 //AddEventType supported event
+//이벤트 프로세서가 처리할 이벤트 타입(기정의된 블록, 체인코드이벤트, 트랜잭션rejection)을 정의
 func AddEventType(eventType pb.EventType) error {
 	gEventProcessor.Lock()
 	producerLogger.Debugf("registering %s", pb.EventType_name[int32(eventType)])
@@ -260,6 +283,7 @@ func AddEventType(eventType pb.EventType) error {
 
 	switch eventType {
 	case pb.EventType_BLOCK:
+		//블록 이벤트를 수신할 컨수머 리스트 = 각 피어별로 할당할 핸들러 리스트의 참조 링크
 		gEventProcessor.eventConsumers[eventType] = &genericHandlerList{handlers: make(map[*handler]bool)}
 	case pb.EventType_CHAINCODE:
 		gEventProcessor.eventConsumers[eventType] = &chaincodeHandlerList{handlers: make(map[string]map[string]map[*handler]bool)}
@@ -271,6 +295,7 @@ func AddEventType(eventType pb.EventType) error {
 	return nil
 }
 
+//이벤트 프로세서에 이벤트 핸들러를 등록. -> 이벤트 타입별 핸들러 리스트에 추가.
 func registerHandler(ie *pb.Interest, h *handler) error {
 	producerLogger.Debugf("registerHandler %s", ie.EventType)
 
@@ -285,6 +310,7 @@ func registerHandler(ie *pb.Interest, h *handler) error {
 	return nil
 }
 
+// 이벤트 프로세서에 등록된 이벤트 핸들러를 해제 -> 이벤트 타입별 핸들러 리스트에서 삭제
 func deRegisterHandler(ie *pb.Interest, h *handler) error {
 	producerLogger.Debugf("deRegisterHandler %s", ie.EventType)
 
@@ -302,6 +328,7 @@ func deRegisterHandler(ie *pb.Interest, h *handler) error {
 //------------- producer API's -------------------------------
 
 //Send sends the event to interested consumers
+//이벤트 수신자에게 이벤트를 송신, 송신 시간 타임아웃이 적용되어 있음
 func Send(e *pb.Event) error {
 	if e.Event == nil {
 		producerLogger.Error("event not set")

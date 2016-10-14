@@ -24,16 +24,19 @@ import (
 )
 
 // consts associated with TCert
+//@@ Tcert와 관계된 상수
 const (
 	role        = "role"
 	contactInfo = "contactInfo"
 )
 
 //CertHandler provides APIs used to perform operations on incoming TCerts
+//@@ CertHandler는 들어오는 Tcert에 대한 일련의 동작을 수행하는 API를 제공.
 type certHandler struct {
 }
 
 // NewCertHandler creates a new reference to CertHandler
+//@@ NewCertHandler는 CertHandler에 대한 새로운 참조 링크를 리턴
 func NewCertHandler() *certHandler {
 	return &certHandler{}
 }
@@ -41,13 +44,16 @@ func NewCertHandler() *certHandler {
 // isAuthorized checks if the transaction invoker has the appropriate role
 // stub: chaincodestub
 // requiredRole: required role; this function will return true if invoker has this role
+//@@ isAuthorized : 트랜잭션 invoker가 실행 권한이 있는지 여부를 체크.
 func (t *certHandler) isAuthorized(stub shim.ChaincodeStubInterface, requiredRole string) (bool, error) {
 	//read transaction invoker's role, and verify that is the same as the required role passed in
+	//트랜잭션 invoker의 롤을 읽고, 입력된 권한과 같은지 비교하여 참 또는 거짓을 리턴.
 	return stub.VerifyAttribute(role, []byte(requiredRole))
 }
 
 // getContactInfo retrieves the contact info stored as an attribute in a Tcert
 // cert: TCert
+// @@ getContactInfo : Tcert의 attribute로 저장되어 있는 contact info를 리턴.
 func (t *certHandler) getContactInfo(cert []byte) (string, error) {
 	if len(cert) == 0 {
 		return "", errors.New("cert is empty")
@@ -65,6 +71,7 @@ func (t *certHandler) getContactInfo(cert []byte) (string, error) {
 // getAccountIDsFromAttribute retrieves account IDs stored in  TCert attributes
 // cert: TCert to read account IDs from
 // attributeNames: attribute names inside TCert that stores the entity's account IDs
+//@@ getAccountIDsFromAttribute : Tcert의 attribute에 저장된 account ID를 리턴.
 func (t *certHandler) getAccountIDsFromAttribute(cert []byte, attributeNames []string) ([]string, error) {
 	if cert == nil || attributeNames == nil {
 		return nil, errors.New("cert or accountIDs list is empty")
@@ -75,9 +82,11 @@ func (t *certHandler) getAccountIDsFromAttribute(cert []byte, attributeNames []s
 
 	// for each attribute name, look for that attribute name inside TCert,
 	// the correspounding value of that attribute is the account ID
+	// loop를 돌면서 Tcert의 attribute들과 입력받은 attribute name을 비교
 	for _, attributeName := range attributeNames {
 		myLogger.Debugf("get value from attribute = v%", attributeName)
 		//get the attribute value from the corresbonding attribute name
+		//@@ 입력받은 attribute name에 해당하는 attribute를 찾으면, 해당 attribute에 저장된 accountID를 get
 		accountID, err := attr.GetValueFrom(attributeName, cert)
 		if err != nil {
 			myLogger.Errorf("system error %v", err)
@@ -86,7 +95,7 @@ func (t *certHandler) getAccountIDsFromAttribute(cert []byte, attributeNames []s
 
 		acctIds = append(acctIds, string(accountID))
 	}
-
+	//@@ accountID 리턴
 	myLogger.Debugf("ids = %v", acctIds)
 	return acctIds, nil
 }

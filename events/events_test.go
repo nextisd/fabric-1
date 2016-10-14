@@ -272,6 +272,7 @@ func BenchmarkMessages(b *testing.B) {
 	}
 }
 
+//@@이벤트 서버 테스트 메인
 func TestMain(m *testing.M) {
 	SetupTestConfig()
 	var opts []grpc.ServerOption
@@ -282,12 +283,14 @@ func TestMain(m *testing.M) {
 		}
 		opts = []grpc.ServerOption{grpc.Creds(creds)}
 	}
+	//grpc 서버 생성
 	grpcServer := grpc.NewServer(opts...)
 
 	//use a different address than what we usually use for "peer"
 	//we override the peerAddress set in chaincode_support.go
+	//연결을 맺을 피어 주소 셋업
 	peerAddress = "0.0.0.0:60303"
-
+	//이벤트 리스너로 피어로부터 리슨 시작
 	lis, err := net.Listen("tcp", peerAddress)
 	if err != nil {
 		fmt.Printf("Error starting events listener %s....not doing tests", err)
@@ -296,7 +299,9 @@ func TestMain(m *testing.M) {
 
 	// Register EventHub server
 	// use a buffer of 100 and blocking timeout
+	//@@ 이벤트 허브서버 생성
 	ehServer := producer.NewEventsServer(100, 0)
+	//@@ grpc에 이벤트 서버 등록
 	ehpb.RegisterEventsServer(grpcServer, ehServer)
 
 	fmt.Printf("Starting events server\n")
@@ -305,6 +310,7 @@ func TestMain(m *testing.M) {
 	var regTimeout = 5 * time.Second
 	done := make(chan struct{})
 	adapter = &Adapter{notfy: done}
+	//@@ 이벤트 클라이언트 생성 및 실행
 	obcEHClient, _ = consumer.NewEventsClient(peerAddress, regTimeout, adapter)
 	if err = obcEHClient.Start(); err != nil {
 		fmt.Printf("could not start chat %s\n", err)

@@ -36,7 +36,25 @@ type adapter struct {
 	chaincodeID        string
 }
 
+//@@ consumer.EventAdapter : "github.com/hyperledger/fabric/events/consumer"
+//EventAdapter is the interface by which a openchain event client registers interested events and
+//receives messages from the openchain event Server
+
+/* type EventAdapter interface {
+	GetInterestedEvents() ([]*ehpb.Interest, error)
+	Recv(msg *ehpb.Event) (bool, error)
+	Disconnected(err error)
+}*/
+//@@fabric/protos/events.proto
+/*enum EventType {
+   	REGISTER = 0;
+    BLOCK = 1;
+	CHAINCODE = 2;
+	REJECTION = 3;
+}*/
+
 //GetInterestedEvents implements consumer.EventAdapter interface for registering interested events
+// @@ GetInterestedEvents :  관심 이벤트 등록 구현
 func (a *adapter) GetInterestedEvents() ([]*pb.Interest, error) {
 	if a.chaincodeID != "" {
 		return []*pb.Interest{
@@ -52,6 +70,9 @@ func (a *adapter) GetInterestedEvents() ([]*pb.Interest, error) {
 }
 
 //Recv implements consumer.EventAdapter interface for receiving events
+//@@ Recv : 이벤트 수신 구현
+//@@ 이벤트 등록을 제외하고, 등록 후 발생할 수 있는 정의된 이벤트 타입별로(Block, Rejection, chaincode)
+//@@ 이벤트 메세지를 set
 func (a *adapter) Recv(msg *pb.Event) (bool, error) {
 	if o, e := msg.Event.(*pb.Event_Block); e {
 		a.notfy <- o
@@ -71,11 +92,16 @@ func (a *adapter) Recv(msg *pb.Event) (bool, error) {
 }
 
 //Disconnected implements consumer.EventAdapter interface for disconnecting
+//@@ Disconnected : 이벤트 송수신 스트림chat 연결 해제
+
 func (a *adapter) Disconnected(err error) {
 	fmt.Printf("Disconnected...exiting\n")
 	os.Exit(1)
 }
 
+//@@event -> consumer의 NewEventsClient객체를 참조하는 obcEHCleint를 선언하고,
+//@@이 클라이언트를 실행.
+//@@실행하게 되면, Event Hub와 연결을 생성하고, 관심 이벤트를 등록하게 된다.
 func createEventClient(eventAddress string, listenToRejections bool, cid string) *adapter {
 	var obcEHClient *consumer.EventsClient
 
@@ -92,17 +118,19 @@ func createEventClient(eventAddress string, listenToRejections bool, cid string)
 	return adapter
 }
 
+//블록 이벤트를 감지하는 메인 함수
 func main() {
 	var eventAddress string
 	var listenToRejections bool
 	var chaincodeID string
+	//@@ 7053포트가 event hub?
 	flag.StringVar(&eventAddress, "events-address", "0.0.0.0:7053", "address of events server")
 	flag.BoolVar(&listenToRejections, "listen-to-rejections", false, "whether to listen to rejection events")
 	flag.StringVar(&chaincodeID, "events-from-chaincode", "", "listen to events from given chaincode")
 	flag.Parse()
 
 	fmt.Printf("Event Address: %s\n", eventAddress)
-
+	//이벤트 수신 클라이언트 생성
 	a := createEventClient(eventAddress, listenToRejections, chaincodeID)
 	if a == nil {
 		fmt.Printf("Error creating event client\n")
@@ -111,7 +139,7 @@ func main() {
 
 	for {
 		select {
-		case b := <-a.notfy:
+		case b := <-a.notfy: //블록 메세지
 			fmt.Printf("\n")
 			fmt.Printf("\n")
 			fmt.Printf("Received block\n")
@@ -119,13 +147,13 @@ func main() {
 			for _, r := range b.Block.Transactions {
 				fmt.Printf("Transaction:\n\t[%v]\n", r)
 			}
-		case r := <-a.rejected:
+		case r := <-a.rejected: // 트랜잭션 리젝션 메세지
 			fmt.Printf("\n")
 			fmt.Printf("\n")
 			fmt.Printf("Received rejected transaction\n")
 			fmt.Printf("--------------\n")
 			fmt.Printf("Transaction error:\n%s\t%s\n", r.Rejection.Tx.Txid, r.Rejection.ErrorMsg)
-		case ce := <-a.cEvent:
+		case ce := <-a.cEvent: //체인코드 이벤트 메세지
 			fmt.Printf("\n")
 			fmt.Printf("\n")
 			fmt.Printf("Received chaincode event\n")

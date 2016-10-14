@@ -31,10 +31,12 @@ import (
 )
 
 // EventSender example simple Chaincode implementation
+// 이벤트를 송신하는 간단한 체인코드 예제.
 type EventSender struct {
 }
 
 // Init function
+// 체인코드 init상태는 noevents라는 키는 value 0으로 셋팅
 func (t *EventSender) Init(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	err := stub.PutState("noevents", []byte("0"))
 	if err != nil {
@@ -45,8 +47,11 @@ func (t *EventSender) Init(stub shim.ChaincodeStubInterface, function string, ar
 }
 
 // Invoke function
+// 체인코드 실행 invoke는 현재의 상태를 확인 -> (noevents,  0)
+// 변경된 상태를 기록하고 -> (noevents, 1)
+// stub.SetEvent함수를 이용하여 noevents의 변화를 이벤트("evtsender")에 등록 저장.
 func (t *EventSender) Invoke(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
-	b, err := stub.GetState("noevents")
+	b, err := stub.GetState("noevents") // Init이후 b = 0
 	if err != nil {
 		return nil, errors.New("Failed to get state")
 	}
@@ -54,14 +59,16 @@ func (t *EventSender) Invoke(stub shim.ChaincodeStubInterface, function string, 
 
 	tosend := "Event " + string(b)
 	for _, s := range args {
-		tosend = tosend + "," + s
+		tosend = tosend + "," + s // tosend= Event 0 , 1 ?
 	}
-
-	err = stub.PutState("noevents", []byte(strconv.Itoa(noevts+1)))
+	// noevents의 상태를 변경
+	err = stub.PutState("noevents", []byte(strconv.Itoa(noevts+1))) //(noevents, 1)?
 	if err != nil {
 		return nil, err
 	}
-
+	// shim interface : setEvent saves the event to be sent when a transaction is made part of a block
+	// SetEvent(name string, payload []byte) error
+	// 이 체인코드 실행 트랜잭션에 블록에 산입될 때 발생할 이벤트를 evtsender로 등록 저장.
 	err = stub.SetEvent("evtsender", []byte(tosend))
 	if err != nil {
 		return nil, err

@@ -47,9 +47,11 @@ const (
 
 )
 
+// @@ 체인코드 로거 객체
 var chaincodeLogger = logging.MustGetLogger("chaincode")
 
 // MessageHandler interface for handling chaincode messages (common between Peer chaincode support and chaincode)
+// @@ MessageHandler : 체인코드 메세지를 핸들링하는 I/F (chaincode와 chaincode support간)
 type MessageHandler interface {
 	HandleMessage(msg *pb.ChaincodeMessage) error
 	SendMessage(msg *pb.ChaincodeMessage) error
@@ -63,12 +65,16 @@ type transactionContext struct {
 	rangeQueryIteratorMap map[string]statemgmt.RangeScanIterator
 }
 
+// @@ 수신 메세지에 따른 상태 변화를 담기 위한 구조체
 type nextStateInfo struct {
 	msg      *pb.ChaincodeMessage
 	sendToCC bool
 }
 
 // Handler responsbile for management of Peer's side of chaincode stream
+// @@ 핸들러 구조체 : 상태 저장을 위한 FSM, nextStateInfo,
+//                 트랜잭션과 txid 맵,
+//				   ChaincodeSupport등의 구조체를 포함한 구조체로 체인코드를 관리.
 type Handler struct {
 	sync.RWMutex
 	//peer to shim grpc serializer. User only in serialSend
@@ -85,6 +91,7 @@ type Handler struct {
 	readyNotify      chan bool
 	// Map of tx txid to either invoke or query tx (decrypted). Each tx will be
 	// added prior to execute and remove when done execute
+	// txid와 트랜잭션과의 매핑
 	txCtxs map[string]*transactionContext
 
 	txidMap map[string]bool
@@ -96,6 +103,7 @@ type Handler struct {
 	nextState chan *nextStateInfo
 }
 
+// @@ 단축 txid get
 func shorttxid(txid string) string {
 	if len(txid) < 8 {
 		return txid
@@ -103,6 +111,7 @@ func shorttxid(txid string) string {
 	return txid[0:8]
 }
 
+// @@ serialSend : 체인코드 메세지를 순차적으로 송신. 순서 보장을 위해서 락을 걸고 메세지를 송신 후, 락 해제
 func (handler *Handler) serialSend(msg *pb.ChaincodeMessage) error {
 	handler.serialLock.Lock()
 	defer handler.serialLock.Unlock()
@@ -113,6 +122,7 @@ func (handler *Handler) serialSend(msg *pb.ChaincodeMessage) error {
 	return nil
 }
 
+// @@ 트랜잭션
 func (handler *Handler) createTxContext(txid string, tx *pb.Transaction) (*transactionContext, error) {
 	if handler.txCtxs == nil {
 		return nil, fmt.Errorf("cannot create notifier for txid:%s", txid)
@@ -189,6 +199,10 @@ func (handler *Handler) canCallChaincode(txid string, isQuery bool) *pb.Chaincod
 	return nil
 }
 
+// @@ encrypt 와 decrypt에 의해서 호출되는 펑션
+// @@ 입력 파라미터중 암호화 여부가 true이면 encrypt, false이면 decrypt
+// @@ 실제 암호화 및 복호화는 crypto.StateEncryptor가 호출되어 실행
+
 func (handler *Handler) encryptOrDecrypt(encrypt bool, txid string, payload []byte) ([]byte, error) {
 	secHelper := handler.chaincodeSupport.getSecHelper()
 	if secHelper == nil {
@@ -228,6 +242,7 @@ func (handler *Handler) encryptOrDecrypt(encrypt bool, txid string, payload []by
 	if chaincodeLogger.IsEnabledFor(logging.DEBUG) {
 		chaincodeLogger.Debugf("[%s]Payload before encrypt/decrypt: %v", shorttxid(txid), payload)
 	}
+	// 암호화 또는 복호화된 트랜잭션 payload
 	if encrypt {
 		payload, err = enc.Encrypt(payload)
 	} else {
@@ -248,6 +263,7 @@ func (handler *Handler) encrypt(txid string, payload []byte) ([]byte, error) {
 	return handler.encryptOrDecrypt(true, txid, payload)
 }
 
+// @@
 func (handler *Handler) getSecurityBinding(tx *pb.Transaction) ([]byte, error) {
 	secHelper := handler.chaincodeSupport.getSecHelper()
 	if secHelper == nil {
@@ -257,6 +273,7 @@ func (handler *Handler) getSecurityBinding(tx *pb.Transaction) ([]byte, error) {
 	return secHelper.GetTransactionBinding(tx)
 }
 
+// 등록 해제
 func (handler *Handler) deregister() error {
 	if handler.registered {
 		handler.chaincodeSupport.deregisterHandler(handler)
@@ -264,6 +281,7 @@ func (handler *Handler) deregister() error {
 	return nil
 }
 
+// 핸들러의 FSM을 정의된 다음 상태로 전이
 func (handler *Handler) triggerNextState(msg *pb.ChaincodeMessage, send bool) {
 	handler.nextState <- &nextStateInfo{msg, send}
 }
@@ -278,6 +296,7 @@ func (handler *Handler) waitForKeepaliveTimer() <-chan time.Time {
 	return c
 }
 
+// 체인코드와의 stream 설정 - 수신 및
 func (handler *Handler) processStream() error {
 	defer handler.deregister()
 	msgAvail := make(chan *pb.ChaincodeMessage)

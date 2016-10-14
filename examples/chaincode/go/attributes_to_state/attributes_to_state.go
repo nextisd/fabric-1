@@ -25,9 +25,11 @@ import (
 )
 
 // Attributes2State demonstrates how to read attributes from TCerts.
+//@@ Attributes2State는 Tcert에서 attribute를 읽어오는 것을 demo.
 type Attributes2State struct {
 }
 
+//@@ Init 시점(deploy)에 초기 attribute와 상태를 기록. Init함수에 의해 콜링됨.
 func (t *Attributes2State) setStateToAttributes(stub shim.ChaincodeStubInterface, args []string) error {
 	attrHandler, err := attr.NewAttributesHandlerImpl(stub)
 	if err != nil {
@@ -39,6 +41,7 @@ func (t *Attributes2State) setStateToAttributes(stub shim.ChaincodeStubInterface
 		if err != nil {
 			return err
 		}
+		//렛저에 attibute를 기록
 		err = stub.PutState(att, attVal)
 		if err != nil {
 			return err
@@ -49,6 +52,7 @@ func (t *Attributes2State) setStateToAttributes(stub shim.ChaincodeStubInterface
 
 // Init intializes the chaincode by reading the transaction attributes and storing
 // the attrbute values in the state
+//@@ Init : 트랜잭션 attributes를 읽고 해당 attribute의 value를 state에 저장하여 체인코드를 초기화
 func (t *Attributes2State) Init(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	err := t.setStateToAttributes(stub, args)
 	if err != nil {
@@ -58,6 +62,9 @@ func (t *Attributes2State) Init(stub shim.ChaincodeStubInterface, function strin
 }
 
 // Invoke takes two arguements, a key and value, and stores these in the state
+//@@ Invoke함수는 키와 value값을 받아서 state에 저장한다.
+//@@ 동작 펑션은 attirbute 삭제인 delete와 submit 두가지가 있다.
+//@@ submit의 구현은 어디?
 func (t *Attributes2State) Invoke(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	if function == "delete" {
 		return nil, t.delete(stub, args)
@@ -74,6 +81,7 @@ func (t *Attributes2State) Invoke(stub shim.ChaincodeStubInterface, function str
 }
 
 // delete Deletes an entity from the state, returning error if the entity was not found in the state.
+//@@ delete 펑션은 아규먼트로 attribute를 받아서 해당 attribute가 state렛저에 존재한다면, 지운다.(stub.DelState)
 func (t *Attributes2State) delete(stub shim.ChaincodeStubInterface, args []string) error {
 	if len(args) != 1 {
 		return errors.New("Incorrect number of arguments. Expecting only 1 (attributeName)")
@@ -105,6 +113,7 @@ func (t *Attributes2State) delete(stub shim.ChaincodeStubInterface, args []strin
 }
 
 // Query callback representing the query of a chaincode
+// @@ 쿼리 함수는 attribute를 입력 받아, state 렛저에서 현재 상태를 확인하고 그 상태를 리턴.
 func (t *Attributes2State) Query(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	if function != "read" {
 		return nil, errors.New("Invalid query function name. Expecting \"read\"")
@@ -138,6 +147,7 @@ func (t *Attributes2State) Query(stub shim.ChaincodeStubInterface, function stri
 	return []byte(jsonResp), nil
 }
 
+// 체인코드의 실행을 지시하는 메인함수.
 func main() {
 	err := shim.Start(new(Attributes2State))
 	if err != nil {

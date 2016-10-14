@@ -33,6 +33,9 @@ type SimpleChaincode struct {
 
 // Init takes two arguments, a string and int. The string will be a key with
 // the int as a value.
+// 두개의 인풋 인자
+// 1. string 타입의 key : 어카운트
+// 2. int타입의 value : 자산수량.(sum of holdings)
 func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	var sum string // Sum of asset holdings across accounts. Initially 0
 	var sumVal int // Sum of holdings
@@ -43,6 +46,7 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 	}
 
 	// Initialize the chaincode
+	// 체인코드 init
 	sum = args[0]
 	sumVal, err = strconv.Atoi(args[1])
 	if err != nil {
@@ -51,6 +55,7 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 	fmt.Printf("sumVal = %d\n", sumVal)
 
 	// Write the state to the ledger
+	// 어카운트의 자산수량 상태를 렛저에 write
 	err = stub.PutState(sum, []byte(strconv.Itoa(sumVal)))
 	if err != nil {
 		return nil, err
@@ -60,11 +65,12 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 }
 
 // Invoke queries another chaincode and updates its own state
+// 다른 체인코드에 query를 수행하고, 본 체인코드의 상태를 갱신
 func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	var sum string             // Sum entity
 	var Aval, Bval, sumVal int // value of sum entity - to be computed
 	var err error
-
+	// 두개의 인풋 인자. 첫번째는 호출할 다른 체인코드 URL, 두번째는 수량
 	if len(args) != 2 {
 		return nil, errors.New("Incorrect number of arguments. Expecting 2")
 	}
@@ -73,21 +79,23 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
 	sum = args[1]
 
 	// Query chaincode_example02
+	// chaincode_example02 에 쿼리를 날림. -> A라는 엔티티를 인풋인자로 넘겨 현재 A의 자산 수량을 get
 	f := "query"
 	queryArgs := util.ToChaincodeArgs(f, "a")
-	response, err := stub.QueryChaincode(chaincodeURL, queryArgs)
+	response, err := stub.QueryChaincode(chaincodeURL, queryArgs) //@@ 체인코드간의 calling은 QueryChaincode, InvokeChincode
 	if err != nil {
 		errStr := fmt.Sprintf("Failed to query chaincode. Got error: %s", err.Error())
 		fmt.Printf(errStr)
 		return nil, errors.New(errStr)
 	}
+	// chaincode_example02가 리턴하는 A엔티티의 현재 자산 수량은 Aval에 넣음
 	Aval, err = strconv.Atoi(string(response))
 	if err != nil {
 		errStr := fmt.Sprintf("Error retrieving state from ledger for queried chaincode: %s", err.Error())
 		fmt.Printf(errStr)
 		return nil, errors.New(errStr)
 	}
-
+	//엔티티 B에 대해서도 A와 동일하게 현재의 자산 수량을 get
 	queryArgs = util.ToChaincodeArgs(f, "b")
 	response, err = stub.QueryChaincode(chaincodeURL, queryArgs)
 	if err != nil {
@@ -103,9 +111,11 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
 	}
 
 	// Compute sum
+	//@@ A와 B의 자산 수량을 합 (100 + 200 = 300)
 	sumVal = Aval + Bval
 
 	// Write sumVal back to the ledger
+	// 자산의 총수량(A와 B를 합한)을 렛저에 기록
 	err = stub.PutState(sum, []byte(strconv.Itoa(sumVal)))
 	if err != nil {
 		return nil, err
@@ -116,6 +126,7 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
 }
 
 // Query callback representing the query of a chaincode
+// @@ Query함수. --> chaincode_example02에 query를 날려 자산의 총합 수량을 구함
 func (t *SimpleChaincode) Query(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	if function != "query" {
 		return nil, errors.New("Invalid query function name. Expecting \"query\"")

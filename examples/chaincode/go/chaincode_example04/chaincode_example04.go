@@ -26,11 +26,13 @@ import (
 )
 
 // This chaincode is a test for chaincode invoking another chaincode - invokes chaincode_example02
+//@@ chaincode_example04는 chaincode_example02를 콜링 하는 예시를 보여줌.
 
 // SimpleChaincode example simple Chaincode implementation
 type SimpleChaincode struct {
 }
 
+// @@ chaincode_example02의 해쉬코드를 리턴.
 func (t *SimpleChaincode) GetChaincodeToCall() string {
 	//This is the hashcode for github.com/hyperledger/fabric/core/example/chaincode/chaincode_example02
 	//if the example is modifed this hashcode will change!!
@@ -39,11 +41,12 @@ func (t *SimpleChaincode) GetChaincodeToCall() string {
 }
 
 // Init takes two arguements, a string and int. These are stored in the key/value pair in the state
+// Init함수는 key/value로 string, int 타입을 받아서 state ledger에 put.
 func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	var event string // Indicates whether event has happened. Initially 0
 	var eventVal int // State of event
 	var err error
-
+	// key = 이벤트, value = 이벤트의 초기 상태
 	if len(args) != 2 {
 		return nil, errors.New("Incorrect number of arguments. Expecting 2")
 	}
@@ -55,7 +58,7 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 		return nil, errors.New("Expecting integer value for event status")
 	}
 	fmt.Printf("eventVal = %d\n", eventVal)
-
+	// 이벤트 상태를 렛저에 put
 	err = stub.PutState(event, []byte(strconv.Itoa(eventVal)))
 	if err != nil {
 		return nil, err
@@ -65,9 +68,10 @@ func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface, function string
 }
 
 // Invoke invokes another chaincode - chaincode_example02, upon receipt of an event and changes event state
+// Invoke는 다른 체인코드 example02를 호출한다.
 func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	var event string // Event entity
-	var eventVal int // State of event
+	var eventVal int // State of event //@@ 실행에 따른 이벤트 상태 인풋 파라미터
 	var err error
 
 	if len(args) != 2 {
@@ -89,7 +93,7 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
 	chainCodeToCall := t.GetChaincodeToCall()
 
 	f := "invoke"
-	invokeArgs := util.ToChaincodeArgs(f, "a", "b", "10")
+	invokeArgs := util.ToChaincodeArgs(f, "a", "b", "10") // example02는 A의 계좌에서 B의 계좌로 10수량만큼 자산을 이체하는 실행
 	response, err := stub.InvokeChaincode(chainCodeToCall, invokeArgs)
 	if err != nil {
 		errStr := fmt.Sprintf("Failed to invoke chaincode. Got error: %s", err.Error())
@@ -100,6 +104,7 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
 	fmt.Printf("Invoke chaincode successful. Got response %s", string(response))
 
 	// Write the event state back to the ledger
+	//@@ example02의 실행이 성공적이라면, event 상태를 변경한다.
 	err = stub.PutState(event, []byte(strconv.Itoa(eventVal)))
 	if err != nil {
 		return nil, err
@@ -109,6 +114,7 @@ func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface, function stri
 }
 
 // Query callback representing the query of a chaincode
+// Query 함수는 event라는 key로 상태 렛저에 access하여 현재의 이벤트 상태를 구함
 func (t *SimpleChaincode) Query(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	if function != "query" {
 		return nil, errors.New("Invalid query function name. Expecting \"query\"")

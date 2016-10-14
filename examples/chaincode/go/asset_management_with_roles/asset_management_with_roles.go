@@ -53,10 +53,22 @@ var myLogger = logging.MustGetLogger("asset_mgm")
 // user with role 'client' can transfers theirs assets to other clients as is implemented in function 'transfer'.
 // Asset ownership is stored in the ledger state and is linked to the client account.
 // Attribute 'account' is used to associate transaction certificates with account owner.
+
+//@@ AssetManagementChaincode : access control이 포함된 자산관리 체인코드 예시
+//@@ attributes support를 이용한 자산 이체
+//@@ 세 명의 유저 alice, bob, admin이 이 예시에서 액션을 취함.
+//@@ asset.yaml의 aca영역에 롤과 어카운트 정보가 기재되어 있음.
+//@@ 롤별 액션은 다음과 같이 한정
+//@@ 1.assigner : 펑션 assign 에 대한 권한을 지님
+//@@ 2.client : 펑션 transfer에 대한 권한을 지님
+//@@ 자산의 소유권은 클라이언트 어카운트에 연결된 렛저 스테이트에 기록되어 있음.
+//@@ 어카운트라는 attribute는 트랜잭션 cert와 어카운트 소유자의 연결 고리.
+
 type AssetManagementChaincode struct {
 }
 
 // Init initialization
+//@@ deploy시 초기화 함수.
 func (t *AssetManagementChaincode) Init(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	myLogger.Info("[AssetManagementChaincode] Init")
 	if len(args) != 0 {
@@ -64,6 +76,9 @@ func (t *AssetManagementChaincode) Init(stub shim.ChaincodeStubInterface, functi
 	}
 
 	// Create ownership table
+	// 자산 소유권한을 columndefinition으로 정의.
+	// table name : AssetsOwnership,
+	// key : Asset, value : owner
 	err := stub.CreateTable("AssetsOwnership", []*shim.ColumnDefinition{
 		&shim.ColumnDefinition{Name: "Asset", Type: shim.ColumnDefinition_STRING, Key: true},
 		&shim.ColumnDefinition{Name: "Owner", Type: shim.ColumnDefinition_BYTES, Key: false},
@@ -74,6 +89,7 @@ func (t *AssetManagementChaincode) Init(stub shim.ChaincodeStubInterface, functi
 
 	// Set the role of the users that are allowed to assign assets
 	// The metadata will contain the role of the users that are allowed to assign assets
+	// 자산을 배정하는 권한을 설정 -> 메타데이터가 이 내용을 포함하므로 GetCallerMetadata를 호출하여 권한 확인
 	assignerRole, err := stub.GetCallerMetadata()
 	fmt.Printf("Assiger role is %v\n", string(assignerRole))
 
@@ -90,6 +106,7 @@ func (t *AssetManagementChaincode) Init(stub shim.ChaincodeStubInterface, functi
 	return nil, nil
 }
 
+// 자산 배정 함수
 func (t *AssetManagementChaincode) assign(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	fmt.Println("Assigning Asset...")
 
@@ -105,26 +122,27 @@ func (t *AssetManagementChaincode) assign(stub shim.ChaincodeStubInterface, args
 	}
 
 	// Recover the role that is allowed to make assignments
+	// 자산 배정 권한을 가진 롤을 불러 옴.
 	assignerRole, err := stub.GetState("assignerRole")
 	if err != nil {
 		fmt.Printf("Error getting role [%v] \n", err)
 		return nil, errors.New("Failed fetching assigner role")
 	}
-
+	// 체인코드 호출자(caller)의 cert를 확인
 	callerRole, err := stub.ReadCertAttribute("role")
 	if err != nil {
 		fmt.Printf("Error reading attribute 'role' [%v] \n", err)
 		return nil, fmt.Errorf("Failed fetching caller role. Error was [%v]", err)
 	}
-
+	// 함수 호출자와 자산 배정 권한자 set
 	caller := string(callerRole[:])
 	assigner := string(assignerRole[:])
-
+	// 만약 호출자가 자산 배정 권한자가 아니라면, 에러 발생
 	if caller != assigner {
 		fmt.Printf("Caller is not assigner - caller %v assigner %v\n", caller, assigner)
 		return nil, fmt.Errorf("The caller does not have the rights to invoke assign. Expected role [%v], caller role [%v]", assigner, caller)
 	}
-
+	// 해당 자산의 어카운트 소유자가 아니라면, 에러 발생
 	account, err := attr.GetValueFrom("account", owner)
 	if err != nil {
 		fmt.Printf("Error reading account [%v] \n", err)
@@ -132,6 +150,7 @@ func (t *AssetManagementChaincode) assign(stub shim.ChaincodeStubInterface, args
 	}
 
 	// Register assignment
+	// AssetOwnership 테이블에 자산과 자산 어카운트를 insert
 	myLogger.Debugf("New owner of [%s] is [% x]", asset, owner)
 
 	ok, err := stub.InsertRow("AssetsOwnership", shim.Row{
@@ -148,6 +167,7 @@ func (t *AssetManagementChaincode) assign(stub shim.ChaincodeStubInterface, args
 	return nil, err
 }
 
+//@@ 자산 이체 함수
 func (t *AssetManagementChaincode) transfer(stub shim.ChaincodeStubInterface, args []string) ([]byte, error) {
 	if len(args) != 2 {
 		return nil, errors.New("Incorrect number of arguments. Expecting 2")
@@ -163,6 +183,7 @@ func (t *AssetManagementChaincode) transfer(stub shim.ChaincodeStubInterface, ar
 
 	// Verify the identity of the caller
 	// Only the owner can transfer one of his assets
+	// 함수 호출자 검증. 오직 자산 소유자만이 자산을 이체할 권한이 있음.
 	var columns []shim.Column
 	col1 := shim.Column{Value: &shim.Column_String_{String_: asset}}
 	columns = append(columns, col1)
@@ -179,6 +200,7 @@ func (t *AssetManagementChaincode) transfer(stub shim.ChaincodeStubInterface, ar
 	}
 
 	// Verify ownership
+	//@@ 자산 권한을 검증
 	callerAccount, err := stub.ReadCertAttribute("account")
 	if err != nil {
 		return nil, fmt.Errorf("Failed fetching caller account. Error was [%v]", err)
@@ -187,13 +209,14 @@ func (t *AssetManagementChaincode) transfer(stub shim.ChaincodeStubInterface, ar
 	if bytes.Compare(prvOwner, callerAccount) != 0 {
 		return nil, fmt.Errorf("Failed verifying caller ownership.")
 	}
-
+	// 자산을 이체 받을 자의 어카운트
 	newOwnerAccount, err := attr.GetValueFrom("account", newOwner)
 	if err != nil {
 		return nil, fmt.Errorf("Failed fetching new owner account. Error was [%v]", err)
 	}
 
 	// At this point, the proof of ownership is valid, then register transfer
+	//@@ 자산소유 권한이 유효한 것으로 검증 완료 시점. 자산 이체를 예약.
 	err = stub.DeleteRow(
 		"AssetsOwnership",
 		[]shim.Column{shim.Column{Value: &shim.Column_String_{String_: asset}}},
@@ -201,7 +224,7 @@ func (t *AssetManagementChaincode) transfer(stub shim.ChaincodeStubInterface, ar
 	if err != nil {
 		return nil, errors.New("Failed deliting row.")
 	}
-
+	//@@ 자산을 이체 받을 자의 asset, account를 기록.(insert)
 	_, err = stub.InsertRow(
 		"AssetsOwnership",
 		shim.Row{
@@ -218,9 +241,11 @@ func (t *AssetManagementChaincode) transfer(stub shim.ChaincodeStubInterface, ar
 }
 
 // Invoke runs callback representing the invocation of a chaincode
+//@@ 체인코드의 invoke 펑션
 func (t *AssetManagementChaincode) Invoke(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 
 	// Handle different functions
+	// 이 체인코드는 자산 배정과 자산 이체 두 개의 펑션을 가지고 있음.
 	if function == "assign" {
 		// Assign ownership
 		return t.assign(stub, args)
@@ -233,6 +258,7 @@ func (t *AssetManagementChaincode) Invoke(stub shim.ChaincodeStubInterface, func
 }
 
 // Query callback representing the query of a chaincode
+// 쿼리 펑션은 체인코드의 조회 기능이 구현되어 있음.
 func (t *AssetManagementChaincode) Query(stub shim.ChaincodeStubInterface, function string, args []string) ([]byte, error) {
 	if function != "query" {
 		return nil, errors.New("Invalid query function name. Expecting 'query' but found '" + function + "'")
@@ -245,6 +271,7 @@ func (t *AssetManagementChaincode) Query(stub shim.ChaincodeStubInterface, funct
 	}
 
 	// Who is the owner of the asset?
+	//@@ 자산의 소유자는 누구인지에 대한 조회, 자산을 key로 받아서 소유자를 AssetOwnership에서 읽어옴.
 	asset := args[0]
 
 	fmt.Printf("ASSET: %v", string(asset))
@@ -270,6 +297,7 @@ func (t *AssetManagementChaincode) Query(stub shim.ChaincodeStubInterface, funct
 	return row.Columns[1].GetBytes(), nil
 }
 
+//@@ 실제 예시용 체인코드를 shim 컨테이너에서 실행시키는 메인 함수
 func main() {
 	err := shim.Start(new(AssetManagementChaincode))
 	if err != nil {

@@ -34,9 +34,11 @@ type EventsServer struct {
 }
 
 //singleton - if we want to create multiple servers, we need to subsume events.gEventConsumers into EventsServer
+//이벤트 서버는 싱글톤으로 선언된다.
 var globalEventsServer *EventsServer
 
 // NewEventsServer returns a EventsServer
+//새로운 이벤트 서버를 생성
 func NewEventsServer(bufferSize uint, timeout int) *EventsServer {
 	if globalEventsServer != nil {
 		panic("Cannot create multiple event hub servers")
@@ -49,11 +51,13 @@ func NewEventsServer(bufferSize uint, timeout int) *EventsServer {
 
 // Chat implementation of the the Chat bidi streaming RPC function
 func (p *EventsServer) Chat(stream pb.Events_ChatServer) error {
+	//새로운 이벤트 핸들러 생성
 	handler, err := newEventHandler(stream)
 	if err != nil {
 		return fmt.Errorf("Error creating handler during handleChat initiation: %s", err)
 	}
 	defer handler.Stop()
+	//서버의 chat stream으로 컨수머의 event를 수신, 정상적으로 수신했을 경우, 핸들러의 handlemessage call
 	for {
 		in, err := stream.Recv()
 		if err == io.EOF {
