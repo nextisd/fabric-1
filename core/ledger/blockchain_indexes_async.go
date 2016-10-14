@@ -41,8 +41,10 @@ type blockchainIndexerAsync struct {
 	blockchain *blockchain
 	// Channel for transferring block from block chain for indexing
 	//
-	// 인덱싱 처리를 위한 블록 전송용 채널
-	blockChan    chan blockWrapper
+	// blockChan : 인덱싱 처리를 위한 블록 전송용 채널
+	blockChan chan blockWrapper
+
+	// indexerState : 인덱싱된 블록 번호, 블록 인덱싱중 에러 발생을 추적.
 	indexerState *blockchainIndexerState
 }
 
@@ -125,6 +127,8 @@ func (indexer *blockchainIndexerAsync) createIndexesInternal(block *protos.Block
 	writeBatch := gorocksdb.NewWriteBatch()
 	defer writeBatch.Destroy()
 	addIndexDataForPersistence(block, blockNumber, blockHash, writeBatch)
+
+	// indexesCF에 블록해쉬-블록번호 추가하는건데...lastIndexedBlockKey 이건 어디서 세팅하는건지???
 	writeBatch.PutCF(openchainDB.IndexesCF, lastIndexedBlockKey, encodeBlockNumber(blockNumber))
 	opt := gorocksdb.NewDefaultWriteOptions()
 	defer opt.Destroy()

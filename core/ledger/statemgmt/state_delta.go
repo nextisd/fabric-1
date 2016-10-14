@@ -31,8 +31,9 @@ import (
 // StateDelta 구조체 : state 변화를 저장. tx-batch 실행중 발생된 un-committed change를 저장하는데 사용함.
 // 다른 피어들에게 state를 전송할때도 사용함.
 type StateDelta struct {
-	// ChaincodeStateDelta : {chaincodeID, UpdatedKVs}
+	// ChaincodeStateDelta  ==> {chaincodeID, UpdatedKVs} 맵
 	ChaincodeStateDeltas map[string]*ChaincodeStateDelta
+
 	// RollBackwards allows one to contol whether this delta will roll the state
 	// forwards or backwards.
 	//
