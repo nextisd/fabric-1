@@ -40,6 +40,7 @@ var (
 // Public Methods
 
 // RegisterPeer registers a peer to the PKI infrastructure
+// RegisterPeer() PKI 구조에 하나의 Peer를 등록
 func RegisterPeer(name string, pwd []byte, enrollID, enrollPWD string) error {
 	peerMutex.Lock()
 	defer peerMutex.Unlock()
@@ -52,7 +53,10 @@ func RegisterPeer(name string, pwd []byte, enrollID, enrollPWD string) error {
 		return nil
 	}
 
+	// 신규 Peer 생성
 	peer := newPeer()
+
+	// Peer 등록
 	if err := peer.register(NodePeer, name, pwd, enrollID, enrollPWD, nil); err != nil {
 		if err != utils.ErrAlreadyRegistered && err != utils.ErrAlreadyInitialized {
 			log.Errorf("Failed registering peer [%s] with id [%s] [%s].", enrollID, name, err)
@@ -60,6 +64,8 @@ func RegisterPeer(name string, pwd []byte, enrollID, enrollPWD string) error {
 		}
 		log.Infof("Registering peer [%s] with id [%s]...done. Already registered or initiliazed.", enrollID, name)
 	}
+
+	// Peer Close
 	err := peer.close()
 	if err != nil {
 		// It is not necessary to report this error to the caller
@@ -72,6 +78,7 @@ func RegisterPeer(name string, pwd []byte, enrollID, enrollPWD string) error {
 }
 
 // InitPeer initializes a peer named name with password pwd
+// InitPeer() Peer 초기화
 func InitPeer(name string, pwd []byte) (Peer, error) {
 	peerMutex.Lock()
 	defer peerMutex.Unlock()
@@ -100,6 +107,7 @@ func InitPeer(name string, pwd []byte) (Peer, error) {
 }
 
 // ClosePeer releases all the resources allocated by peers
+// ClosePeer() Peer들에게 할당된 모든 자원들을 해제한다.
 func ClosePeer(peer Peer) error {
 	peerMutex.Lock()
 	defer peerMutex.Unlock()
@@ -108,6 +116,7 @@ func ClosePeer(peer Peer) error {
 }
 
 // CloseAllPeers closes all the peers initialized so far
+// CloseAllPeers()
 func CloseAllPeers() (bool, []error) {
 	peerMutex.Lock()
 	defer peerMutex.Unlock()
@@ -132,11 +141,13 @@ func newPeer() *peerImpl {
 	return &peerImpl{&nodeImpl{}, sync.RWMutex{}, nil}
 }
 
+// closePeerInternal()
 func closePeerInternal(peer Peer, force bool) error {
 	if peer == nil {
 		return utils.ErrNilArgument
 	}
 
+	// 입력된 Peer에 대한 Name 취득
 	name := peer.GetName()
 	log.Infof("Closing peer [%s]...", name)
 	entry, ok := peers[name]

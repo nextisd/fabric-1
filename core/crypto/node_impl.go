@@ -91,17 +91,27 @@ func (node *nodeImpl) setRegistered() {
 	node.isRegistered = true
 }
 
+// register()
+//		IN)	eType		Entity type
+//			name 		이름
+//			pwd			비밀번호
+//			enrollID	등록ID
+//			enrollPWD	등록비밀번호
+//			regFunc		등록함수(?)
+//		OUT)error		정상 nil,		이상 error
 func (node *nodeImpl) register(eType NodeType, name string, pwd []byte, enrollID, enrollPWD string, regFunc registerFunc) error {
 	// Set entity type
 	node.eType = eType
 
 	// Init Conf
+	// Configuration 초기화
 	if err := node.initConfiguration(name); err != nil {
 		node.Errorf("Failed initiliazing configuration [%s]: [%s].", enrollID, err)
 		return err
 	}
 
 	// Initialize keystore
+	// Keystore 초기화
 	err := node.initKeyStore(pwd)
 	if err != nil {
 		if err == utils.ErrKeyStoreAlreadyInitialized {
@@ -112,13 +122,17 @@ func (node *nodeImpl) register(eType NodeType, name string, pwd []byte, enrollID
 		return err
 	}
 
+	// 등록되어 있나?
 	if node.IsRegistered() {
 		return utils.ErrAlreadyRegistered
 	}
+
+	// 초기화되어 있나?
 	if node.IsInitialized() {
 		return utils.ErrAlreadyInitialized
 	}
 
+	// Node 등록
 	err = node.nodeRegister(eType, name, pwd, enrollID, enrollPWD)
 	if err != nil {
 		return err
@@ -153,12 +167,14 @@ func (node *nodeImpl) init(eType NodeType, name string, pwd []byte, initFunc ini
 	node.eType = eType
 
 	// Init Conf
+	// Configuration 초기화
 	if err := node.initConfiguration(name); err != nil {
 		node.Errorf("Failed initiliazing configuration: [%s]", err)
 		return err
 	}
 
 	// Initialize keystore
+	// keyStore 초기화
 	err := node.initKeyStore(pwd)
 	if err != nil {
 		if err == utils.ErrKeyStoreAlreadyInitialized {
@@ -173,11 +189,13 @@ func (node *nodeImpl) init(eType NodeType, name string, pwd []byte, initFunc ini
 		return utils.ErrAlreadyInitialized
 	}
 
+	// Node 초기화
 	err = node.nodeInit(eType, name, pwd)
 	if err != nil {
 		return err
 	}
 
+	// 초기화함수가 있으면 초기화함수 호출
 	if initFunc != nil {
 		err = initFunc(eType, name, pwd)
 		if err != nil {

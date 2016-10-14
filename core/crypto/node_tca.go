@@ -26,12 +26,14 @@ import (
 	"google.golang.org/grpc"
 )
 
+// retrieveTCACertsChain() TCA인증서Chain 검색
 func (node *nodeImpl) retrieveTCACertsChain(userID string) error {
 	if !node.ks.certMissing(node.conf.getTCACertsChainFilename()) {
 		return nil
 	}
 
 	// Retrieve TCA certificate and verify it
+	// TCA 인증서 취득
 	tcaCertRaw, err := node.getTCACertificate()
 	if err != nil {
 		node.Errorf("Failed getting TCA certificate [%s].", err.Error())
@@ -41,6 +43,7 @@ func (node *nodeImpl) retrieveTCACertsChain(userID string) error {
 	node.Debugf("TCA certificate [% x]", tcaCertRaw)
 
 	// TODO: Test TCA cert againt root CA
+	// DER을 X509인증서로 변환
 	_, err = primitives.DERToX509Certificate(tcaCertRaw)
 	if err != nil {
 		node.Errorf("Failed parsing TCA certificate [%s].", err.Error())
@@ -50,7 +53,6 @@ func (node *nodeImpl) retrieveTCACertsChain(userID string) error {
 
 	// Store TCA cert
 	node.Debugf("Storing TCA certificate for [%s]...", userID)
-
 	if err := node.ks.storeCert(node.conf.getTCACertsChainFilename(), tcaCertRaw); err != nil {
 		node.Errorf("Failed storing tca certificate [%s].", err.Error())
 		return err
@@ -81,6 +83,7 @@ func (node *nodeImpl) loadTCACertsChain() error {
 	return nil
 }
 
+// TCA Client Get
 func (node *nodeImpl) getTCAClient() (*grpc.ClientConn, membersrvc.TCAPClient, error) {
 	node.Debug("Getting TCA client...")
 
@@ -112,6 +115,7 @@ func (node *nodeImpl) callTCAReadCACertificate(ctx context.Context, opts ...grpc
 	return cert, nil
 }
 
+// TCA 인증서 취득
 func (node *nodeImpl) getTCACertificate() ([]byte, error) {
 	response, err := node.callTCAReadCACertificate(context.Background())
 	if err != nil {

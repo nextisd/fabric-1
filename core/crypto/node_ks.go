@@ -108,6 +108,8 @@ func (ks *keyStore) init(node *nodeImpl, pwd []byte) error {
 	return nil
 }
 
+// isAliasSet() Alias 절정 여부 확인
+//		OUT) true 설정, false 누락
 func (ks *keyStore) isAliasSet(alias string) bool {
 	missing, _ := utils.FilePathMissing(ks.node.conf.getPathForAlias(alias))
 	if missing {
@@ -117,13 +119,16 @@ func (ks *keyStore) isAliasSet(alias string) bool {
 	return true
 }
 
+// storePrivateKey() privateKey 저장
 func (ks *keyStore) storePrivateKey(alias string, privateKey interface{}) error {
+	// 입력된 privateKey와 KeyStore의 비밀번호를 이용하여 PEM으로 변환
 	rawKey, err := primitives.PrivateKeyToPEM(privateKey, ks.pwd)
 	if err != nil {
 		ks.node.Errorf("Failed converting private key to PEM [%s]: [%s]", alias, err)
 		return err
 	}
 
+	// PEM으로 변환된 Key를 저장
 	err = ioutil.WriteFile(ks.node.conf.getPathForAlias(alias), rawKey, 0700)
 	if err != nil {
 		ks.node.Errorf("Failed storing private key [%s]: [%s]", alias, err)
@@ -133,7 +138,9 @@ func (ks *keyStore) storePrivateKey(alias string, privateKey interface{}) error 
 	return nil
 }
 
+// storePrivateKeyInClear() storePrivateKey()와 동일 처리(????)
 func (ks *keyStore) storePrivateKeyInClear(alias string, privateKey interface{}) error {
+	// 입력된 privateKey와 NULL 비밀번호를 이용하여 PEM으로 변환
 	rawKey, err := primitives.PrivateKeyToPEM(privateKey, nil)
 	if err != nil {
 		ks.node.Errorf("Failed converting private key to PEM [%s]: [%s]", alias, err)
@@ -153,10 +160,13 @@ func (ks *keyStore) deletePrivateKeyInClear(alias string) error {
 	return os.Remove(ks.node.conf.getPathForAlias(alias))
 }
 
+// loadPrivateKey() privateKey 취득
 func (ks *keyStore) loadPrivateKey(alias string) (interface{}, error) {
+	// 입력된 Alias를 이용하여 Path 취득
 	path := ks.node.conf.getPathForAlias(alias)
 	ks.node.Debugf("Loading private key [%s] at [%s]...", alias, path)
 
+	// Read File
 	raw, err := ioutil.ReadFile(path)
 	if err != nil {
 		ks.node.Errorf("Failed loading private key [%s]: [%s].", alias, err.Error())
@@ -164,6 +174,7 @@ func (ks *keyStore) loadPrivateKey(alias string) (interface{}, error) {
 		return nil, err
 	}
 
+	// PEM을 privateKey로 변환
 	privateKey, err := primitives.PEMtoPrivateKey(raw, ks.pwd)
 	if err != nil {
 		ks.node.Errorf("Failed parsing private key [%s]: [%s].", alias, err.Error())
@@ -174,6 +185,7 @@ func (ks *keyStore) loadPrivateKey(alias string) (interface{}, error) {
 	return privateKey, nil
 }
 
+// publicKey 저장
 func (ks *keyStore) storePublicKey(alias string, publicKey interface{}) error {
 	rawKey, err := primitives.PublicKeyToPEM(publicKey, ks.pwd)
 	if err != nil {
@@ -248,6 +260,7 @@ func (ks *keyStore) loadKey(alias string) ([]byte, error) {
 	return key, nil
 }
 
+// 인증서 저장
 func (ks *keyStore) storeCert(alias string, der []byte) error {
 	err := ioutil.WriteFile(ks.node.conf.getPathForAlias(alias), primitives.DERCertToPEM(der), 0700)
 	if err != nil {
@@ -314,6 +327,7 @@ func (ks *keyStore) loadCertX509AndDer(alias string) (*x509.Certificate, []byte,
 	return cert, der, nil
 }
 
+// KeyStore DB Close
 func (ks *keyStore) close() error {
 	ks.node.Debug("Closing keystore...")
 	err := ks.sqlDB.Close()
@@ -328,6 +342,7 @@ func (ks *keyStore) close() error {
 	return err
 }
 
+// createKeyStoreIfNotExists() 만일 없으면 KeyStore 생성
 func (ks *keyStore) createKeyStoreIfNotExists() error {
 	// Check keystore directory
 	ksPath := ks.node.conf.getKeyStorePath()
@@ -393,14 +408,16 @@ func (ks *keyStore) deleteKeyStore() error {
 	return os.RemoveAll(ks.node.conf.getKeyStorePath())
 }
 
+// openKeyStore() keyStore Open
 func (ks *keyStore) openKeyStore() error {
 	if ks.isOpen {
 		return nil
 	}
 
-	// Open DB
+	// KeyStore Path 취득
 	ksPath := ks.node.conf.getKeyStorePath()
 
+	// DB Open
 	sqlDB, err := sql.Open("sqlite3", filepath.Join(ksPath, ks.node.conf.getKeyStoreFilename()))
 	if err != nil {
 		ks.node.Errorf("Error opening keystore%s", err.Error())

@@ -47,6 +47,7 @@ func (node *nodeImpl) retrieveECACertsChain(userID string) error {
 	}
 
 	// Retrieve ECA certificate and verify it
+	// ECA 인증서 취득
 	ecaCertRaw, err := node.getECACertificate()
 	if err != nil {
 		node.Errorf("Failed getting ECA certificate [%s].", err.Error())
@@ -57,6 +58,7 @@ func (node *nodeImpl) retrieveECACertsChain(userID string) error {
 
 	// TODO: Test ECA cert againt root CA
 	// TODO: check response.Cert against rootCA
+	// DER을 X509로 변환
 	x509ECACert, err := primitives.DERToX509Certificate(ecaCertRaw)
 	if err != nil {
 		node.Errorf("Failed parsing ECA certificate [%s].", err.Error())
@@ -65,10 +67,11 @@ func (node *nodeImpl) retrieveECACertsChain(userID string) error {
 	}
 
 	// Prepare ecaCertPool
+	// ECA 인증서Pool에 추가
 	node.ecaCertPool = x509.NewCertPool()
 	node.ecaCertPool.AddCert(x509ECACert)
 
-	// Store ECA cert
+	// ECA 인증 체인 파일에 저장
 	node.Debugf("Storing ECA certificate for [%s]...", userID)
 
 	if err := node.ks.storeCert(node.conf.getECACertsChainFilename(), ecaCertRaw); err != nil {
@@ -79,6 +82,7 @@ func (node *nodeImpl) retrieveECACertsChain(userID string) error {
 	return nil
 }
 
+// retrieveEnrollmentData() 등록데이터 검색
 func (node *nodeImpl) retrieveEnrollmentData(enrollID, enrollPWD string) error {
 	if !node.ks.certMissing(node.conf.getEnrollmentCertFilename()) {
 		return nil
@@ -322,6 +326,9 @@ func (node *nodeImpl) callECAReadCertificateByHash(ctx context.Context, in *memb
 	return &membersrvc.CertPair{Sign: resp.Cert, Enc: nil}, nil
 }
 
+// getEnrollmentCertificateFromECA() ECA에서 등록된 인증서 취득
+//		IN)		ID  등록ID,	PWD 비밀번호
+//		OUT)	signPriv 개인서명, resp.Certs.Sign, resp.Pkchain
 func (node *nodeImpl) getEnrollmentCertificateFromECA(id, pw string) (interface{}, []byte, []byte, error) {
 	// Get a new ECA Client
 	sock, ecaP, err := node.getECAClient()

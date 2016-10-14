@@ -33,11 +33,14 @@ import (
 	"google.golang.org/grpc"
 )
 
+// retrieveTLSCertificate() TLS 인증서 찾기
 func (node *nodeImpl) retrieveTLSCertificate(id, affiliation string) error {
+	// TLS 인증서 파일에 인증서 확인
 	if !node.ks.certMissing(node.conf.getTLSCertFilename()) {
 		return nil
 	}
 
+	// TLSCA에서 TLS인증서의 Key와 인증서 취득
 	key, tlsCertRaw, err := node.getTLSCertificateFromTLSCA(id, affiliation)
 	if err != nil {
 		node.Errorf("Failed getting tls certificate [id=%s] %s", id, err)
@@ -63,13 +66,15 @@ func (node *nodeImpl) retrieveTLSCertificate(id, affiliation string) error {
 	return nil
 }
 
+// deleteTLSCertificate() TLS 인증서 삭제
 func (node *nodeImpl) deleteTLSCertificate(id, affiliation string) error {
+	// Delete Private Key
 	if err := node.ks.deletePrivateKeyInClear(node.conf.getTLSKeyFilename()); err != nil {
 		node.Errorf("Failed deleting tls key [id=%s]: %s", id, err)
 		return err
 	}
 
-	// Store tls cert
+	// Delete tls cert
 	if err := node.ks.deleteCert(node.conf.getTLSCertFilename()); err != nil {
 		node.Errorf("Failed deleting tls certificate [id=%s]: %s", id, err)
 		return err
@@ -78,6 +83,7 @@ func (node *nodeImpl) deleteTLSCertificate(id, affiliation string) error {
 	return nil
 }
 
+// loadTLSCertificate() TLS 인증서 Load(X509 & DER 인증서)
 func (node *nodeImpl) loadTLSCertificate() error {
 	node.Debug("Loading tls certificate...")
 
@@ -92,10 +98,12 @@ func (node *nodeImpl) loadTLSCertificate() error {
 	return nil
 }
 
+// loadTLSCACertsChain() TLS 인증체인 Load
 func (node *nodeImpl) loadTLSCACertsChain() error {
 	if node.conf.isTLSEnabled() {
 		node.Debug("Loading TLSCA certificates chain...")
 
+		// External PEM 인증서 Load
 		pem, err := node.ks.loadExternalCert(node.conf.getTLSCACertsExternalPath())
 		if err != nil {
 			node.Errorf("Failed loading TLSCA certificates chain [%s].", err.Error())
@@ -103,6 +111,7 @@ func (node *nodeImpl) loadTLSCACertsChain() error {
 			return err
 		}
 
+		// PEM으로부터 인증서 추가
 		ok := node.tlsCertPool.AppendCertsFromPEM(pem)
 		if !ok {
 			node.Error("Failed appending TLSCA certificates chain.")
@@ -119,6 +128,7 @@ func (node *nodeImpl) loadTLSCACertsChain() error {
 	return nil
 }
 
+// getTLSCertificateFromTLSCA() TLSCA 에서 TLS인증서 취득
 func (node *nodeImpl) getTLSCertificateFromTLSCA(id, affiliation string) (interface{}, []byte, error) {
 	node.Debug("getTLSCertificate...")
 
@@ -171,14 +181,17 @@ func (node *nodeImpl) getTLSCertificateFromTLSCA(id, affiliation string) (interf
 	return priv, pbCert.Cert.Cert, nil
 }
 
+// getTLSCAClient() TLSCA Client 취득
 func (node *nodeImpl) getTLSCAClient() (*grpc.ClientConn, membersrvc.TLSCAPClient, error) {
 	node.Debug("Getting TLSCA client...")
 
+	// Get Client Connect Node
 	conn, err := node.getClientConn(node.conf.getTLSCAPAddr(), node.conf.getTLSCAServerName())
 	if err != nil {
 		node.Errorf("Failed getting client connection: [%s]", err)
 	}
 
+	// TLS CAP Client 생성
 	client := membersrvc.NewTLSCAPClient(conn)
 
 	node.Debug("Getting TLSCA client...done")

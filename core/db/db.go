@@ -248,7 +248,7 @@ func (openchainDB *OpenchainDB) Get(cfHandler *gorocksdb.ColumnFamilyHandle, key
 }
 
 // Put saves the key/value in the given column family
-// Put() 주어진 CF에서 Key와 Value 취득
+// Put() 주어진 CF에서 Key와 Value 저장
 func (openchainDB *OpenchainDB) Put(cfHandler *gorocksdb.ColumnFamilyHandle, key []byte, value []byte) error {
 	opt := gorocksdb.NewDefaultWriteOptions()
 	defer opt.Destroy()

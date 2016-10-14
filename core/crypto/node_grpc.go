@@ -53,6 +53,9 @@ func (node *nodeImpl) initTLS() error {
 	return nil
 }
 
+// getClientConn() Client와 연결 후 해당 Node Return
+//		IN)		address,	serverName
+//		OUT)	ClientConn,	error
 func (node *nodeImpl) getClientConn(address string, serverName string) (*grpc.ClientConn, error) {
 	node.Debugf("Dial to addr:[%s], with serverName:[%s]...", address, serverName)
 
@@ -64,6 +67,7 @@ func (node *nodeImpl) getClientConn(address string, serverName string) (*grpc.Cl
 			RootCAs:            node.tlsCertPool,
 			ServerName:         serverName,
 		}
+		// 왜하는걸까?
 		if node.conf.isTLSClientAuthEnabled() {
 
 		}
