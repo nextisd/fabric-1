@@ -35,6 +35,7 @@ func init() {
 }
 
 // NewConsenter constructs a Consenter object if not already present
+//@@ Newconsenter는 기존재하는 객체가 없다면, 새로운 컨센터 객체를 생성한다.
 func NewConsenter(stack consensus.Stack) consensus.Consenter {
 
 	plugin := strings.ToLower(viper.GetString("peer.validator.consensus.plugin"))

@@ -32,21 +32,29 @@ func init() {
 }
 
 // PartialStack contains the ledger features required by the executor.Coordinator
+//@@ PartialStack : executor.Coordinator가 요청하는 렛저 기능에 대한 인터페이스
 type PartialStack interface {
 	consensus.LegacyExecutor
 	GetBlockchainInfo() *pb.BlockchainInfo
 }
 
 type coordinatorImpl struct {
-	manager         events.Manager              // Maintains event thread and sends events to the coordinator
-	rawExecutor     PartialStack                // Does the real interaction with the ledger
-	consumer        consensus.ExecutionConsumer // The consumer of this coordinator which receives the callbacks
-	stc             statetransfer.Coordinator   // State transfer instance
-	batchInProgress bool                        // Are we mid execution batch
-	skipInProgress  bool                        // Are we mid state transfer
+	//@@ 이벤트 쓰레드를 유지하고 coordinator에 이벤트를 송신
+	manager events.Manager // Maintains event thread and sends events to the coordinator
+	//@@ 렛저와 상호 연결
+	rawExecutor PartialStack // Does the real interaction with the ledger
+	//@@ 콜백을 받는 컨수머
+	consumer consensus.ExecutionConsumer // The consumer of this coordinator which receives the callbacks
+	//@@ 상태 전이 객체
+	stc statetransfer.Coordinator // State transfer instance
+	//@@ 배치를 실행 중인 상태
+	batchInProgress bool // Are we mid execution batch
+	//@@ 상태 전이를 실행중인 상태
+	skipInProgress bool // Are we mid state transfer
 }
 
 // NewCoordinatorImpl creates a new executor.Coordinator
+//@@ NewCoordinatorImpl : 새로운 executor.Coordinator를 생성
 func NewImpl(consumer consensus.ExecutionConsumer, rawExecutor PartialStack, stps statetransfer.PartialStack) consensus.Executor {
 	co := &coordinatorImpl{
 		rawExecutor: rawExecutor,
@@ -59,9 +67,10 @@ func NewImpl(consumer consensus.ExecutionConsumer, rawExecutor PartialStack, stp
 }
 
 // ProcessEvent is the main event loop for the executor.Coordinator
+//@@ ProcessEvent : executor.Coordinator를 위한 메인 이벤트 처리 로직
 func (co *coordinatorImpl) ProcessEvent(event events.Event) events.Event {
 	switch et := event.(type) {
-	case executeEvent:
+	case executeEvent: //@@ 실행 이벤트
 		logger.Debug("Executor is processing an executeEvent")
 		if co.skipInProgress {
 			logger.Error("FATAL programming error, attempted to execute a transaction during state transfer")
@@ -78,7 +87,7 @@ func (co *coordinatorImpl) ProcessEvent(event events.Event) events.Event {
 		co.rawExecutor.ExecTxs(co, et.txs)
 
 		co.consumer.Executed(et.tag)
-	case commitEvent:
+	case commitEvent: //@@ 코밋 이벤트
 		logger.Debug("Executor is processing an commitEvent")
 		if co.skipInProgress {
 			logger.Error("Likely FATAL programming error, attempted to commit a transaction batch during state transfer")
@@ -100,7 +109,7 @@ func (co *coordinatorImpl) ProcessEvent(event events.Event) events.Event {
 		logger.Debugf("Committed block %d with hash %x to chain", info.Height-1, info.CurrentBlockHash)
 
 		co.consumer.Committed(et.tag, info)
-	case rollbackEvent:
+	case rollbackEvent: //@@ 롤백 이벤트
 		logger.Debug("Executor is processing an rollbackEvent")
 		if co.skipInProgress {
 			logger.Error("Programming error, attempted to rollback a transaction batch during state transfer")
@@ -118,7 +127,7 @@ func (co *coordinatorImpl) ProcessEvent(event events.Event) events.Event {
 		co.batchInProgress = false
 
 		co.consumer.RolledBack(et.tag)
-	case stateUpdateEvent:
+	case stateUpdateEvent: //@@ 상태 갱신 이벤트
 		logger.Debug("Executor is processing a stateUpdateEvent")
 		if co.batchInProgress {
 			err := co.rawExecutor.RollbackTxBatch(co)
@@ -144,13 +153,14 @@ func (co *coordinatorImpl) ProcessEvent(event events.Event) events.Event {
 			logger.Warningf("State transfer did not complete successfully but is recoverable, trying again: %s", err)
 			et.peers = nil // Broaden the peers included in recover to all connected
 		}
-	default:
+	default: //정의되지 않은 이벤트 타입은 에러처리
 		logger.Errorf("Unknown event type %s", et)
 	}
 
 	return nil
 }
 
+//@@ processEvent의 분기문에서 처리하는 4가지 타입의 이벤트는, manager의 큐에 큐잉된다.
 // Commit commits whatever outstanding requests have been executed, it is an error to call this without pending executions
 func (co *coordinatorImpl) Commit(tag interface{}, metadata []byte) {
 	co.manager.Queue() <- commitEvent{tag, metadata}
@@ -172,12 +182,14 @@ func (co *coordinatorImpl) UpdateState(tag interface{}, info *pb.BlockchainInfo,
 }
 
 // Start must be called before utilizing the Coordinator
+//@@ Start : Coordinator가 사용되기 전에 Start함수가 실행되어야 함.
 func (co *coordinatorImpl) Start() {
 	co.stc.Start()
 	co.manager.Start()
 }
 
 // Halt should be called to clean up resources allocated by the Coordinator
+//@@ Coordinator에 의해 할당된 자원들을 클리어하기 위해 Halt가 호출됨
 func (co *coordinatorImpl) Halt() {
 	co.stc.Stop()
 	co.manager.Halt()
