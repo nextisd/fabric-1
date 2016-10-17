@@ -67,6 +67,7 @@ type batchMessageEvent batchMessage
 // batchTimerEvent is sent when the batch timer expires
 type batchTimerEvent struct{}
 
+// PBFT
 func newObcBatch(id uint64, config *viper.Viper, stack consensus.Stack) *obcBatch {
 	var err error
 

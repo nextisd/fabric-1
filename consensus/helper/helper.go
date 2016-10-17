@@ -349,6 +349,8 @@ func (h *Helper) GetBlockchainInfoBlob() []byte {
 }
 
 // GetBlockHeadMetadata returns metadata from block at the head of the blockchain
+//
+// h.GetBlockHeadMetadata() : 블록체인 헤드의 metadata를 리턴.
 func (h *Helper) GetBlockHeadMetadata() ([]byte, error) {
 	ledger, err := ledger.GetLedger()
 	if err != nil {

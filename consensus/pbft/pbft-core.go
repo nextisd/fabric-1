@@ -53,26 +53,42 @@ const (
 // =============================================================================
 
 // Event Types
+//
 
 // workEvent is a temporary type, to inject work
+//
+// workEvent() : work를 밀어 넣을때 쓸 임시 타입, 
 type workEvent func()
 
 // viewChangeTimerEvent is sent when the view change timer expires
+//
+// viewChangeTimerEvent 구조체 : view change 타이머 만료시 전송됨
 type viewChangeTimerEvent struct{}
 
 // execDoneEvent is sent when an execution completes
+//
+// execDoneEvent 구조체 : execution 종료시 전송.
 type execDoneEvent struct{}
 
 // pbftMessageEvent is sent when a consensus messages is received to be sent to pbft
-type pbftMessageEvent pbftMessage
+//
+// pbftMessageEvant 구조체{sender,msg} : PBFT로 전송될 consensus 메시지 수신시 전송함
+type pbftMessageEvent pbftMessage	
 
 // viewChangedEvent is sent when the view change timer expires
+//
+// viewChangedEvent 구조체 : 뷰 체인지시에 전송 (현재는 no-op)
 type viewChangedEvent struct{}
 
 // viewChangeResendTimerEvent is sent when the view change resend timer expires
+//
+// viewChangeResendtimerEvent 구조체 : 뷰체인지 재전송 타이머 만료시 전송
 type viewChangeResendTimerEvent struct{}
 
 // returnRequestBatchEvent is sent by pbft when we are forwarded a request
+//
+// returnRequestBatchEvent 구조체: request를 전달받은 경우 pbft로 부터 이벤트 발생
+// RequestBatch 구조체 : { Batch []*Request `protobuf:"bytes,1,rep,name=batch" json:"batch,omitempty"` }
 type returnRequestBatchEvent *RequestBatch
 
 // nullRequestEvent provides "keep-alive" null requests
@@ -80,6 +96,9 @@ type nullRequestEvent struct{}
 
 // Unless otherwise noted, all methods consume the PBFT thread, and should therefore
 // not rely on PBFT accomplishing any work while that thread is being held
+//
+// 특별히 언급하지 않는한, 모든 method는 PBFT쓰레드를 consume 하고 있음.
+// 그리고 PBFT 쓰레드가 처리중일때는 어떠한 작업 완료도 PBFT에 의존해서는 안된다??T.T
 type innerStack interface {
 	broadcast(msgPayload []byte)
 	unicast(msgPayload []byte, receiverID uint64) (err error)
@@ -93,7 +112,14 @@ type innerStack interface {
 
 	invalidateState()
 	validateState()
-
+	
+	// StatePersistor : 컨센서스 상태를 저장하기 위해 쓰이며, 프로세스에 문제가 생기는 상황에서도 무결성을 유지해야 한다.
+	// type StatePersistor interface {
+	//		StoreState(key string, value []byte) error
+	//		ReadState(key string) ([]byte, error)
+	//		ReadStateSet(prefix string) (map[string][]byte, error)
+	//		DelState(key string)
+	//	}
 	consensus.StatePersistor
 }
 
@@ -116,15 +142,17 @@ type stateUpdateTarget struct {
 type pbftCore struct {
 	// internal data
 	internalLock sync.Mutex
+	
+	// 어플리케이션이 실행중-플래그
 	executing    bool // signals that application is executing
-
+					
 	idleChan   chan struct{} // Used to detect idleness for testing
 	injectChan chan func()   // Used as a hack to inject work onto the PBFT thread, to be removed eventually
 
 	consumer innerStack
 
 	// PBFT data
-	activeView    bool              // view change happening
+	activeView    bool         	  // view change happening
 	byzantine     bool              // whether this node is intentionally acting as Byzantine; useful for debugging on the testnet
 	f             int               // max. number of faults we can tolerate
 	N             int               // max.number of validators in the network
@@ -191,7 +219,7 @@ type msgCert struct {
 	sentCommit  bool
 	commit      []*Commit
 }
-
+quorum
 type vcidx struct {
 	v  uint64
 	id uint64
@@ -213,6 +241,12 @@ func (a sortableUint64Slice) Less(i, j int) bool {
 // constructors
 // =============================================================================
 
+// newPbftCore() : @id로 PBFT 인스턴스 생성자
+//  @param config  - PBFT 네트워크의 파라미터 설정(in config 파일)
+//					general.N(Replica 개수)
+//					general.K(Checkpoint period)
+//					general.timeout.request(request reception-exectuion MAX delay)
+//					general.timeout.viewchange	(view change 시작 후 다음 request 처리까지의 MAX delay)
 func newPbftCore(id uint64, config *viper.Viper, consumer innerStack, etf events.TimerFactory) *pbftCore {
 	var err error
 	instance := &pbftCore{}

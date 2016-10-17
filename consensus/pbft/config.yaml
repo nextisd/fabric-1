@@ -23,21 +23,32 @@ general:
     # re-processed in a view change. A smaller checkpoint period will decrease
     # the amount of time required to recover from an error, but will decrease
     # overall throughput in normal case operation.
+	#
+	# Checkpoint Period : view change시에 재처리되어야할 pbft request의 MAX건수
+	# 작게 잡으면 에러를 복구시간이 단축되지만, 정상케이스 처리시의 overall throughput도 감소됨.
     K: 10
 
     # Affects the receive log size which is K * logmultiplier
     # The primary will only send sequence numbers which fall within K * logmultiplier/2 of
     # its high watermark, so this cannot be set to less than 2
     # For high volume/high latency environments, a higher log size may increase throughput
+	#
+	# 수신 로그 사이즈는 K(checkpoint period) * logmultiplier에 비례.
+	# 2미만으로는 설정할 수 없음
+	# High volume/high latency 환경에서는 로그 용량을 늘려 throughput 증가.
     logmultiplier: 4
 
     # How many requests should the primary send per pre-prepare when in "batch" mode
+	#
+	# "batch" 모드에서 primary는 pre-prepare 할때마다 몇번의 request를 전송하는지?
     batchsize: 500
 
     # Whether the replica should act as a byzantine one; useful for debugging on testnets
     byzantine: false
 
     # After how many checkpoint periods the primary gets cycled automatically.  Set to 0 to disable.
+	#
+	# primary의 checkpoint period가 자동으로 재설정 되는 횟수가 몇번인지 세팅. 0이면 미설정.
     viewchangeperiod: 0
 
     # Timeouts
@@ -48,15 +59,21 @@ general:
         batch: 1s
 
         # How long may a request take between reception and execution, must be greater than the batch timeout
+		#
+		# reception과 execution 사이의 타임아웃 설정, batch 타임아웃보다는 커야함.
         request: 2s
 
         # How long may a view change take
         viewchange: 2s
 
         # How long to wait for a view change quorum before resending (the same) view change
+		#
+		# viewchange 재전송시 타임아웃
         resendviewchange: 2s
 
         # Interval to send "keep-alive" null requests.  Set to 0 to disable. If enabled, must be greater than request timeout
+		#
+		# 내부적인 keep-alive null request 타임아웃, 0이면 미설정. request timeout(2초)보다는 커야함.
         nullrequest: 0s
 
         # How long may a message broadcast take.
