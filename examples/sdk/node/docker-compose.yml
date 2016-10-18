@@ -1,5 +1,6 @@
 membersrvc:
   # try 'docker ps' to see the container status after starting this compose
+  # 이 docker compose를 실행 후, docker ps 커맨드로 아래의 컨테이너들이 실행되는지 확인해야 함(멤버쉽, 피어, nodesdk)
   container_name: membersrvc
   image: hyperledger/fabric-membersrvc
   command: membersrvc
@@ -21,7 +22,9 @@ peer:
   volumes:
     - /var/run/docker.sock:/var/run/docker.sock
   # have the peer wait 10 sec for membersrvc to start
+  # 피어가 membersrvc가 실행되기 까지 10초를 기다림
   #  the following is to run the peer in Developer mode - also set sample DEPLOY_MODE=dev
+  # 피어를 개발 모드로 실행할때 옵션 셋
   command: sh -c "sleep 10; peer node start --peer-chaincodedev"
   #command: sh -c "sleep 10; peer node start"
   links:
@@ -41,6 +44,7 @@ nodesdk:
     - CORE_CHAINCODE_ID_NAME=mycc
     - CORE_PEER_ADDRESS=peer:7051
   # the following command will start the chain code when this container starts and ready it for deployment by the app
+  # 아래의 코맨드는 체인코드 예제 02를 읽어서, 실행시킴
   command: sh -c "sleep 20; /opt/gopath/src/github.com/hyperledger/fabric/examples/chaincode/go/chaincode_example02/chaincode_example02"
   stdin_open: true
   tty: true
