@@ -6,11 +6,11 @@
 
 [3] PBFT PPT #2 : http://www.cs.utexas.edu/users/lorenzo/corsi/cs371d/07F/notes/week14.pdf
 
-[3] Tendermint : https://atrium.lib.uoguelph.ca/xmlui/bitstream/handle/10214/9769/Buchman_Ethan_201606_MAsc.pdf?sequence=7
+[4] Tendermint : https://atrium.lib.uoguelph.ca/xmlui/bitstream/handle/10214/9769/Buchman_Ethan_201606_MAsc.pdf?sequence=7
 
-[4] Zyzzyba : http://disi.unitn.it/~montreso/ds/handouts/17-pbft2.pdf
+[5] Zyzzyba : http://disi.unitn.it/~montreso/ds/handouts/17-pbft2.pdf
 
-[5] Fault-Tolerence 종합 : http://slideplayer.com/slide/4158355/
+[6] Fault-Tolerence 종합 : http://slideplayer.com/slide/4158355/
 - - -
 
 - **PBFT(Practical Byzantine Fault-Torelence)**
@@ -20,7 +20,8 @@
 
 	+ 약한 동기화(sync) 환경을 가정
 
----
+
+-----
 
 - ** Request 처리 요청 **
 	- 프로토콜은 뷰(view) 내부에서 실행됨
@@ -84,7 +85,7 @@
 			1. Service State
 			2. Message Log(모든 송수신 메시지)
 			3. Replica(`i`)의 current view를 나타내는 integer(`v`)
-![](https://github.com/nextisd/kksl/tree/master/consensus/pbft/images/PBFT_phase.png)
+
 - - -
 
 - ** PRE-PREPARE**
