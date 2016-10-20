@@ -158,7 +158,9 @@
 - - -
 
 - **COMMIT**
-  	replica(i)는 P-Certificate를 collecting 한 뒤 `<COMMIT, v, n, d, i>@i` 를 Multicast 처리.
+
+
+        replica(i)는 P-Certificate를 collecting 한 뒤 `<COMMIT, v, n, d, i>@i` 를 Multicast 처리.
     	v : view no.
         n : seq no.
         d : digest of m
