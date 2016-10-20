@@ -63,7 +63,7 @@
 
 - - -
 
-- ** Quorum(정족수) and Certificate**
+- **Quorum(정족수) and Certificate**
 	- **Quorum은 최소한 2f+1개의 Replica가 필요**
 		+ 2개 이상의 quorum은 하나 이상의 정상 replica에서 교차함
 		+ Faulty replica가 없는 한개의 quorum은 항상 존재함
@@ -74,7 +74,7 @@
 			2. **Weak Certificate** : *f+1 message*
 - - -
 
-- ** Algorithm Components **
+- **Algorithm Components**
 	- Normal case operation
 		+ 3-phase algorithm
 			1. **Pre-prepare phase** : REQUEST 순서 지정
@@ -85,10 +85,10 @@
 			1. Service State
 			2. Message Log(모든 송수신 메시지)
 			3. Replica(`i`)의 current view를 나타내는 integer(`v`)
-
+![](https://github.com/nextisd/kksl/blob/master/consensus/pbft/images/PBFT_phase.png)
 - - -
 
-- ** PRE-PREPARE**
+- **PRE-PREPARE**
         Primary는 <<PRE-PREPARE, v, n, d>@p, m> 메시지를 Broadcast 처리.
             v : view no.
             n : seq. no.
@@ -105,7 +105,7 @@
     - 각각의 Accepted된 `PRE-PREPARE` 메시지는 replica의 메시지로그에 저장된다(Primary도 동일)
 - - -
 
-- ** PREPARE **
+- **PREPARE**
       Backup(i)는 `<PREPARE, v, n, d, i>@i` 를 Broadcast 처리.
     	v : view no.
         n : seq no.
@@ -124,7 +124,7 @@
 
 - - -
 
-- ** Prepare Certificate**
+- **Prepare Certificate**
 
     - *P-Certificate*는 view내의 모든 처리 순서(order)를 보증한다.
 
@@ -151,7 +151,7 @@
 
 - - -
 
-- ** COMMIT **
+- **COMMIT**
   	replica(i)는 P-Certificate를 collecting 한 뒤 `<COMMIT, v, n, d, i>@i` 를 Multicast 처리.
     	v : view no.
         n : seq no.
@@ -161,7 +161,7 @@
 
 - - -
 
-- ** Commit Certificate**
+- **Commit Certificate**
     - Replica는 아래조건 충족시 *C-Certificate(m,v,n)*를 갖는다.
         1. *P-Certificate(m,v,n)* 보유시.
         2. 각각의 다른(자신 포함) replica들로부터 받은 2f+1개의 commit 메시지가 로그에 있을때.
@@ -171,11 +171,11 @@
         2. 정상 Replica가 *C-Certificate* 생성시 결국 f+1개의 정상 Replica도 동일 작업이 수행된다(*C-Certificate* 생성)
 - - -
 
-- ** REPLY **
+- **REPLY**
     - REQUEST 실행 완료 후 replica들은 클라이언트에게 REPLY 처리.
 - - -
 
-- ** Garbage Collection**
+- **Garbage Collection**
     - Replica는 "old" Request들의 로그 정보를 삭제해야만 함
 
     - 언제를 "old"로 볼수 있을까?
@@ -183,7 +183,7 @@
         - 로깅된 데이터가 앞으로 사용될 일이 없다는 것을 Replica가 증명할 수 있을때.
 - - -
 
-- ** Stable Certificate**
+- **Stable Certificate**
     - Certificate로 로그를 Truncate 처리
 
         - 각각의 Replica는 주기적으로(K개의 request를 처리 후) state의 Checkpoint를 만들고 해당 state(체크포인트된)의 correct 여부를 증명하기 위한 Certificate를 생성한다.
@@ -194,7 +194,7 @@
             - seq no(`n`) is locked!
 - - -
 
-- ** Checkpoint and Watermarks **
+- **Checkpoint and Watermarks**
 
     - Watermark `L`과 `H`는 Byzantine Primary가 모든 Seq no.를 소진하는 것을 방지함.
 
@@ -205,7 +205,7 @@
 
 - - -
 
-- ** Primary Fault 발생시 처리 **
+- **Primary Fault 발생시 처리**
 
     - 비잔틴 Primary는 safety를 위반하고 request 처리를 방해할 수도 있다.
 
@@ -214,7 +214,7 @@
     - Request 처리를 보장하기 위해 slow/faulty Primary는 뷰체인지를 통해 컨센서스에서 제거할 수 있다.
 - - -
 
-- ** View Change**
+- **View Change**
 
     - 유효한 REQUEST를 수신하고 그 실행을 대기하고 있는 backup들로 부터 트리거 된다.
 
@@ -235,7 +235,7 @@
             - `P` : set of P-Certificate for requests prepared at i with seq no# > n
 - - -
 
-- ** New View로 이동 : Primary 관점 **
+- **New View로 이동 : Primary 관점**
     - "primary elect" `j` (replica v+1 mod R)가 2f+1개의 유효한 뷰체인지 메시지를 모으게 되면 `V`(*new-view certificate*)를 획득하게 된다.
     - `j`는 아래 데이터 들을 계산한다. (`L`,`H`,`O`,`N`)
         - Watermark `L` : `V`에서  latest stable checkpoint의 seq no.
@@ -250,7 +250,7 @@
     - `j`는 자신의 로그에 `O`, `N`을 추가한다. 필요한 경우 `j`는 seq no(`L`)을 가리키는 state checkpoint를 로그에 추가하고, 자신의 state를 update 한다.
 - - -
 
-- ** New View로 이동 : Backup 관점 **
+- **New View로 이동 : Backup 관점**
     - Backup(replica, not primary)들은 아래를 만족할 경우 v+1을 가리키는 `NEW-VIEW` 메시지를 Accept한다.
         1. 서명이 유효한지
         2. `V`(*NEW-VIEW Certificate*)내부에 v+1에 대한 `VIEW-CHANGE` 메시지가 포함되어 있는지
@@ -262,7 +262,7 @@
     - `PREPARE` 메시지를 로그에 추가하고 View에 참여한다.
 - - -
 
-- ** Safety : Request의 처리 순서에 대한 Replica들의 합의 **
+- **Safety : Request의 처리 순서에 대한 Replica들의 합의**
     - **Within a view**
         - 만약 정상(correct)인 replica가 `(m,v,n)`에 대한 *C-Certificate*를 생성한다면, 2f+1개의 Replica들이 *P-Certification*을 생성했다는 의미임.
         - 만약 정상 Replica가 `(m',v,n),m'!=m`,에 대한 *C-Certificate*를 생성한다면, 최소한 1개의 Replica는 m과 m'의 모순 상태의 메시지 대신에 반드시 `PREPARE` 메시지를 전송해야 한다.
@@ -279,7 +279,7 @@
     - 어느 경우에서나 `m`은 `v'`에서 `n`과 다른 seq no.를 할당받지는 않음
 - - -
 
-- ** Livenesss(유효화) **
+- **Livenesss(유효화)**
     - 두가지 요구사항의 균형을 맞출 필요가 있음
         1. request가 실행(execute)되지 않았을때 뷰체인지를 트리거.
         2. 어떠한 Request를 실행하기에 충분한 시간을 가진, 최소한 2f+1개의 이상의 정상(non-faulty) replica가 같은 view 안에 있어야 한다.
@@ -293,7 +293,7 @@
     - Faulty Replica는 영원히 `VIEW-CHANGE`를 요청할 수 없다.
 - - -
 
-- ** 통신 최적화 **
+- **통신 최적화**
     - 하나의 Replica는 response를 전송, 나머지는 digest를 전송
 
     - Replica들은 *P-Certificate*를 보유한 Request들을 적극적으로 실행할 수 있다.
@@ -306,7 +306,7 @@
         - 그렇지 않다면, 보통의 R/W Request 전송
 - - -
 
-- ** 빠른 인증 **
+- **빠른 인증**
 
     - Digital Signature 대신 MAC 사용
 
