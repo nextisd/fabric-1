@@ -1,10 +1,15 @@
 ## PBFT 알고리즘 정리(2016.10)##
 #####링크 참조 :
 [1] PBFT Paper PDF(osdi99) : http://pmg.csail.mit.edu/papers/osdi99.pdf
+
 [2] PBFT PPT #1 : https://people.eecs.berkeley.edu/~istoica/classes/cs268/06/notes/BFT-osdi99x6.pdf
+
 [3] PBFT PPT #2 : http://www.cs.utexas.edu/users/lorenzo/corsi/cs371d/07F/notes/week14.pdf
+
 [3] Tendermint : https://atrium.lib.uoguelph.ca/xmlui/bitstream/handle/10214/9769/Buchman_Ethan_201606_MAsc.pdf?sequence=7
+
 [4] Zyzzyba : http://disi.unitn.it/~montreso/ds/handouts/17-pbft2.pdf
+
 [5] Fault-Tolerence 종합 : http://slideplayer.com/slide/4158355/
 - - -
 
@@ -12,6 +17,7 @@
 	+ R개의 Replica는 f개의 Byzantine Fault를 견딘다.
 
 	+ 강력한 암호화 (비위조 서명, 해시 충돌 방지)
+
 	+ 약한 동기화(sync) 환경을 가정
 - - -
 
