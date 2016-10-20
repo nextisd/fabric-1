@@ -166,18 +166,42 @@ type pbftCore struct {
 	seqNo         uint64            // PBFT "n", strictly monotonic increasing sequence number
 	view          uint64            // current view
 	chkpts        map[uint64]string // state checkpoints; map lastExec to global hash
+	
+	// ViewChange_PQ 구조체 
+	//	type ViewChange_PQ struct {
+	//		SequenceNumber uint64 `protobuf:"varint,1,opt,name=sequence_number,json=sequenceNumber" json:"sequence_number,omitempty"`
+	//		BatchDigest    string `protobuf:"bytes,2,opt,name=batch_digest,json=batchDigest" json:"batch_digest,omitempty"`
+	//		View           uint64 `protobuf:"varint,3,opt,name=view" json:"view,omitempty"`
+	//	}
 	pset          map[uint64]*ViewChange_PQ
-	qset          map[qidx]*ViewChange_PQ
+	qset          map[qidx]*ViewChange_PQ	// qidx 구조체 :  { d string, n uint64 } 
 
+	// 라운드 처리중 fall 발생시, 재 시작하기 전까지 세팅해 놓음
 	skipInProgress    bool               // Set when we have detected a fall behind scenario until we pick a new starting point
+	
+	// state 전송 처리중일때 세팅
 	stateTransferring bool               // Set when state transfer is executing
+	
+	// stateUpdateTarget 구조체
+	// 		type stateUpdateTarget struct {
+	//			checkpointMessage - { seqNo uint64, id []byte }
+	//			replicas []uint64
+	//		}
+	
+	// 가장 
 	highStateTarget   *stateUpdateTarget // Set to the highest weak checkpoint cert we have observed
 	hChkpts           map[uint64]uint64  // highest checkpoint sequence number observed for each replica
 
 	currentExec           *uint64                  // currently executing request
 	timerActive           bool                     // is the timer running?
+	
+	// 뷰체인지 재전송 타이머
 	vcResendTimer         events.Timer             // timer triggering resend of a view change
+	
+	// 뷰체인지 타이머
 	newViewTimer          events.Timer             // timeout triggering a view change
+	
+	// 타임아웃 설정값	
 	requestTimeout        time.Duration            // progress timeout for requests
 	vcResendTimeout       time.Duration            // timeout before resending view change
 	newViewTimeout        time.Duration            // progress timeout for new views
@@ -252,9 +276,10 @@ func newPbftCore(id uint64, config *viper.Viper, consumer innerStack, etf events
 	instance := &pbftCore{}
 	instance.id = id
 	instance.consumer = consumer
-
-	instance.newViewTimer = etf.CreateTimer()
-	instance.vcResendTimer = etf.CreateTimer()
+	
+	// 타이머 설정
+	instance.newViewTimer = etf.CreateTimer()		// 뷰체인지 타이머
+	instance.vcResendTimer = etf.CreateTimer()		// 뷰체인지 재전송 타이머
 	instance.nullRequestTimer = etf.CreateTimer()
 
 	instance.N = config.GetInt("general.N")
