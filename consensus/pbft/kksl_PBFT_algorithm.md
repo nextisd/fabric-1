@@ -86,15 +86,19 @@
 			2. Message Log(모든 송수신 메시지)
 			3. Replica(`i`)의 current view를 나타내는 integer(`v`)
 ![](https://github.com/nextisd/kksl/blob/master/consensus/pbft/images/PBFT_phase.png)
+
+
 - - -
 
 - **PRE-PREPARE**
+
         Primary는 <<PRE-PREPARE, v, n, d>@p, m> 메시지를 Broadcast 처리.
             v : view no.
             n : seq. no.
             d : digest of m
             @p : Primary's signature
             m : client's request
+
  	- 정상(not faulty) backup(replica, not primary) `i`는 아래 조건들을 충족한다면 `PRE-PREPARE`를 Accept 한다.
 
         1. `PRE-PREPARE`는 well-formed(적격)
