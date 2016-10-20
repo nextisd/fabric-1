@@ -26,30 +26,38 @@ import (
 //		IN)		enrollID		ID
 //				enrollPWD		Password
 //		OUT)	error			정상:nil
+//@@ ECA / TCA / TLSCA 인증서를 받아옴
 func (node *nodeImpl) registerCryptoEngine(enrollID, enrollPWD string) error {
 	node.Debug("Registering node crypto engine...")
 
 	// Init CLI
 	node.eciesSPI = ecies.NewSPI()
 
+	//@@ "peer.pki.tls.rootcert.file" (core.yaml) 에 있는 PEM 파일에서
+	//@@ 인증서 추출하여 TLSCert Pool 에 추가
 	if err := node.initTLS(); err != nil {
 		node.Errorf("Failed initliazing TLS [%s].", err.Error())
 
 		return err
 	}
 
+	//@@ "/protos.ECAP/ReadCACertificate" 로 gprc 요청보내서 ECA 인증서 수신
+	//@@ 수신한 Cert 를 PEM 형식으로 file ("eca.cert.chain" in core.yaml)에 저장
 	if err := node.retrieveECACertsChain(enrollID); err != nil {
 		node.Errorf("Failed retrieving ECA certs chain [%s].", err.Error())
 
 		return err
 	}
 
+	//@@ "/protos.TCAP/ReadCACertificate" 로 gprc 요청보내서 TCA 인증서 수신
+	//@@ 수신한 Cert 를 PEM 형식으로 file ("tca.cert.chain" in core.yaml)에 저장
 	if err := node.retrieveTCACertsChain(enrollID); err != nil {
 		node.Errorf("Failed retrieving ECA certs chain [%s].", err.Error())
 
 		return err
 	}
 
+	//@@ 엄청 복잡함, private/public key 생성 포함
 	if err := node.retrieveEnrollmentData(enrollID, enrollPWD); err != nil {
 		node.Errorf("Failed retrieving enrollment data [%s].", err.Error())
 
