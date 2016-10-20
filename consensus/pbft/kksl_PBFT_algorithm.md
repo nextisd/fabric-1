@@ -112,7 +112,7 @@
 
 - **PREPARE**
 
-      Backup(i)는 `<PREPARE, v, n, d, i>@i` 를 Broadcast 처리.
+        Backup(i)는 `<PREPARE, v, n, d, i>@i` 를 Broadcast 처리.
     	v : view no.
         n : seq no.
         d : digest of m
