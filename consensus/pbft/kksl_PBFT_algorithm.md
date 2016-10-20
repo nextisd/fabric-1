@@ -107,9 +107,11 @@
         4. `n`은 두개의 워터마크(watermark) `H`와 `L` 사이의 숫자여야 함(++seq no. 고갈 방지++)
 
     - 각각의 Accepted된 `PRE-PREPARE` 메시지는 replica의 메시지로그에 저장된다(Primary도 동일)
+
 - - -
 
 - **PREPARE**
+
       Backup(i)는 `<PREPARE, v, n, d, i>@i` 를 Broadcast 처리.
     	v : view no.
         n : seq no.
