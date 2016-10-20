@@ -72,6 +72,7 @@
 		+ 두가지 Certificate 알고리즘을 정의할수 있다.
 			1. **Strong Certificate** : *2f+1 message*
 			2. **Weak Certificate** : *f+1 message*
+
 - - -
 
 - **Algorithm Components**
@@ -167,6 +168,8 @@
         i : replica no.
         @i : i's signature
 
+![](https://github.com/nextisd/kksl/blob/master/consensus/pbft/images/PBFT_phase.png)
+
 - - -
 
 - **Commit Certificate**
@@ -261,6 +264,7 @@
     - `j`는 `<NEW-VIEW, v+1, n, V, O, N>@j`를 Multicast 처리
 
     - `j`는 자신의 로그에 `O`, `N`을 추가한다. 필요한 경우 `j`는 seq no(`L`)을 가리키는 state checkpoint를 로그에 추가하고, 자신의 state를 update 한다.
+
 - - -
 
 - **New View로 이동 : Backup 관점**
@@ -273,6 +277,7 @@
         - `O`내부의 모든 메시지들에 대한 `PREPARE` 메시지를 Multicast 한다.
 
     - `PREPARE` 메시지를 로그에 추가하고 View에 참여한다.
+
 - - -
 
 - **Safety : Request의 처리 순서에 대한 Replica들의 합의**
@@ -290,6 +295,7 @@
         2. `NEW-VIEW`는 seq no `n'>n`인 stable checkpoint를 알려준다.
 
     - 어느 경우에서나 `m`은 `v'`에서 `n`과 다른 seq no.를 할당받지는 않음
+
 - - -
 
 - **Livenesss(유효화)**
@@ -304,6 +310,7 @@
     - 자기자신의 뷰보다 큰 f+1개의 `VIEW-CHANGE`를 수신하게 되면, 바로 `VIEW-CHANGE`를 전송한다.
 
     - Faulty Replica는 영원히 `VIEW-CHANGE`를 요청할 수 없다.
+
 - - -
 
 - **통신 최적화**

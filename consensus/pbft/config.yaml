@@ -25,7 +25,7 @@ general:
     # overall throughput in normal case operation.
 	#
 	# Checkpoint Period : view change시에 재처리되어야할 pbft request의 MAX건수
-	# 작게 잡으면 에러를 복구시간이 단축되지만, 정상케이스 처리시의 overall throughput도 감소됨.
+	# 작게 잡으면 에러 복구시간이 단축되지만, 정상케이스 처리시의 overall throughput도 감소됨.
     K: 10
 
     # Affects the receive log size which is K * logmultiplier
