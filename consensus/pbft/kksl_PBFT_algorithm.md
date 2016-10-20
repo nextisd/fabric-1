@@ -177,10 +177,12 @@
     - 어떤 Replica가 *C-Certificate(m,v,n)*을 갖고 있다는 것은 f+1개의 정상 replica가 *P-Certificate(m,v,n)*를 갖고 있다는 뜻임, 이러한 정의는 아래의 속성들을 보장함.
         1. 정상(non-faulty) Replica는 ++뷰체인지 시에도 commit 된 REQUEST의 seq no.를 그대로 사용한다.++
         2. 정상 Replica가 *C-Certificate* 생성시 결국 f+1개의 정상 Replica도 동일 작업이 수행된다(*C-Certificate* 생성)
+
 - - -
 
 - **REPLY**
     - REQUEST 실행 완료 후 replica들은 클라이언트에게 REPLY 처리.
+
 - - -
 
 - **Garbage Collection**
@@ -189,6 +191,7 @@
     - 언제를 "old"로 볼수 있을까?
         - Request가 실행된 직후?
         - 로깅된 데이터가 앞으로 사용될 일이 없다는 것을 Replica가 증명할 수 있을때.
+
 - - -
 
 - **Stable Certificate**
@@ -200,6 +203,7 @@
             - 최소한 1개의 정상 Replica가 seq no(`n`)에 대한 *C-Certification*을 보유하고 있다는 것을 보증해줌
             - f+1개의 정상 Replica가 *P-Certification*을 가짐
             - seq no(`n`) is locked!
+
 - - -
 
 - **Checkpoint and Watermarks**
@@ -241,6 +245,7 @@
             - `s` : last stable checkpoint
             - `C` : stable certificate for s
             - `P` : set of P-Certificate for requests prepared at i with seq no# > n
+
 - - -
 
 - **New View로 이동 : Primary 관점**
@@ -312,6 +317,7 @@
         - Replica는 현재 state에서 Request 실행
         - 클라이언트는 2f+1개의 응답을 받으면 처리완료로 판단
         - 그렇지 않다면, 보통의 R/W Request 전송
+
 - - -
 
 - **빠른 인증**
