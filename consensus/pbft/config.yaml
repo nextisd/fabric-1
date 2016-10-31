@@ -48,7 +48,7 @@ general:
 
     # After how many checkpoint periods the primary gets cycled automatically.  Set to 0 to disable.
 	#
-	# primary의 checkpoint period가 자동으로 재설정 되는 횟수가 몇번인지 세팅. 0이면 미설정.
+	# primary의 checkpoint period가 자동으로 재설정 되는 횟수가 몇번인지 세팅. 0이면 미설정.(문제없으면 뷰 안바뀜)
     viewchangeperiod: 0
 
     # Timeouts
@@ -56,6 +56,8 @@ general:
 
         # Send a pre-prepare if there are pending requests, batchsize isn't reached yet,
         # and this much time has elapsed since the current batch was formed
+		#
+		# Request가 대기중일때 PRE-PREPARE 메시지를 전송 하기까지의 시간
         batch: 1s
 
         # How long may a request take between reception and execution, must be greater than the batch timeout

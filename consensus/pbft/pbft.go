@@ -57,7 +57,7 @@ func init() {
 //		2.1 Sign()
 //		2.2 Verify()
 //
-//	3. Executer - 구버전 executor(아래 LegacyExecutor?)를 대체하기 위해 사용
+//	3. Executor - 구버전 executor(아래 LegacyExecutor?)를 대체하기 위해 사용
 //		Begin/Exec/CommitTxBatch를 다이렉트로 호출하게 되면,
 //		state 전송을 통해 race컨디션과 ledger 이상을 방지하는 작업이 반드시 구성되어야 하는 문제가 있음.
 //		3.1 Start()
@@ -85,9 +85,10 @@ func init() {
 //		6.4 GetBlockchainInfoBlob() - ledger의 BlockchainInfo를 protobuf로 마샬링
 //		6.5 GetBlockHeadMetadata()
 //
+//
 // GetPlugin() : Consenter 싱글턴 인스턴스 생성자.
-// @param c consensus.Stack : 컨센서스 플러그인에서 나머지 컨센서스 스택에 접근할 수 있는 메서드 집합.
-// consensus/controller/controller.go - NewConsentor(stack consensus.Stack)에서 호출함.
+//	 	@param c consensus.Stack : 컨센서스 플러그인에서 나머지 컨센서스 스택에 접근할 수 있는 메서드 집합.
+// 		consensus/controller/controller.go - NewConsenter(stack consensus.Stack)에서 호출함.
 func GetPlugin(c consensus.Stack) consensus.Consenter {
 	if pluginInstance == nil {
 		pluginInstance = New(c)

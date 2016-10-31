@@ -57,7 +57,7 @@ const (
 
 // workEvent is a temporary type, to inject work
 //
-// workEvent() : work를 밀어 넣을때 쓸 임시 타입, 
+// workEvent() : work를 밀어 넣을때 쓸 임시 타입,
 type workEvent func()
 
 // viewChangeTimerEvent is sent when the view change timer expires
@@ -72,12 +72,12 @@ type execDoneEvent struct{}
 
 // pbftMessageEvent is sent when a consensus messages is received to be sent to pbft
 //
-// pbftMessageEvant 구조체{sender,msg} : PBFT로 전송될 consensus 메시지 수신시 전송함
-type pbftMessageEvent pbftMessage	
+// pbftMessageEvent 구조체{sender,msg} : PBFT로 전송될 consensus 메시지 수신시 전송함
+type pbftMessageEvent pbftMessage
 
 // viewChangedEvent is sent when the view change timer expires
 //
-// viewChangedEvent 구조체 : 뷰 체인지시에 전송 (현재는 no-op)
+// viewChangedEvent 구조체 : 뷰 체인지시에 전송
 type viewChangedEvent struct{}
 
 // viewChangeResendTimerEvent is sent when the view change resend timer expires
@@ -88,7 +88,8 @@ type viewChangeResendTimerEvent struct{}
 // returnRequestBatchEvent is sent by pbft when we are forwarded a request
 //
 // returnRequestBatchEvent 구조체: request를 전달받은 경우 pbft로 부터 이벤트 발생
-// RequestBatch 구조체 : { Batch []*Request `protobuf:"bytes,1,rep,name=batch" json:"batch,omitempty"` }
+// 	RequestBatch 구조체 : { Batch []*Request `protobuf:"bytes,1,rep,name=batch" json:"batch,omitempty"` }
+//		Request 구조체 : { Timestamp, Payload, Replicaid, Signature }
 type returnRequestBatchEvent *RequestBatch
 
 // nullRequestEvent provides "keep-alive" null requests
@@ -112,7 +113,7 @@ type innerStack interface {
 
 	invalidateState()
 	validateState()
-	
+
 	// StatePersistor : 컨센서스 상태를 저장하기 위해 쓰이며, 프로세스에 문제가 생기는 상황에서도 무결성을 유지해야 한다.
 	// type StatePersistor interface {
 	//		StoreState(key string, value []byte) error
@@ -129,11 +130,15 @@ type pbftMessage struct {
 	msg    *Message
 }
 
+// checkpointMessage 구조체
+//	@param seqNo : 리퀘스트 일련번호
+//	@param id : snapshotID, state 체크포인트.
 type checkpointMessage struct {
 	seqNo uint64
 	id    []byte
 }
 
+// stateUpdateTarget 구조체 : 체크포인트 지점을 업데이트할 Replica들 리스트
 type stateUpdateTarget struct {
 	checkpointMessage
 	replicas []uint64
@@ -142,66 +147,93 @@ type stateUpdateTarget struct {
 type pbftCore struct {
 	// internal data
 	internalLock sync.Mutex
-	
-	// 어플리케이션이 실행중-플래그
-	executing    bool // signals that application is executing
-					
+
+	// 어플리케이션 실행중-플래그
+	executing bool // signals that application is executing
+
 	idleChan   chan struct{} // Used to detect idleness for testing
 	injectChan chan func()   // Used as a hack to inject work onto the PBFT thread, to be removed eventually
 
 	consumer innerStack
 
 	// PBFT data
-	activeView    bool         	  // view change happening
-	byzantine     bool              // whether this node is intentionally acting as Byzantine; useful for debugging on the testnet
-	f             int               // max. number of faults we can tolerate
-	N             int               // max.number of validators in the network
-	h             uint64            // low watermark
-	id            uint64            // replica ID; PBFT `i`
-	K             uint64            // checkpoint period
-	logMultiplier uint64            // use this value to calculate log size : k*logMultiplier
-	L             uint64            // log size
-	lastExec      uint64            // last request we executed
-	replicaCount  int               // number of replicas; PBFT `|R|`
-	seqNo         uint64            // PBFT "n", strictly monotonic increasing sequence number
-	view          uint64            // current view
-	chkpts        map[uint64]string // state checkpoints; map lastExec to global hash
-	
-	// ViewChange_PQ 구조체 
+	activeView bool // view change happening
+	// 뷰체인지 발생여부
+
+	byzantine bool // whether this node is intentionally acting as Byzantine; useful for debugging on the testnet
+	// 이 노드를 강제적으로 faulty 노드로 설정했는지 여부, 디버깅용.
+
+	f int // max. number of faults we can tolerate
+	// Faulty 노드 MAX 값.
+
+	N int // max.number of validators in the network
+	// 네트워크내의 VP노드 MAX개수
+
+	h uint64 // low watermark
+	// 워터마크 최소값, 최대값(H)은 별도 변수로 안잡고, 로그사이즈로 계산하고 있음
+
+	id uint64 // replica ID; PBFT `i`
+
+	K uint64 // checkpoint period
+	// 체크포인트 생성주기(K개의 Client's Request 처리)
+
+	logMultiplier uint64 // use this value to calculate log size : k*logMultiplier
+	// 로그사이즈 계산시 사용, config.yaml
+
+	L uint64 // log size
+
+	lastExec uint64 // last request we executed
+	// 가장 최근에 실행한 Request; 체크포인트 지정시, Stable Cert 생성시 사용?
+
+	replicaCount int // number of replicas; PBFT `|R|`
+	// 컨센서스에 참여하는 Replica들의 개수
+
+	seqNo uint64 // PBFT "n", strictly monotonic increasing sequence number
+	// Request의 일련번호, 단방향으로 증가.
+
+	view uint64 // current view
+	// 현재의 View Number, 뷰체인지 할때++
+
+	chkpts map[uint64]string // state checkpoints; map lastExec to global hash
+	// Replica들의 체크포인트 map
+
+	// ViewChange_PQ 구조체
 	//	type ViewChange_PQ struct {
 	//		SequenceNumber uint64 `protobuf:"varint,1,opt,name=sequence_number,json=sequenceNumber" json:"sequence_number,omitempty"`
 	//		BatchDigest    string `protobuf:"bytes,2,opt,name=batch_digest,json=batchDigest" json:"batch_digest,omitempty"`
 	//		View           uint64 `protobuf:"varint,3,opt,name=view" json:"view,omitempty"`
 	//	}
-	pset          map[uint64]*ViewChange_PQ
-	qset          map[qidx]*ViewChange_PQ	// qidx 구조체 :  { d string, n uint64 } 
+	pset map[uint64]*ViewChange_PQ
+	qset map[qidx]*ViewChange_PQ // qidx 구조체 :  { d string, n uint64 }
 
+	skipInProgress bool // Set when we have detected a fall behind scenario until we pick a new starting point
 	// 라운드 처리중 fall 발생시, 재 시작하기 전까지 세팅해 놓음
-	skipInProgress    bool               // Set when we have detected a fall behind scenario until we pick a new starting point
-	
+
+	stateTransferring bool // Set when state transfer is executing
 	// state 전송 처리중일때 세팅
-	stateTransferring bool               // Set when state transfer is executing
-	
+
 	// stateUpdateTarget 구조체
 	// 		type stateUpdateTarget struct {
 	//			checkpointMessage - { seqNo uint64, id []byte }
 	//			replicas []uint64
 	//		}
-	
-	// 가장 
-	highStateTarget   *stateUpdateTarget // Set to the highest weak checkpoint cert we have observed
-	hChkpts           map[uint64]uint64  // highest checkpoint sequence number observed for each replica
 
-	currentExec           *uint64                  // currently executing request
-	timerActive           bool                     // is the timer running?
-	
+	highStateTarget *stateUpdateTarget // Set to the highest weak checkpoint cert we have observed
+	// 수집된 (checkpoint)Stable Certificate중에서 가장 높은(request가 많이 처리된) 체크포인트를 세팅.
+
+	hChkpts map[uint64]uint64 // highest checkpoint sequence number observed for each replica
+	// 각각의 Replicae들의 highest checkpoint no. 를 맵으로 구성
+
+	currentExec *uint64 // currently executing request
+	timerActive bool    // is the timer running?
+
+	vcResendTimer events.Timer // timer triggering resend of a view change
 	// 뷰체인지 재전송 타이머
-	vcResendTimer         events.Timer             // timer triggering resend of a view change
-	
+
+	newViewTimer events.Timer // timeout triggering a view change
 	// 뷰체인지 타이머
-	newViewTimer          events.Timer             // timeout triggering a view change
-	
-	// 타임아웃 설정값	
+
+	// 타임아웃 설정값
 	requestTimeout        time.Duration            // progress timeout for requests
 	vcResendTimeout       time.Duration            // timeout before resending view change
 	newViewTimeout        time.Duration            // progress timeout for new views
@@ -214,15 +246,59 @@ type pbftCore struct {
 	nullRequestTimeout time.Duration // duration for this timeout
 	viewChangePeriod   uint64        // period between automatic view changes
 	viewChangeSeqNo    uint64        // next seqNo to perform view change
+	// 뷰체인지시 세팅하는 다음 View 일련번호.
 
 	missingReqBatches map[string]bool // for all the assigned, non-checkpointed request batches we might be missing during view-change
+	// 뷰체인지 실행중에 들어온 non-checkpointed request 들 맵
 
 	// implementation of PBFT `in`
-	reqBatchStore   map[string]*RequestBatch // track request batches
-	certStore       map[msgID]*msgCert       // track quorum certificates for requests
-	checkpointStore map[Checkpoint]bool      // track checkpoints as set
-	viewChangeStore map[vcidx]*ViewChange    // track view-change messages
-	newViewStore    map[uint64]*NewView      // track last new-view we received or sent
+	//
+	// PBFT 처리용 locally 저장 데이터
+	reqBatchStore map[string]*RequestBatch // track request batches
+	// 요청받은 Request{Timestamp, Payload, Replicaid, Signature}
+
+	certStore map[msgID]*msgCert // track quorum certificates for requests
+	// quorum 합의를 위한 인증서들
+	// type msgCert struct {
+	// 	digest      string
+	//	prePrepare  *PrePrepare (View, SequenceNumber, BatchDigest, RequestBatch, ReplicaId)
+	//	sentPrepare bool
+	//	prepare     []*Prepare (View, SequenceNumber, BatchDigest, ReplicaId)
+	// 	sentCommit  bool
+	//	commit      []*Commit (View, SequenceNumber, BatchDigest, ReplicaId)
+	//	}
+
+	checkpointStore map[Checkpoint]bool // track checkpoints as set
+
+	viewChangeStore map[vcidx]*ViewChange // track view-change messages
+	// 뷰체인지 메시지 저장 구조체
+	//type ViewChange struct {
+	//	View      uint64           `protobuf:"varint,1,opt,name=view" json:"view,omitempty"`
+	//	H         uint64           `protobuf:"varint,2,opt,name=h" json:"h,omitempty"`
+	//	Cset      []*ViewChange_C  `protobuf:"bytes,3,rep,name=cset" json:"cset,omitempty"`
+	//	Pset      []*ViewChange_PQ `protobuf:"bytes,4,rep,name=pset" json:"pset,omitempty"`
+	//	Qset      []*ViewChange_PQ `protobuf:"bytes,5,rep,name=qset" json:"qset,omitempty"`
+	//	ReplicaId uint64           `protobuf:"varint,6,opt,name=replica_id,json=replicaId" json:"replica_id,omitempty"`
+	//	Signature []byte           `protobuf:"bytes,7,opt,name=signature,proto3" json:"signature,omitempty"`
+	//}
+	//	// This message should go away and become a checkpoint once replica_id is removed
+	//		type ViewChange_C struct {
+	//			SequenceNumber uint64 `protobuf:"varint,1,opt,name=sequence_number,json=sequenceNumber" json:"sequence_number,omitempty"`
+	//			Id             string `protobuf:"bytes,3,opt,name=id" json:"id,omitempty"`
+	//		}
+	//	// 	type ViewChange_PQ struct {
+	//			SequenceNumber uint64 `protobuf:"varint,1,opt,name=sequence_number,json=sequenceNumber" json:"sequence_number,omitempty"`
+	//			BatchDigest    string `protobuf:"bytes,2,opt,name=batch_digest,json=batchDigest" json:"batch_digest,omitempty"`
+	//			View           uint64 `protobuf:"varint,3,opt,name=view" json:"view,omitempty"`
+	//		}
+
+	newViewStore map[uint64]*NewView // track last new-view we received or sent
+	//	type NewView struct {
+	//		View      uint64            `protobuf:"varint,1,opt,name=view" json:"view,omitempty"`
+	//		Vset      []*ViewChange     `protobuf:"bytes,2,rep,name=vset" json:"vset,omitempty"`
+	//		Xset      map[uint64]string `protobuf:"bytes,3,rep,name=xset" json:"xset,omitempty" protobuf_key:"varint,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	//		ReplicaId uint64            `protobuf:"varint,4,opt,name=replica_id,json=replicaId" json:"replica_id,omitempty"`
+	//	}
 }
 
 type qidx struct {
@@ -230,6 +306,7 @@ type qidx struct {
 	n uint64
 }
 
+// msgID 구조체 : certStore 맵 인덱스(v: 뷰 번호, n:리퀘스트 시퀀스 넘버)
 type msgID struct { // our index through certStore
 	v uint64
 	n uint64
@@ -243,7 +320,7 @@ type msgCert struct {
 	sentCommit  bool
 	commit      []*Commit
 }
-quorum
+
 type vcidx struct {
 	v  uint64
 	id uint64
@@ -271,15 +348,25 @@ func (a sortableUint64Slice) Less(i, j int) bool {
 //					general.K(Checkpoint period)
 //					general.timeout.request(request reception-exectuion MAX delay)
 //					general.timeout.viewchange	(view change 시작 후 다음 request 처리까지의 MAX delay)
+//
+// 아래 순서대로 호출됨.
+// serve() 									: peer/node/start.go
+//	=> NewPeerWithEngine()					: core/peer/peer.go
+//		=> GetEngine()						: consensus/helper/engine.go
+//			=> NewConsenter() 				: consesus/controller/controller.go
+//				=> GetPlugin() 				: pbft.go
+//					=> New() 				: pbft.go
+//						=> NewnewObcBatch()	: batch.go
+//							=> newPbftCore()
 func newPbftCore(id uint64, config *viper.Viper, consumer innerStack, etf events.TimerFactory) *pbftCore {
 	var err error
 	instance := &pbftCore{}
 	instance.id = id
 	instance.consumer = consumer
-	
+
 	// 타이머 설정
-	instance.newViewTimer = etf.CreateTimer()		// 뷰체인지 타이머
-	instance.vcResendTimer = etf.CreateTimer()		// 뷰체인지 재전송 타이머
+	instance.newViewTimer = etf.CreateTimer()  // 뷰체인지 타이머
+	instance.vcResendTimer = etf.CreateTimer() // 뷰체인지 재전송 타이머
 	instance.nullRequestTimer = etf.CreateTimer()
 
 	instance.N = config.GetInt("general.N")
@@ -378,10 +465,14 @@ func (instance *pbftCore) close() {
 }
 
 // allow the view-change protocol to kick-off when the timer expires
+//
+// instance.ProcessEvent() : PBFT 이벤트 처리
 func (instance *pbftCore) ProcessEvent(e events.Event) events.Event {
 	var err error
 	logger.Debugf("Replica %d processing event", instance.id)
 	switch et := e.(type) {
+
+	// 뷰체인지 타이머 만료시, 뷰체인지 실행( sendViewChange() : viewchange.go)
 	case viewChangeTimerEvent:
 		logger.Infof("Replica %d view change timer expired, sending view change: %s", instance.id, instance.newViewTimerReason)
 		instance.timerActive = false
