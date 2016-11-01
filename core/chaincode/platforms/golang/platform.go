@@ -72,7 +72,7 @@ func (goPlatform *Platform) ValidateSpec(spec *pb.ChaincodeSpec) error {
 }
 
 // WritePackage writes the Go chaincode package
-// go 언어 체인코드 패키지를 write
+// go 언어 체인코드 패키지를 write ( Dockerfile --> *.tar file )
 func (goPlatform *Platform) WritePackage(spec *pb.ChaincodeSpec, tw *tar.Writer) error {
 
 	var err error
