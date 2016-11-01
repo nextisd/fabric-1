@@ -215,12 +215,14 @@ func newDuplicateChaincodeHandlerError(chaincodeHandler *Handler) error {
 	return &DuplicateChaincodeHandlerError{ChaincodeID: chaincodeHandler.ChaincodeID}
 }
 
+//@@ chaincode 에 대한 handler 등록
 func (chaincodeSupport *ChaincodeSupport) registerHandler(chaincodehandler *Handler) error {
 	key := chaincodehandler.ChaincodeID.Name
 
 	chaincodeSupport.runningChaincodes.Lock()
 	defer chaincodeSupport.runningChaincodes.Unlock()
 
+	//@@ chaincode RTE 가 존재하고, handler 가 등록되어 있다면 Dup 에러
 	chrte2, ok := chaincodeSupport.chaincodeHasBeenLaunched(key)
 	if ok && chrte2.handler.registered == true {
 		chaincodeLogger.Debugf("duplicate registered handler(key:%s) return error", key)
@@ -229,6 +231,8 @@ func (chaincodeSupport *ChaincodeSupport) registerHandler(chaincodehandler *Hand
 	}
 	//a placeholder, unregistered handler will be setup by query or transaction processing that comes
 	//through via consensus. In this case we swap the handler and give it the notify channel
+	//@@ chaincode 있는 경우 : chaincodehandler 를 handler 로 등록
+	//@@ chaincode 없는 경우 : runningChaincodes Map 에 insert
 	if chrte2 != nil {
 		chaincodehandler.readyNotify = chrte2.handler.readyNotify
 		chrte2.handler = chaincodehandler
@@ -236,6 +240,7 @@ func (chaincodeSupport *ChaincodeSupport) registerHandler(chaincodehandler *Hand
 		chaincodeSupport.runningChaincodes.chaincodeMap[key] = &chaincodeRTEnv{handler: chaincodehandler}
 	}
 
+	//@@ 등록 상태 변경
 	chaincodehandler.registered = true
 
 	//now we are ready to receive messages and send back responses
