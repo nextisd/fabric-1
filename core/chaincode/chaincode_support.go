@@ -283,7 +283,7 @@ func (chaincodeSupport *ChaincodeSupport) sendInitOrReady(context context.Contex
 	//if its in the map, there must be a connected stream...nothing to do
 	var chrte *chaincodeRTEnv
 	var ok bool
-	//@@ handler 가 등록되어 있지 않다면 에러
+	//@@ handler 가 등록되어 있지 않다면 에러!!
 	if chrte, ok = chaincodeSupport.chaincodeHasBeenLaunched(chaincode); !ok {
 		chaincodeSupport.runningChaincodes.Unlock()
 		chaincodeLogger.Debugf("handler not found for chaincode %s", chaincode)
