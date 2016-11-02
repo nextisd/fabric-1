@@ -57,6 +57,7 @@ type MessageHandler interface {
 	SendMessage(msg *pb.ChaincodeMessage) error
 }
 
+//@@ 
 type transactionContext struct {
 	transactionSecContext *pb.Transaction
 	responseNotifier      chan *pb.ChaincodeMessage
@@ -92,6 +93,7 @@ type Handler struct {
 	// Map of tx txid to either invoke or query tx (decrypted). Each tx will be
 	// added prior to execute and remove when done execute
 	// txid와 트랜잭션과의 매핑
+	//@@
 	txCtxs map[string]*transactionContext
 
 	txidMap map[string]bool
