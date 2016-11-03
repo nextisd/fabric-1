@@ -179,6 +179,7 @@ func (peer *peerImpl) GetStateEncryptor(deployTx, invokeTx *obc.Transaction) (St
 	return nil, utils.ErrNotImplemented
 }
 
+//@@ tx.Cert, txNonce 등을 붙인 msg 를 hash
 func (peer *peerImpl) GetTransactionBinding(tx *obc.Transaction) ([]byte, error) {
 	return primitives.Hash(append(tx.Cert, tx.Nonce...)), nil
 }

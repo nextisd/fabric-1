@@ -15,6 +15,7 @@ var _ = math.Inf
 
 // ChaincodeEvent is used for events and registrations that are specific to chaincode
 // string type - "chaincode"
+//@@ ChaincodeID, TxID, EventName, Payload
 type ChaincodeEvent struct {
 	ChaincodeID string `protobuf:"bytes,1,opt,name=chaincodeID" json:"chaincodeID,omitempty"`
 	TxID        string `protobuf:"bytes,2,opt,name=txID" json:"txID,omitempty"`

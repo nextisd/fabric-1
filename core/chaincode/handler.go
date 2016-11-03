@@ -57,7 +57,11 @@ type MessageHandler interface {
 	SendMessage(msg *pb.ChaincodeMessage) error
 }
 
-//@@ 
+//@@ Transaction : ChaincodeID, Txid, Args, Timestamp, Cert
+//@@ ChaincodeMessage : Txid, Args, Timestamp,
+//@@                              ChaincodeEvent (ChaincodeID, TxID, EventName, Payload),
+//@@                              ChaincodeSecurityContext (CallerCert, CallerSign, Args, Timestamp)}
+//@@ rangeQueryIteratorMap
 type transactionContext struct {
 	transactionSecContext *pb.Transaction
 	responseNotifier      chan *pb.ChaincodeMessage
@@ -85,6 +89,7 @@ type Handler struct {
 	ChaincodeID *pb.ChaincodeID
 
 	// A copy of decrypted deploy tx this handler manages, no code
+	//@@ Deploy Tx 에 대한 복사본, code 는 없음 ( ChaincodeID, Txid 등만 관리? )
 	deployTXSecContext *pb.Transaction
 
 	chaincodeSupport *ChaincodeSupport
@@ -92,8 +97,12 @@ type Handler struct {
 	readyNotify      chan bool
 	// Map of tx txid to either invoke or query tx (decrypted). Each tx will be
 	// added prior to execute and remove when done execute
-	// txid와 트랜잭션과의 매핑
-	//@@
+	// txid와 transactionContext Map
+	//@@ Transaction : ChaincodeID, Txid, Args, Timestamp, Cert
+	//@@ ChaincodeMessage : Txid, Args, Timestamp,
+	//@@                              ChaincodeEvent (ChaincodeID, TxID, EventName, Payload),
+	//@@                              ChaincodeSecurityContext (CallerCert, CallerSign, Args, Timestamp)}
+	//@@ rangeQueryIteratorMap
 	txCtxs map[string]*transactionContext
 
 	txidMap map[string]bool
@@ -124,7 +133,12 @@ func (handler *Handler) serialSend(msg *pb.ChaincodeMessage) error {
 	return nil
 }
 
-// @@ 트랜잭션
+//@@ transactionContext 생성/리턴
+//@@ protos.Transaction : ChaincodeID, Txid, Args, Timestamp, Cert
+//@@ protos.ChaincodeMessage : Txid, Args, Timestamp,
+//@@                                       ChaincodeEvent (ChaincodeID, TxID, EventName, Payload),
+//@@                                       ChaincodeSecurityContext (CallerCert, CallerSign, Args, Timestamp)}
+//@@ rangeQueryIteratorMap
 func (handler *Handler) createTxContext(txid string, tx *pb.Transaction) (*transactionContext, error) {
 	if handler.txCtxs == nil {
 		return nil, fmt.Errorf("cannot create notifier for txid:%s", txid)
@@ -134,6 +148,8 @@ func (handler *Handler) createTxContext(txid string, tx *pb.Transaction) (*trans
 	if handler.txCtxs[txid] != nil {
 		return nil, fmt.Errorf("txid:%s exists", txid)
 	}
+
+	//@@ protos.Transaction + protos.ChaincodeMessage + rangeQueryIteratorMap
 	txctx := &transactionContext{transactionSecContext: tx, responseNotifier: make(chan *pb.ChaincodeMessage, 1),
 		rangeQueryIteratorMap: make(map[string]statemgmt.RangeScanIterator)}
 	handler.txCtxs[txid] = txctx
@@ -175,6 +191,11 @@ func (handler *Handler) deleteRangeQueryIterator(txContext *transactionContext, 
 
 //THIS CAN BE REMOVED ONCE WE FULL SUPPORT (Invoke and Query) CONFIDENTIALITY WITH CC-CALLING-CC
 //Only invocation are allowed, not queries
+//@@ confidentiality check --> security 없으면 그냥 통과 
+//@@                                   security 있으면 PUBLIC 아니면 조회 안 됨
+//@@ handler.chaincodeSupport.secHelper 가 없으면 성공
+//@@ txid 에 해당되는 transactionContext 검색/check
+//@@ 성공이면 nil 리턴, 실패면 에러 (ChaincodeMessage.Payload 에 에러메시지) 리턴
 func (handler *Handler) canCallChaincode(txid string, isQuery bool) *pb.ChaincodeMessage {
 	secHelper := handler.chaincodeSupport.getSecHelper()
 	if secHelper == nil {
@@ -265,13 +286,14 @@ func (handler *Handler) encrypt(txid string, payload []byte) ([]byte, error) {
 	return handler.encryptOrDecrypt(true, txid, payload)
 }
 
-// @@
+//@@ Tx 에 대한 hash 값 리턴
 func (handler *Handler) getSecurityBinding(tx *pb.Transaction) ([]byte, error) {
 	secHelper := handler.chaincodeSupport.getSecHelper()
 	if secHelper == nil {
 		return nil, nil
 	}
 
+	//@@ Tx 에 대해, tx.Cert, txNonce 등을 붙인 msg 를 hash
 	return secHelper.GetTransactionBinding(tx)
 }
 
@@ -284,6 +306,7 @@ func (handler *Handler) deregister() error {
 }
 
 // 핸들러의 FSM을 정의된 다음 상태로 전이
+//@@ handler.nextState 채널로 ChaincodeMessage 전송
 func (handler *Handler) triggerNextState(msg *pb.ChaincodeMessage, send bool) {
 	handler.nextState <- &nextStateInfo{msg, send}
 }
@@ -374,12 +397,16 @@ func (handler *Handler) processStream() error {
 			continue
 		}
 
+		//@@ 수신한 msg 에 대한 처리
+		//@@
 		err = handler.HandleMessage(in)
 		if err != nil {
 			chaincodeLogger.Errorf("[%s]Error handling message, ending stream: %s", shorttxid(in.Txid), err)
 			return fmt.Errorf("Error handling message, ending stream: %s", err)
 		}
 
+		//@@ handler.nextState 채널에서 이벤트 발생 && Chaincode 로 응답을 보내줘야 한다면
+		//@@ nsInfo.msg 을 handler.ChatStream 을 통해 전송 
 		if nsInfo != nil && nsInfo.sendToCC {
 			chaincodeLogger.Debugf("[%s]sending state message %s", shorttxid(in.Txid), in.Type.String())
 			if err = handler.serialSend(in); err != nil {
@@ -1218,6 +1245,8 @@ func (handler *Handler) cloneTx(tx *pb.Transaction) (*pb.Transaction, error) {
 	return clone, nil
 }
 
+//@@ hanlder.deployTXSecContext 생성 ( Deploy 용 Tx 복사본 )
+//@@ Transaction 의 Payload = nil , ChaincodeID 의 Path = ""
 func (handler *Handler) initializeSecContext(tx, depTx *pb.Transaction) error {
 	//set deploy transaction on the handler
 	if depTx != nil {
@@ -1233,6 +1262,7 @@ func (handler *Handler) initializeSecContext(tx, depTx *pb.Transaction) error {
 	}
 
 	//don't need the payload which is not useful and rather large
+	//@@ Deploy Tx 에 대한 복사본 : Payload 는 필요없음
 	handler.deployTXSecContext.Payload = nil
 
 	//we need to null out path from depTx as invoke or queries don't have it
@@ -1248,11 +1278,14 @@ func (handler *Handler) initializeSecContext(tx, depTx *pb.Transaction) error {
 		return fmt.Errorf("Failed to marshall : %s\n", err)
 	}
 
+	// ChaincodeID 설정 (복사 && Path 만 "" 처리)
 	handler.deployTXSecContext.ChaincodeID = data
 
 	return nil
 }
 
+//@@ pb.Transaction 으로부터 pb.ChaincodeMessage.SecurityContext 설정
+//@@ 처리대상 : Cert, Sign, Msg Hash 값, Metadata, ctorMsg 
 func (handler *Handler) setChaincodeSecurityContext(tx, depTx *pb.Transaction, msg *pb.ChaincodeMessage) error {
 	chaincodeLogger.Debug("setting chaincode security context...")
 	if msg.SecurityContext == nil {
@@ -1262,8 +1295,10 @@ func (handler *Handler) setChaincodeSecurityContext(tx, depTx *pb.Transaction, m
 		chaincodeLogger.Debug("setting chaincode security context. Transaction different from nil")
 		chaincodeLogger.Debugf("setting chaincode security context. Metadata [% x]", tx.Metadata)
 
+		//@@ ChaincodeMessage.SecurityContext 설정처리 : Tx 기준
 		msg.SecurityContext.CallerCert = tx.Cert
 		msg.SecurityContext.CallerSign = tx.Signature
+		//@@ Tx 에 대한 hash 값 리턴
 		binding, err := handler.getSecurityBinding(tx)
 		if err != nil {
 			chaincodeLogger.Errorf("Failed getting binding [%s]", err)
@@ -1272,20 +1307,24 @@ func (handler *Handler) setChaincodeSecurityContext(tx, depTx *pb.Transaction, m
 		msg.SecurityContext.Binding = binding
 		msg.SecurityContext.Metadata = tx.Metadata
 
+		//@@ ChaincodeSpec + ID 생성 알고리즘명 (사용자정의) : default = nil
 		cis := &pb.ChaincodeInvocationSpec{}
 		if err := proto.Unmarshal(tx.Payload, cis); err != nil {
 			chaincodeLogger.Errorf("Failed getting payload [%s]", err)
 			return err
 		}
 
+		//@@ ChaincodeSpec 에서 CtorMsg 추출
 		ctorMsgRaw, err := proto.Marshal(cis.ChaincodeSpec.GetCtorMsg())
 		if err != nil {
 			chaincodeLogger.Errorf("Failed getting ctorMsgRaw [%s]", err)
 			return err
 		}
 
+		//@@ CtorMsg 를 SecurityContext.Payload 에 입력
 		msg.SecurityContext.Payload = ctorMsgRaw
 		// TODO: add deploy metadata
+		//@@ Metadata 처리 ( tx --> ChaincodeMessage )
 		if depTx != nil {
 			msg.SecurityContext.ParentMetadata = depTx.Metadata
 		} else {
@@ -1299,15 +1338,24 @@ func (handler *Handler) setChaincodeSecurityContext(tx, depTx *pb.Transaction, m
 
 //if initArgs is set (should be for "deploy" only) move to Init
 //else move to ready
+//@@ transactionContext 생성, ChaincodeMessage 생성 (SecurityContext 처리 포함)
+//@@ handler.nextState 채널로 ChaincodeMessage 전송
 func (handler *Handler) initOrReady(txid string, initArgs [][]byte, tx *pb.Transaction, depTx *pb.Transaction) (chan *pb.ChaincodeMessage, error) {
 	var ccMsg *pb.ChaincodeMessage
 	var send bool
 
+	//@@ transactionContext 생성
+	//@@ protos.Transaction : ChaincodeID, Txid, Args, Timestamp, Cert
+	//@@ protos.ChaincodeMessage : Txid, Args, Timestamp,
+	//@@                                       ChaincodeEvent (ChaincodeID, TxID, EventName, Payload),
+	//@@                                       ChaincodeSecurityContext (CallerCert, CallerSign, Args, Timestamp)}
+	//@@ rangeQueryIteratorMap
 	txctx, funcErr := handler.createTxContext(txid, tx)
 	if funcErr != nil {
 		return nil, funcErr
 	}
 
+	//@@ pb.ChaincodeMessage 수신 채널 리턴 ( 위에서 새로 생성함 )
 	notfy := txctx.responseNotifier
 
 	if initArgs != nil {
@@ -1318,26 +1366,34 @@ func (handler *Handler) initOrReady(txid string, initArgs [][]byte, tx *pb.Trans
 			handler.deleteTxContext(txid)
 			return nil, fmt.Errorf("Failed to marshall %s : %s\n", ccMsg.Type.String(), funcErr)
 		}
+		//@@ Args != nil --> send Init : ChaincodeMessage 생성 ( payload marshaling )
 		ccMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_INIT, Payload: payload, Txid: txid}
 		send = false
 	} else {
 		chaincodeLogger.Debug("sending READY")
+		//@@ Args == nil --> send READY : ChaincodeMessage 생성 ( txid 처리만 )
 		ccMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_READY, Txid: txid}
 		send = true
 	}
 
+	//@@ hanlder.deployTXSecContext 생성 ( Deploy 용 Tx 복사본 )
+	//@@ Transaction 의 Payload = nil , ChaincodeID 의 Path = ""
 	if err := handler.initializeSecContext(tx, depTx); err != nil {
 		handler.deleteTxContext(txid)
 		return nil, err
 	}
 
 	//if security is disabled the context elements will just be nil
+	//@@ pb.Transaction 으로부터 pb.ChaincodeMessage.SecurityContext 설정
+	//@@ 처리대상 : Cert, Sign, Msg Hash 값, Metadata, ctorMsg
 	if err := handler.setChaincodeSecurityContext(tx, depTx, ccMsg); err != nil {
 		return nil, err
 	}
 
+	//@@ handler.nextState 채널로 ChaincodeMessage 전송
 	handler.triggerNextState(ccMsg, send)
 
+	//@@ pb.ChaincodeMessage 수신 채널 리턴
 	return notfy, nil
 }
 
@@ -1345,6 +1401,7 @@ func (handler *Handler) initOrReady(txid string, initArgs [][]byte, tx *pb.Trans
 func (handler *Handler) handleQueryChaincode(msg *pb.ChaincodeMessage) {
 	go func() {
 		// Check if this is the unique request from this chaincode txid
+		//@@ handler.txidMap 에 insert ( 이미 있으면 실패 )
 		uniqueReq := handler.createTXIDEntry(msg.Txid)
 		if !uniqueReq {
 			// Drop this request
@@ -1360,10 +1417,16 @@ func (handler *Handler) handleQueryChaincode(msg *pb.ChaincodeMessage) {
 		}()
 
 		//check and prohibit C-call-C for CONFIDENTIAL txs
+		//@@ confidentiality check --> security 없으면 그냥 통과 
+		//@@                                   security 있으면 PUBLIC 아니면 조회 안 됨
+		//@@ handler.chaincodeSupport.secHelper 가 없으면 성공
+		//@@ txid 에 해당되는 transactionContext 검색/check
+		//@@ 성공이면 nil 리턴, 실패면 에러 (ChaincodeMessage.Payload 에 에러메시지) 리턴
 		if serialSendMsg = handler.canCallChaincode(msg.Txid, true); serialSendMsg != nil {
 			return
 		}
 
+		// 변환 : msg.Payload --> pb.ChaincodeSpec
 		chaincodeSpec := &pb.ChaincodeSpec{}
 		unmarshalErr := proto.Unmarshal(msg.Payload, chaincodeSpec)
 		if unmarshalErr != nil {
@@ -1377,11 +1440,13 @@ func (handler *Handler) handleQueryChaincode(msg *pb.ChaincodeMessage) {
 		newChaincodeID := chaincodeSpec.ChaincodeID.Name
 
 		// Create the transaction object
+		//@@ 변환 : pb.ChaincodeSpec --> pb.Transaction
 		chaincodeInvocationSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: chaincodeSpec}
 		transaction, _ := pb.NewChaincodeExecute(chaincodeInvocationSpec, msg.Txid, pb.Transaction_CHAINCODE_QUERY)
 
 		tsc := handler.getTxContext(msg.Txid).transactionSecContext
 
+		//@@ 변환 : 해당되는 transactionContext.transactionSecContext 에서 데이터 추출
 		transaction.Nonce = tsc.Nonce
 		transaction.ConfidentialityLevel = tsc.ConfidentialityLevel
 		transaction.ConfidentialityProtocolVersion = tsc.ConfidentialityProtocolVersion
@@ -1432,6 +1497,10 @@ func (handler *Handler) handleQueryChaincode(msg *pb.ChaincodeMessage) {
 }
 
 // HandleMessage implementation of MessageHandler interface.  Peer's handling of Chaincode messages.
+//@@ 수신한 ChaincodeMessage 에 대한 처리
+//@@ QUERY_COMPLETED : Tracking대상에서 삭제 -> Payload 암호화 -> handler.responseNotifier 로 msg 전달
+//@@ QUERY_ERROR : Tracking대상에서 삭제 -> handler.responseNotifier 로 msg 전달
+//@@ INVOKE_QUERY : 
 func (handler *Handler) HandleMessage(msg *pb.ChaincodeMessage) error {
 	chaincodeLogger.Debugf("[%s]Handling ChaincodeMessage of type: %s in state %s", shorttxid(msg.Txid), msg.Type, handler.FSM.Current())
 

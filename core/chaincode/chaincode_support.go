@@ -293,9 +293,12 @@ func (chaincodeSupport *ChaincodeSupport) sendInitOrReady(context context.Contex
 
 	var notfy chan *pb.ChaincodeMessage
 	var err error
+	//@@ transactionContext 생성, ChaincodeMessage 생성 (SecurityContext 처리 포함)
+	//@@ handler.nextState 채널로 ChaincodeMessage 전송
 	if notfy, err = chrte.handler.initOrReady(txid, initArgs, tx, depTx); err != nil {
 		return fmt.Errorf("Error sending %s: %s", pb.ChaincodeMessage_INIT, err)
 	}
+	//@@ handler.nextState 채널로 뭘 보냈는데..
 	if notfy != nil {
 		select {
 		case ccMsg := <-notfy:

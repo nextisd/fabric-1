@@ -266,6 +266,7 @@ func (m *ChaincodeDeploymentSpec) GetEffectiveDate() *google_protobuf.Timestamp 
 }
 
 // Carries the chaincode function and its arguments.
+//@@ ChaincodeSpec + ID 생성 알고리즘명 (사용자정의) : default = nil
 type ChaincodeInvocationSpec struct {
 	ChaincodeSpec *ChaincodeSpec `protobuf:"bytes,1,opt,name=chaincodeSpec" json:"chaincodeSpec,omitempty"`
 	// This field can contain a user-specified ID generation algorithm
@@ -294,6 +295,7 @@ func (m *ChaincodeInvocationSpec) GetChaincodeSpec() *ChaincodeSpec {
 // container shim and allow the chaincode to access through the shim interface.
 // TODO: Consider remove this message and just pass the transaction object
 // to the shim and/or allow the chaincode to query transactions.
+//@@ CallerCert, CallerSign, Args, Timestamp
 type ChaincodeSecurityContext struct {
 	CallerCert     []byte                     `protobuf:"bytes,1,opt,name=callerCert,proto3" json:"callerCert,omitempty"`
 	CallerSign     []byte                     `protobuf:"bytes,2,opt,name=callerSign,proto3" json:"callerSign,omitempty"`
@@ -316,6 +318,9 @@ func (m *ChaincodeSecurityContext) GetTxTimestamp() *google_protobuf.Timestamp {
 	return nil
 }
 
+//@@ Txid, Args, Timestamp,
+//@@ ChaincodeEvent (ChaincodeID, TxID, EventName, Payload),
+//@@ ChaincodeSecurityContext (CallerCert, CallerSign, Args, Timestamp)
 type ChaincodeMessage struct {
 	Type            ChaincodeMessage_Type      `protobuf:"varint,1,opt,name=type,enum=protos.ChaincodeMessage_Type" json:"type,omitempty"`
 	Timestamp       *google_protobuf.Timestamp `protobuf:"bytes,2,opt,name=timestamp" json:"timestamp,omitempty"`

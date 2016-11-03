@@ -169,6 +169,7 @@ func (Response_StatusCode) EnumDescriptor() ([]byte, []int) { return fileDescrip
 // whatever format they wish for the arguments for their chaincode.
 // For example, they may wish to use JSON, XML, or a custom format.
 // TODO: Defined remaining fields.
+//@@ ChaincodeID, Txid, Args, Timestamp, Cert
 type Transaction struct {
 	Type Transaction_Type `protobuf:"varint,1,opt,name=type,enum=protos.Transaction_Type" json:"type,omitempty"`
 	// store ChaincodeID as bytes so its encrypted value can be stored
