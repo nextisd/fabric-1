@@ -1579,13 +1579,20 @@ func filterError(errFromFSMEvent error) error {
 	return nil
 }
 
+//@@ //@@ transactionContext 생성
+//@@ pb.Transaction 으로부터 pb.ChaincodeMessage.SecurityContext(msg) 설정
+//@@ Tx == Transaction : handler.nextState 채널로 ChaincodeMessage 전송
+//@@ Tx != Transaction : serialSend : 체인코드 메세지를 순차적으로 송신. (Lock 처리)
+//@@ response 채널 리턴
 func (handler *Handler) sendExecuteMessage(msg *pb.ChaincodeMessage, tx *pb.Transaction) (chan *pb.ChaincodeMessage, error) {
+	//@@ transactionContext 생성/리턴
 	txctx, err := handler.createTxContext(msg.Txid, tx)
 	if err != nil {
 		return nil, err
 	}
 
 	// Mark TXID as either transaction or query
+	//@@ Msg 가 Query 인지 Transaction 인지 구분값 설정 
 	chaincodeLogger.Debugf("[%s]Inside sendExecuteMessage. Message %s", shorttxid(msg.Txid), msg.Type.String())
 	if msg.Type.String() == pb.ChaincodeMessage_QUERY.String() {
 		handler.markIsTransaction(msg.Txid, false)
@@ -1594,6 +1601,8 @@ func (handler *Handler) sendExecuteMessage(msg *pb.ChaincodeMessage, tx *pb.Tran
 	}
 
 	//if security is disabled the context elements will just be nil
+	//@@ pb.Transaction 으로부터 pb.ChaincodeMessage.SecurityContext(msg) 설정
+	//@@ 처리대상 : Cert, Sign, Msg Hash 값, Metadata, ctorMsg
 	if err := handler.setChaincodeSecurityContext(tx, nil, msg); err != nil {
 		return nil, err
 	}
@@ -1601,16 +1610,19 @@ func (handler *Handler) sendExecuteMessage(msg *pb.ChaincodeMessage, tx *pb.Tran
 	// Trigger FSM event if it is a transaction
 	if msg.Type.String() == pb.ChaincodeMessage_TRANSACTION.String() {
 		chaincodeLogger.Debugf("[%s]sendExecuteMsg trigger event %s", shorttxid(msg.Txid), msg.Type)
+		//@@ handler.nextState 채널로 ChaincodeMessage 전송
 		handler.triggerNextState(msg, true)
 	} else {
 		// Send the message to shim
 		chaincodeLogger.Debugf("[%s]sending query", shorttxid(msg.Txid))
+		// @@ serialSend : 체인코드 메세지를 순차적으로 송신. (Lock 처리)
 		if err = handler.serialSend(msg); err != nil {
 			handler.deleteTxContext(msg.Txid)
 			return nil, fmt.Errorf("[%s]SendMessage error sending (%s)", shorttxid(msg.Txid), err)
 		}
 	}
 
+	//@@ response 채널 리턴
 	return txctx.responseNotifier, nil
 }
 

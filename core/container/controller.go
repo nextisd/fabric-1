@@ -291,6 +291,8 @@ func (di DestroyImageReq) getCCID() ccintf.CCID {
 //  @param ctxt context.Context : CCHANDLER를 키값으로 context 할당, peer의 체인코드와의 인터페이스 설정
 //  @param vmtype : 체인코드 deploy시 설정한 값, 현재는 Docker/System 두가지 값을 가짐
 //  @param req : container 패키지의 CreateImageReq,StartImageReq,StopImageReq,DestroyImageReq 중 택1
+//@@ VMCReqIntf 의 종류에 따라, vm.Deploy(), vm.Start(), vm.Stop, vm.Destroy() 실행
+//@@ -> Deploy / Start / Stop / Destroy 는 docker 명령의 일반적인 의미와 동일
 func VMCProcess(ctxt context.Context, vmtype string, req VMCReqIntf) (interface{}, error) {
 	v := vmcontroller.newVM(vmtype)
 

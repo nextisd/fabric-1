@@ -224,7 +224,7 @@ func (chaincodeSupport *ChaincodeSupport) registerHandler(chaincodehandler *Hand
 	chaincodeSupport.runningChaincodes.Lock()
 	defer chaincodeSupport.runningChaincodes.Unlock()
 
-	//@@ chaincode RTE 가 존재하고, handler 가 등록되어 있다면 Dup 에러
+	//@@ ChaincodeID 로 *chaincodeRTEnv 를 찾으면 에러 처리
 	chrte2, ok := chaincodeSupport.chaincodeHasBeenLaunched(key)
 	if ok && chrte2.handler.registered == true {
 		chaincodeLogger.Debugf("duplicate registered handler(key:%s) return error", key)
@@ -269,6 +269,7 @@ func (chaincodeSupport *ChaincodeSupport) deregisterHandler(chaincodehandler *Ha
 	chaincodeLogger.Debugf("Deregister handler: %s", key)
 	chaincodeSupport.runningChaincodes.Lock()
 	defer chaincodeSupport.runningChaincodes.Unlock()
+	//@@ ChaincodeID 로 *chaincodeRTEnv 를 찾지못하면 에러 처리
 	if _, ok := chaincodeSupport.chaincodeHasBeenLaunched(key); !ok {
 		// Handler NOT found
 		return fmt.Errorf("Error deregistering handler, could not find handler with key: %s", key)
@@ -290,7 +291,7 @@ func (chaincodeSupport *ChaincodeSupport) sendInitOrReady(context context.Contex
 	//if its in the map, there must be a connected stream...nothing to do
 	var chrte *chaincodeRTEnv
 	var ok bool
-	//@@ handler 가 등록되어 있지 않다면 에러!! (실행되지 않았다는 것과 동치임)
+	//@@ ChaincodeID 로 *chaincodeRTEnv 를 찾지 못하면 에러 처리
 	if chrte, ok = chaincodeSupport.chaincodeHasBeenLaunched(chaincode); !ok {
 		chaincodeSupport.runningChaincodes.Unlock()
 		chaincodeLogger.Debugf("handler not found for chaincode %s", chaincode)
@@ -380,7 +381,7 @@ func (chaincodeSupport *ChaincodeSupport) launchAndWaitForRegister(ctxt context.
 	chaincodeSupport.runningChaincodes.Lock()
 	var ok bool
 	//if its in the map, there must be a connected stream...nothing to do
-	//@@ ChaincodeID 로 *chaincodeRTEnv 찾아서 리턴
+	//@@ ChaincodeID 로 *chaincodeRTEnv 를 찾으면 return true, nil
 	if _, ok = chaincodeSupport.chaincodeHasBeenLaunched(chaincode); ok {
 		chaincodeLogger.Debugf("chaincode is running and ready: %s", chaincode)
 		chaincodeSupport.runningChaincodes.Unlock()
@@ -465,6 +466,7 @@ func (chaincodeSupport *ChaincodeSupport) Stop(context context.Context, cds *pb.
 	}
 
 	chaincodeSupport.runningChaincodes.Lock()
+	//@@ ChaincodeID 로 *chaincodeRTEnv 를 찾지 못하면 그냥 리턴
 	if _, ok := chaincodeSupport.chaincodeHasBeenLaunched(chaincode); !ok {
 		//nothing to do
 		chaincodeSupport.runningChaincodes.Unlock()
@@ -538,7 +540,7 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, t *pb.
 	var ok bool
 	var err error
 	//if its in the map, there must be a connected stream...nothing to do
-	//@@ ChaincodeID 로 *chaincodeRTEnv 찾아서 리턴
+	//@@ ChaincodeID 로 *chaincodeRTEnv 를 찾을 수 있는 경우 처리
 	if chrte, ok = chaincodeSupport.chaincodeHasBeenLaunched(chaincode); ok {
 		//@@ handler 가 등록되어 있다면 에러 (Dup)
 		if !chrte.handler.registered {
@@ -671,8 +673,15 @@ func (chaincodeSupport *ChaincodeSupport) getVMType(cds *pb.ChaincodeDeploymentS
 
 // Deploy deploys the chaincode if not in development mode where user is running the chaincode.
 // @@ 체인코드 deploy
+//@@ ChaincodeDeploymentSpec 생성 ( Tx.Payload -> cds )
+//@@ ChaincodeID 로 *chaincodeRTEnv 찾아서 있으면 에러
+//@@ 입력된 chaincodeID에 속하는 arguments와 환경 변수를 get
+//@@ (args 에는 Path, ChaincodeName, peer.address 만 있음)
+//@@ CreateImageReq 생성 ( tar.gz 파일 형식 )
+//@@ VMCProcess() 호출 : 내부에서 vm.Deploy() 실행
 func (chaincodeSupport *ChaincodeSupport) Deploy(context context.Context, t *pb.Transaction) (*pb.ChaincodeDeploymentSpec, error) {
 	//build the chaincode
+	//@@ ChaincodeDeploymentSpec 생성 ( Tx.Payload -> cds )
 	cds := &pb.ChaincodeDeploymentSpec{}
 	err := proto.Unmarshal(t.Payload, cds)
 	if err != nil {
@@ -692,6 +701,7 @@ func (chaincodeSupport *ChaincodeSupport) Deploy(context context.Context, t *pb.
 
 	chaincodeSupport.runningChaincodes.Lock()
 	//if its in the map, there must be a connected stream...and we are trying to build the code ?!
+	//@@ ChaincodeID 로 *chaincodeRTEnv 를 찾으면 에러 처리
 	if _, ok := chaincodeSupport.chaincodeHasBeenLaunched(chaincode); ok {
 		chaincodeLogger.Debugf("deploy ?!! there's a chaincode with that name running: %s", chaincode)
 		chaincodeSupport.runningChaincodes.Unlock()
@@ -707,6 +717,7 @@ func (chaincodeSupport *ChaincodeSupport) Deploy(context context.Context, t *pb.
 	}
 
 	var targz io.Reader = bytes.NewBuffer(cds.CodePackage)
+	//@@ CreateImageReq 생성 ( tar.gz 파일 형식 )
 	cir := &container.CreateImageReq{CCID: ccintf.CCID{ChaincodeSpec: cds.ChaincodeSpec, NetworkID: chaincodeSupport.peerNetworkID, PeerID: chaincodeSupport.peerID}, Args: args, Reader: targz, Env: envs}
 
 	vmtype, _ := chaincodeSupport.getVMType(cds)
@@ -715,6 +726,8 @@ func (chaincodeSupport *ChaincodeSupport) Deploy(context context.Context, t *pb.
 
 	//create image and create container
 	// @@ image를 생성, 컨테이너 생성.
+	//@@ VMCReqIntf 의 종류에 따라, vm.Deploy(), vm.Start(), vm.Stop, vm.Destroy() 실행
+	//@@ -> Deploy / Start / Stop / Destroy 는 docker 명령의 일반적인 의미와 동일
 	_, err = container.VMCProcess(context, vmtype, cir)
 	if err != nil {
 		err = fmt.Errorf("Error starting container: %s", err)
@@ -760,6 +773,7 @@ func createQueryMessage(txid string, cMsg *pb.ChaincodeInput) (*pb.ChaincodeMess
 func (chaincodeSupport *ChaincodeSupport) Execute(ctxt context.Context, chaincode string, msg *pb.ChaincodeMessage, timeout time.Duration, tx *pb.Transaction) (*pb.ChaincodeMessage, error) {
 	chaincodeSupport.runningChaincodes.Lock()
 	//we expect the chaincode to be running... sanity check
+	//@@ ChaincodeID 로 *chaincodeRTEnv 를 찾지 못하면 에러 처리
 	chrte, ok := chaincodeSupport.chaincodeHasBeenLaunched(chaincode)
 	if !ok {
 		chaincodeSupport.runningChaincodes.Unlock()
@@ -770,10 +784,16 @@ func (chaincodeSupport *ChaincodeSupport) Execute(ctxt context.Context, chaincod
 
 	var notfy chan *pb.ChaincodeMessage
 	var err error
+	//@@ sendExecuteMessage
+	//@@ pb.Transaction 으로부터 pb.ChaincodeMessage.SecurityContext(msg) 설정
+	//@@ Tx == Transaction : handler.nextState 채널로 ChaincodeMessage 전송
+	//@@ Tx != Transaction : serialSend : 체인코드 메세지를 순차적으로 송신. (Lock 처리)
+	//@@ response 채널 리턴
 	if notfy, err = chrte.handler.sendExecuteMessage(msg, tx); err != nil {
 		return nil, fmt.Errorf("Error sending %s: %s", msg.Type.String(), err)
 	}
 	var ccresp *pb.ChaincodeMessage
+	//@@ select : response 채널 과 timeout 채널 
 	select {
 	case ccresp = <-notfy:
 		//response is sent to user or calling chaincode. ChaincodeMessage_ERROR and ChaincodeMessage_QUERY_ERROR
@@ -783,7 +803,7 @@ func (chaincodeSupport *ChaincodeSupport) Execute(ctxt context.Context, chaincod
 	}
 
 	//our responsibility to delete transaction context if sendExecuteMessage succeeded
-	// @@ 실행 메세지 송신 성공시에는 트랜잭션을 삭제
+	//@@ handler 에서 Txid 를 삭제
 	chrte.handler.deleteTxContext(msg.Txid)
 
 	return ccresp, err
