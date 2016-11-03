@@ -85,6 +85,7 @@ func GetChain(name ChainName) *ChaincodeSupport {
 }
 
 //call this under lock
+//@@ readyNotify 채널을 가진 chaincodeRTEnv 생성 --> chaincodeSupport 에 등록 --> 채널 리턴
 func (chaincodeSupport *ChaincodeSupport) preLaunchSetup(chaincode string) chan bool {
 	//register placeholder Handler. This will be transferred in registerHandler
 	//NOTE: from this point, existence of handler for this chaincode means the chaincode
@@ -96,6 +97,7 @@ func (chaincodeSupport *ChaincodeSupport) preLaunchSetup(chaincode string) chan 
 }
 
 //call this under lock
+//@@ ChaincodeID 로 *chaincodeRTEnv 찾아서 리턴
 func (chaincodeSupport *ChaincodeSupport) chaincodeHasBeenLaunched(chaincode string) (*chaincodeRTEnv, bool) {
 	chrte, hasbeenlaunched := chaincodeSupport.runningChaincodes.chaincodeMap[chaincode]
 	return chrte, hasbeenlaunched
@@ -183,7 +185,7 @@ func NewChaincodeSupport(chainname ChainName, getPeerEndpoint func() (*pb.PeerEn
 // }
 
 // ChaincodeSupport responsible for providing interfacing with chaincodes from the Peer.
-// @@ ChaincodeSupport : 체인코드와 피어간의 인터페이싱을 제공
+// @@ ChaincodeSupport : 피어에서 체인코드와의 인터페이싱을 책임지는 객체
 type ChaincodeSupport struct {
 	name                 ChainName
 	runningChaincodes    *runningChaincodes
@@ -278,12 +280,17 @@ func (chaincodeSupport *ChaincodeSupport) deregisterHandler(chaincodehandler *Ha
 
 // Based on state of chaincode send either init or ready to move to ready state
 // @@ 체인코드의 상태에 따라 init 또는 ready를 송신하여 ready 상태로 전환.
+//@@ handler 가 등록되어 있지 않다면 에러!! (실행되지 않았다는 것과 동치임)
+//@@ transactionContext 생성, ChaincodeMessage 생성 (SecurityContext 처리 포함)
+//@@ handler.nextState 채널로 ChaincodeMessage 전송 & responseNotifier 생성
+//@@ 응답수신 대기 && 에러응답 처리
+//@@ handler.txCtxs (map[string]*transactionContext) 에서 txid 삭제
 func (chaincodeSupport *ChaincodeSupport) sendInitOrReady(context context.Context, txid string, chaincode string, initArgs [][]byte, timeout time.Duration, tx *pb.Transaction, depTx *pb.Transaction) error {
 	chaincodeSupport.runningChaincodes.Lock()
 	//if its in the map, there must be a connected stream...nothing to do
 	var chrte *chaincodeRTEnv
 	var ok bool
-	//@@ handler 가 등록되어 있지 않다면 에러!!
+	//@@ handler 가 등록되어 있지 않다면 에러!! (실행되지 않았다는 것과 동치임)
 	if chrte, ok = chaincodeSupport.chaincodeHasBeenLaunched(chaincode); !ok {
 		chaincodeSupport.runningChaincodes.Unlock()
 		chaincodeLogger.Debugf("handler not found for chaincode %s", chaincode)
@@ -294,11 +301,11 @@ func (chaincodeSupport *ChaincodeSupport) sendInitOrReady(context context.Contex
 	var notfy chan *pb.ChaincodeMessage
 	var err error
 	//@@ transactionContext 생성, ChaincodeMessage 생성 (SecurityContext 처리 포함)
-	//@@ handler.nextState 채널로 ChaincodeMessage 전송
+	//@@ handler.nextState 채널로 ChaincodeMessage 전송 & responseNotifier 생성
 	if notfy, err = chrte.handler.initOrReady(txid, initArgs, tx, depTx); err != nil {
 		return fmt.Errorf("Error sending %s: %s", pb.ChaincodeMessage_INIT, err)
 	}
-	//@@ handler.nextState 채널로 뭘 보냈는데..
+	//@@ 응답수신 대기 && 에러응답 처리
 	if notfy != nil {
 		select {
 		case ccMsg := <-notfy:
@@ -311,6 +318,7 @@ func (chaincodeSupport *ChaincodeSupport) sendInitOrReady(context context.Contex
 	}
 
 	//if initOrReady succeeded, our responsibility to delete the context
+	//@@ handler.txCtxs (map[string]*transactionContext) 에서 txid 삭제
 	chrte.handler.deleteTxContext(txid)
 
 	return err
@@ -318,6 +326,7 @@ func (chaincodeSupport *ChaincodeSupport) sendInitOrReady(context context.Contex
 
 //get args and env given chaincodeID
 // @@ 입력된 chaincodeID에 속하는 arguments와 환경 변수를 get
+//@@ args 에는 Path, ChaincodeName, peer.address 만 있음
 func (chaincodeSupport *ChaincodeSupport) getArgsAndEnv(cID *pb.ChaincodeID, cLang pb.ChaincodeSpec_Type) (args []string, envs []string, err error) {
 	envs = []string{"CORE_CHAINCODE_ID_NAME=" + cID.Name}
 	//if TLS is enabled, pass TLS material to chaincode
@@ -357,6 +366,11 @@ func (chaincodeSupport *ChaincodeSupport) getArgsAndEnv(cID *pb.ChaincodeID, cLa
 }
 
 // launchAndWaitForRegister will launch container if not already running. Use the targz to create the image if not found
+//@@ 이미 실행되었다면 return true, nil
+//@@ chaincodeSupport 에 readyNotify 채널을 가진 chaincodeRTEnv 생성/등록
+//@@ container.StartImageReq 생성후 VMCProcesS() 실행 ( 내부 : vm.Start() )
+//@@ readyNotify 채널에서 true 가 오면 정상, false 가 오면 실패
+//@@ 에러처리 : chaincodeSupport.Stop() (vm.Stop() 실행 (에러 체크 X) && runningChaincodes 에서 삭제)
 func (chaincodeSupport *ChaincodeSupport) launchAndWaitForRegister(ctxt context.Context, cds *pb.ChaincodeDeploymentSpec, cID *pb.ChaincodeID, txid string, cLang pb.ChaincodeSpec_Type, targz io.Reader) (bool, error) {
 	chaincode := cID.Name
 	if chaincode == "" {
@@ -366,6 +380,7 @@ func (chaincodeSupport *ChaincodeSupport) launchAndWaitForRegister(ctxt context.
 	chaincodeSupport.runningChaincodes.Lock()
 	var ok bool
 	//if its in the map, there must be a connected stream...nothing to do
+	//@@ ChaincodeID 로 *chaincodeRTEnv 찾아서 리턴
 	if _, ok = chaincodeSupport.chaincodeHasBeenLaunched(chaincode); ok {
 		chaincodeLogger.Debugf("chaincode is running and ready: %s", chaincode)
 		chaincodeSupport.runningChaincodes.Unlock()
@@ -373,11 +388,14 @@ func (chaincodeSupport *ChaincodeSupport) launchAndWaitForRegister(ctxt context.
 	}
 	alreadyRunning := false
 
+	//@@ readyNotify 채널을 가진 chaincodeRTEnv 생성 --> chaincodeSupport 에 등록 --> 채널 리턴
 	notfy := chaincodeSupport.preLaunchSetup(chaincode)
 	chaincodeSupport.runningChaincodes.Unlock()
 
 	//launch the chaincode
 
+	// @@ 입력된 chaincodeID에 속하는 arguments와 환경 변수를 get
+	//@@ args 에는 Path, ChaincodeName, peer.address 만 있음
 	args, env, err := chaincodeSupport.getArgsAndEnv(cID, cLang)
 	if err != nil {
 		return alreadyRunning, err
@@ -391,6 +409,7 @@ func (chaincodeSupport *ChaincodeSupport) launchAndWaitForRegister(ctxt context.
 
 	ipcCtxt := context.WithValue(ctxt, ccintf.GetCCHandlerKey(), chaincodeSupport)
 	// @@컨테이너 패키지의 의 VMCprocess를 호출하여 컨테이너 실행
+	//@@ vm.Start() 실행 : 사전에 생성한 docker image로 컨테이너를 구동시킴.
 	resp, err := container.VMCProcess(ipcCtxt, vmtype, sir)
 	if err != nil || (resp != nil && resp.(container.VMCResp).Err != nil) {
 		if err == nil {
@@ -416,6 +435,7 @@ func (chaincodeSupport *ChaincodeSupport) launchAndWaitForRegister(ctxt context.
 	}
 	if err != nil {
 		chaincodeLogger.Debugf("stopping due to error while launching %s", err)
+		// @@ vm.Stop() 실행 (에러 체크 X) && runningChaincodes 에서 삭제
 		errIgnore := chaincodeSupport.Stop(ctxt, cds)
 		if errIgnore != nil {
 			chaincodeLogger.Debugf("error on stop %s(%s)", errIgnore, err)
@@ -425,7 +445,7 @@ func (chaincodeSupport *ChaincodeSupport) launchAndWaitForRegister(ctxt context.
 }
 
 //Stop stops a chaincode if running
-// @@ 만약 체인코드가 이미 실행중이라면 stop
+// @@ vm.Stop() 실행 (에러 체크 X) && runningChaincodes 에서 삭제
 func (chaincodeSupport *ChaincodeSupport) Stop(context context.Context, cds *pb.ChaincodeDeploymentSpec) error {
 	chaincode := cds.ChaincodeSpec.ChaincodeID.Name
 	if chaincode == "" {
@@ -437,6 +457,7 @@ func (chaincodeSupport *ChaincodeSupport) Stop(context context.Context, cds *pb.
 
 	vmtype, _ := chaincodeSupport.getVMType(cds)
 
+	// StopImageReq 이므로, 내부적으로 vm.Stop() 실행
 	_, err := container.VMCProcess(context, vmtype, sir)
 	if err != nil {
 		err = fmt.Errorf("Error stopping container: %s", err)
@@ -459,6 +480,26 @@ func (chaincodeSupport *ChaincodeSupport) Stop(context context.Context, cds *pb.
 
 // Launch will launch the chaincode if not running (if running return nil) and will wait for handler of the chaincode to get into FSM ready state.
 // @@ Lanunch : 체인코드가 현재 실행중이 아니라면 실행시키고, 체인코드의 핸들러가 FSM의 ready 상태가 될 때까지 wait
+//@@ Ledger 객체 생성 ( Ledger = ledger.blockchain + state.State + currentID )
+//@@ ChaincodeID 로 Tx 검색 ( Deploy 일 때는, ChaincodeID == TxID 인 것 같네?? )
+//@@ 컨테이너가 시스템 체인코드 컨테이거나, dev 모드라면 컨테이너를 실행시킨다.
+//@@ ChaincodeSupport : 피어에서 체인코드와의 인터페이싱을 책임지는 객체
+//@@-----------------------------------------------------------------------------------------
+//@@ launchAndWaitForRegister() 실행
+//@@ 이미 실행되었다면 return true, nil
+//@@ chaincodeSupport 에 readyNotify 채널을 가진 chaincodeRTEnv 생성/등록
+//@@ container.StartImageReq 생성후 VMCProcesS() 실행 ( 내부 : vm.Start() )
+//@@ readyNotify 채널에서 true 가 오면 정상, false 가 오면 실패
+//@@ 에러처리 : chaincodeSupport.Stop() (vm.Stop() 실행 (에러 체크 X) && runningChaincodes 에서 삭제)
+//@@-----------------------------------------------------------------------------------------
+//@@ sendInitOrReady() 실행
+//@@ handler 가 등록되어 있지 않다면 에러!! (실행되지 않았다는 것과 동치임)
+//@@ transactionContext 생성, ChaincodeMessage 생성 (SecurityContext 처리 포함)
+//@@ handler.nextState 채널로 ChaincodeMessage 전송 & responseNotifier 생성
+//@@ 응답수신 대기 && 에러응답 처리
+//@@ handler.txCtxs (map[string]*transactionContext) 에서 txid 삭제
+//@@-----------------------------------------------------------------------------------------
+//@@ ChaincodeID, CtorMsg, err 리턴
 func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, t *pb.Transaction) (*pb.ChaincodeID, *pb.ChaincodeInput, error) {
 	//build the chaincode
 	var cID *pb.ChaincodeID
@@ -466,7 +507,9 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, t *pb.
 	var cLang pb.ChaincodeSpec_Type
 	var initargs [][]byte
 
+	//@@ Transaction -> ChaincodeDeploymentSpec 생성
 	cds := &pb.ChaincodeDeploymentSpec{}
+	//@@ Tx 가 Deploy : ChaincodeID, CtorMsg, Lang, Args 추출
 	if t.Type == pb.Transaction_CHAINCODE_DEPLOY {
 		err := proto.Unmarshal(t.Payload, cds)
 		if err != nil {
@@ -476,6 +519,7 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, t *pb.
 		cMsg = cds.ChaincodeSpec.CtorMsg
 		cLang = cds.ChaincodeSpec.Type
 		initargs = cMsg.Args
+	//@@ Tx 가 Invoke / Query : ChaincodeID, CtorMsg 추출
 	} else if t.Type == pb.Transaction_CHAINCODE_INVOKE || t.Type == pb.Transaction_CHAINCODE_QUERY {
 		ci := &pb.ChaincodeInvocationSpec{}
 		err := proto.Unmarshal(t.Payload, ci)
@@ -494,13 +538,16 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, t *pb.
 	var ok bool
 	var err error
 	//if its in the map, there must be a connected stream...nothing to do
+	//@@ ChaincodeID 로 *chaincodeRTEnv 찾아서 리턴
 	if chrte, ok = chaincodeSupport.chaincodeHasBeenLaunched(chaincode); ok {
+		//@@ handler 가 등록되어 있다면 에러 (Dup)
 		if !chrte.handler.registered {
 			chaincodeSupport.runningChaincodes.Unlock()
 			chaincodeLogger.Debugf("premature execution - chaincode (%s) is being launched", chaincode)
 			err = fmt.Errorf("premature execution - chaincode (%s) is being launched", chaincode)
 			return cID, cMsg, err
 		}
+		//@@ handler 가 실행되고 있다면 에러
 		if chrte.handler.isRunning() {
 			chaincodeLogger.Debugf("chaincode is running(no need to launch) : %s", chaincode)
 			chaincodeSupport.runningChaincodes.Unlock()
@@ -524,7 +571,9 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, t *pb.
 	//         5) query successfully retrives committed tx and calls sendInitOrReady
 	// See issue #710
 
+	//@@ Tx 가 Deploy
 	if t.Type != pb.Transaction_CHAINCODE_DEPLOY {
+		//@@ Ledger 객체 생성 ( Ledger = ledger.blockchain + state.State + currentID )
 		ledger, ledgerErr := ledger.GetLedger()
 
 		if chaincodeSupport.userRunsCC {
@@ -536,6 +585,7 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, t *pb.
 		}
 
 		//hopefully we are restarting from existing image and the deployed transaction exists
+		//@@ ChaincodeID 로 Tx 검색 ( Deploy 일 때는, ChaincodeID == TxID 인 것 같네?? )
 		depTx, ledgerErr = ledger.GetTransactionByID(chaincode)
 		if ledgerErr != nil {
 			return cID, cMsg, fmt.Errorf("Could not get deployment transaction for %s - %s", chaincode, ledgerErr)
@@ -545,6 +595,7 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, t *pb.
 		}
 		if nil != chaincodeSupport.secHelper {
 			var err error
+			//@@ 현재 미구현임 : nill, error 리턴
 			depTx, err = chaincodeSupport.secHelper.TransactionPreExecution(depTx)
 			// Note that t is now decrypted and is a deep clone of the original input t
 			if nil != err {
@@ -563,8 +614,14 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, t *pb.
 
 	//launch container if it is a System container or not in dev mode
 	// 컨테이너가 시스템 체인코드 컨테이거나, dev 모드라면 컨테이너를 실행시킨다.
+	//@@ ChaincodeSupport : 피어에서 체인코드와의 인터페이싱을 책임지는 객체
 	if (!chaincodeSupport.userRunsCC || cds.ExecEnv == pb.ChaincodeDeploymentSpec_SYSTEM) && (chrte == nil || chrte.handler == nil) {
 		var targz io.Reader = bytes.NewBuffer(cds.CodePackage)
+		//@@ 이미 실행되었다면 return true, nil
+		//@@ chaincodeSupport 에 readyNotify 채널을 가진 chaincodeRTEnv 생성/등록
+		//@@ container.StartImageReq 생성후 VMCProcesS() 실행 ( 내부 : vm.Start() )
+		//@@ readyNotify 채널에서 true 가 오면 정상, false 가 오면 실패
+		//@@ 에러처리 : chaincodeSupport.Stop() (vm.Stop() 실행 (에러 체크 X) && runningChaincodes 에서 삭제)
 		_, err = chaincodeSupport.launchAndWaitForRegister(context, cds, cID, t.Txid, cLang, targz)
 		if err != nil {
 			chaincodeLogger.Errorf("launchAndWaitForRegister failed %s", err)
@@ -574,6 +631,11 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, t *pb.
 
 	if err == nil {
 		//send init (if (args)) and wait for ready state
+		//@@ handler 가 등록되어 있지 않다면 에러!! (실행되지 않았다는 것과 동치임)
+		//@@ transactionContext 생성, ChaincodeMessage 생성 (SecurityContext 처리 포함)
+		//@@ handler.nextState 채널로 ChaincodeMessage 전송 & responseNotifier 생성
+		//@@ 응답수신 대기 && 에러응답 처리
+		//@@ handler.txCtxs (map[string]*transactionContext) 에서 txid 삭제
 		err = chaincodeSupport.sendInitOrReady(context, t.Txid, chaincode, initargs, chaincodeSupport.ccStartupTimeout, t, depTx)
 		if err != nil {
 			chaincodeLogger.Errorf("sending init failed(%s)", err)
@@ -588,6 +650,7 @@ func (chaincodeSupport *ChaincodeSupport) Launch(context context.Context, t *pb.
 
 	chaincodeLogger.Debug("LaunchChaincode complete")
 
+	//@@ ChaincodeID, CtorMsg, err 리턴
 	return cID, cMsg, err
 }
 
@@ -636,6 +699,8 @@ func (chaincodeSupport *ChaincodeSupport) Deploy(context context.Context, t *pb.
 	}
 	chaincodeSupport.runningChaincodes.Unlock()
 
+	// @@ 입력된 chaincodeID에 속하는 arguments와 환경 변수를 get
+	//@@ args 에는 Path, ChaincodeName, peer.address 만 있음
 	args, envs, err := chaincodeSupport.getArgsAndEnv(cID, cLang)
 	if err != nil {
 		return cds, fmt.Errorf("error getting args for chaincode %s", err)

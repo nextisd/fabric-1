@@ -92,6 +92,7 @@ func NewChaincodeDeployTransaction(chaincodeDeploymentSpec *ChaincodeDeploymentS
 }
 
 // NewChaincodeExecute is used to invoke chaincode.
+//@@ chaincodeInvocationSpec -> protos.Transaction 생성
 func NewChaincodeExecute(chaincodeInvocationSpec *ChaincodeInvocationSpec, uuid string, typ Transaction_Type) (*Transaction, error) {
 	transaction := new(Transaction)
 	transaction.Type = typ

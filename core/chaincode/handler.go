@@ -1339,7 +1339,7 @@ func (handler *Handler) setChaincodeSecurityContext(tx, depTx *pb.Transaction, m
 //if initArgs is set (should be for "deploy" only) move to Init
 //else move to ready
 //@@ transactionContext 생성, ChaincodeMessage 생성 (SecurityContext 처리 포함)
-//@@ handler.nextState 채널로 ChaincodeMessage 전송
+//@@ handler.nextState 채널로 ChaincodeMessage 전송 & responseNotifier 리턴
 func (handler *Handler) initOrReady(txid string, initArgs [][]byte, tx *pb.Transaction, depTx *pb.Transaction) (chan *pb.ChaincodeMessage, error) {
 	var ccMsg *pb.ChaincodeMessage
 	var send bool
@@ -1355,7 +1355,7 @@ func (handler *Handler) initOrReady(txid string, initArgs [][]byte, tx *pb.Trans
 		return nil, funcErr
 	}
 
-	//@@ pb.ChaincodeMessage 수신 채널 리턴 ( 위에서 새로 생성함 )
+	//@@ responseNotifier 채널 ( createTxContext() 에서 새로 생성 )
 	notfy := txctx.responseNotifier
 
 	if initArgs != nil {
@@ -1366,12 +1366,12 @@ func (handler *Handler) initOrReady(txid string, initArgs [][]byte, tx *pb.Trans
 			handler.deleteTxContext(txid)
 			return nil, fmt.Errorf("Failed to marshall %s : %s\n", ccMsg.Type.String(), funcErr)
 		}
-		//@@ Args != nil --> send Init : ChaincodeMessage 생성 ( payload marshaling )
+		//@@ initArgs != nil --> Init ChaincodeMessage 생성 ( payload marshaling )
 		ccMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_INIT, Payload: payload, Txid: txid}
 		send = false
 	} else {
 		chaincodeLogger.Debug("sending READY")
-		//@@ Args == nil --> send READY : ChaincodeMessage 생성 ( txid 처리만 )
+		//@@ initArgs == nil --> READY ChaincodeMessage 생성 ( txid 처리만 )
 		ccMsg = &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_READY, Txid: txid}
 		send = true
 	}
@@ -1393,11 +1393,16 @@ func (handler *Handler) initOrReady(txid string, initArgs [][]byte, tx *pb.Trans
 	//@@ handler.nextState 채널로 ChaincodeMessage 전송
 	handler.triggerNextState(ccMsg, send)
 
-	//@@ pb.ChaincodeMessage 수신 채널 리턴
+	//@@ responseNotifier 채널 리턴
 	return notfy, nil
 }
 
 // Handles request to query another chaincode
+//@@ handler.txidMap 에 insert
+//@@ confidentiality check
+//@@ protos.Transaction 생성
+//@@ handler.chaincodeSupport.Launch()
+//@@ handler.chaincodeSupport.Execute()
 func (handler *Handler) handleQueryChaincode(msg *pb.ChaincodeMessage) {
 	go func() {
 		// Check if this is the unique request from this chaincode txid
@@ -1442,6 +1447,7 @@ func (handler *Handler) handleQueryChaincode(msg *pb.ChaincodeMessage) {
 		// Create the transaction object
 		//@@ 변환 : pb.ChaincodeSpec --> pb.Transaction
 		chaincodeInvocationSpec := &pb.ChaincodeInvocationSpec{ChaincodeSpec: chaincodeSpec}
+		//@@ chaincodeInvocationSpec -> protos.Transaction 생성
 		transaction, _ := pb.NewChaincodeExecute(chaincodeInvocationSpec, msg.Txid, pb.Transaction_CHAINCODE_QUERY)
 
 		tsc := handler.getTxContext(msg.Txid).transactionSecContext
