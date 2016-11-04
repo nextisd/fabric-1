@@ -142,6 +142,9 @@ func SetChaincodeLoggingLevel() {
 // StartInProc is an entry point for system chaincodes bootstrap. It is not an
 // API for chaincodes.
 // @@ StartInProc : system chaincode 부트스트랩을 위한 진입 포인트
+//@@ "REGISTER 요청" 송신
+//@@ stream.Recv() 호출 : stream 에서 메시지 수신 ( + 에러처리 )
+//@@ handler.nextState 에서 들어온 메시지 처리 : handler.FSM 의 State 를 전이(transition)
 func StartInProc(env []string, args []string, cc Chaincode, recv <-chan *pb.ChaincodeMessage, send chan<- *pb.ChaincodeMessage) error {
 	logging.SetLevel(logging.DEBUG, "chaincode")
 	chaincodeLogger.Debugf("in proc %v", args)
@@ -159,6 +162,9 @@ func StartInProc(env []string, args []string, cc Chaincode, recv <-chan *pb.Chai
 	}
 	chaincodeLogger.Debugf("starting chat with peer using name=%s", chaincodename)
 	stream := newInProcStream(recv, send)
+	//@@ "REGISTER 요청" 송신
+	//@@ stream.Recv() 호출 : stream 에서 메시지 수신 ( + 에러처리 )
+	//@@ handler.nextState 에서 들어온 메시지 처리 : handler.FSM 의 State 를 전이(transition)
 	err := chatWithPeer(chaincodename, stream, cc)
 	return err
 }
@@ -186,6 +192,9 @@ func newPeerClientConnection() (*grpc.ClientConn, error) {
 }
 
 // @@ 체인코드를 동작시킬 peer와 커뮤니케이션
+//@@ "REGISTER 요청" 송신
+//@@ stream.Recv() 호출 : stream 에서 메시지 수신 ( + 에러처리 )
+//@@ handler.nextState 에서 들어온 메시지 처리 : handler.FSM 의 State 를 전이(transition)
 func chatWithPeer(chaincodename string, stream PeerChaincodeStream, cc Chaincode) error {
 
 	// Create the shim handler responsible for all control logic
@@ -200,6 +209,8 @@ func chatWithPeer(chaincodename string, stream PeerChaincodeStream, cc Chaincode
 	}
 	// Register on the stream
 	chaincodeLogger.Debugf("Registering.. sending %s", pb.ChaincodeMessage_REGISTER)
+	//@@ "REGISTER 요청" 송신
+	//@@ handler.ChatStream.Send() 실행 (Lock 처리)
 	handler.serialSend(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_REGISTER, Payload: payload})
 	waitc := make(chan struct{})
 	go func() {
@@ -244,6 +255,10 @@ func chatWithPeer(chaincodename string, stream PeerChaincodeStream, cc Chaincode
 			}
 
 			// Call FSM.handleMessage()
+			//@@ 수신된 Event 가 현재 State 에서 발생될 수 없는 것이면, 에러 처리
+			//@@ handler.FSM 의 State 를 전이(transition)
+			//@@ 에러가 NoTransitionError 또는 CanceledError 이고,
+			//@@ embedded 에러 != nil 일 경우만 에러 리턴, 나머지는 모두 nil 리턴
 			err = handler.handleMessage(in)
 			if err != nil {
 				err = fmt.Errorf("Error handling message: %s", err)
@@ -251,6 +266,7 @@ func chatWithPeer(chaincodename string, stream PeerChaincodeStream, cc Chaincode
 			}
 
 			//keepalive messages are PONGs to the fabric's PINGs
+			//@@ KEEPALIVE 또는 응답 송신 처리
 			if (nsInfo != nil && nsInfo.sendToCC) || (in.Type == pb.ChaincodeMessage_KEEPALIVE) {
 				if in.Type == pb.ChaincodeMessage_KEEPALIVE {
 					chaincodeLogger.Debug("Sending KEEPALIVE response")

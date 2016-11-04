@@ -737,6 +737,21 @@ func (chaincodeSupport *ChaincodeSupport) Deploy(context context.Context, t *pb.
 }
 
 // HandleChaincodeStream implements ccintf.HandleChaincodeStream for all vms to call with appropriate stream
+//@@ HandleChaincodeStream() 실행
+//@@ 	handler.processStream() 실행
+//@@ 		handler.ChatStream.Recv() 실행 : stream 에서 데이터 수신
+//@@ 		( 통신 에러 및 Data 에러 ) 처리
+//@@ 		keep alive 인 경우, 다시 수신 시도
+//@@ 		keep alive timeout 발생시, KEEPALIVE 요청 송신
+//@@ 		수신한 ChaincodeMessage 에 대한 처리
+//@@ 			QUERY_COMPLETED : Tracking대상에서 삭제 -> Payload 암호화 -> handler.responseNotifier 로 msg 전달
+//@@ 			QUERY_ERROR : Tracking대상에서 삭제 -> handler.responseNotifier 로 msg 전달
+//@@ 			INVOKE_QUERY : chaincode 실행 & 응답 처리 
+//@@ 									-> handler.nextState 채널로 ChaincodeMessage 송신 및 응답 처리
+//@@ 			수신된 Event 가 현재 State 에서 발생될 수 없는 것이면, 에러 처리
+//@@ 			handler.FSM 의 State 를 전이(transition)
+//@@ 		handler.nextState 채널에서 이벤트 발생 && Chaincode 로 응답을 보내줘야 한다면
+//@@ 		nsInfo.msg 을 handler.ChatStream 을 통해 전송
 func (chaincodeSupport *ChaincodeSupport) HandleChaincodeStream(ctxt context.Context, stream ccintf.ChaincodeStream) error {
 	return HandleChaincodeStream(chaincodeSupport, ctxt, stream)
 }

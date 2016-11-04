@@ -70,6 +70,7 @@ func shorttxid(txid string) string {
 	return txid[0:8]
 }
 
+//@@ handler.ChatStream.Send() 실행 (Lock 처리)
 func (handler *Handler) serialSend(msg *pb.ChaincodeMessage) error {
 	handler.serialLock.Lock()
 	defer handler.serialLock.Unlock()
@@ -905,6 +906,10 @@ func (handler *Handler) handleQueryChaincode(chaincodeName string, args [][]byte
 
 // handleMessage message handles loop for shim side of chaincode/validator stream.
 // @@ handleMessage : chaincode와 validator간의 스트림 유지
+//@@ 수신된 Event 가 현재 State 에서 발생될 수 없는 것이면, 에러 처리
+//@@ handler.FSM 의 State 를 전이(transition)
+//@@ 에러가 NoTransitionError 또는 CanceledError 이고,
+//@@ embedded 에러 != nil 일 경우만 에러 리턴, 나머지는 모두 nil 리턴
 func (handler *Handler) handleMessage(msg *pb.ChaincodeMessage) error {
 	if msg.Type == pb.ChaincodeMessage_KEEPALIVE {
 		// Received a keep alive message, we don't do anything with it for now
@@ -912,6 +917,7 @@ func (handler *Handler) handleMessage(msg *pb.ChaincodeMessage) error {
 		return nil
 	}
 	chaincodeLogger.Debugf("[%s]Handling ChaincodeMessage of type: %s(state:%s)", shorttxid(msg.Txid), msg.Type, handler.FSM.Current())
+	//@@ 수신된 Event 가 현재 State 에서 발생될 수 없는 것이면, 에러 처리
 	if handler.FSM.Cannot(msg.Type.String()) {
 		errStr := fmt.Sprintf("[%s]Chaincode handler FSM cannot handle message (%s) with payload size (%d) while in state: %s", msg.Txid, msg.Type.String(), len(msg.Payload), handler.FSM.Current())
 		err := errors.New(errStr)
@@ -920,12 +926,22 @@ func (handler *Handler) handleMessage(msg *pb.ChaincodeMessage) error {
 		handler.serialSend(errorMsg)
 		return err
 	}
+	//@@ ( 현재 상태 + event ) -> 다음 상태 결정
+	//@@ Event 전처리 함수 실행
+	//@@ 상태 전이가 완료되었다면, Event 후처리 함수 실행후 정상리턴
+	//@@ 상태전이 함수 정의 : State 진입 함수 + Event 후처리 함수
+	//@@ State 퇴출 함수 실행
+	//@@ 상태전이 함수 실행 ( State 진입 함수 + Event 후처리 함수 )
+	//@@ 상태전이 함수 실행결과 리턴
 	err := handler.FSM.Event(msg.Type.String(), msg)
+	//@@ 에러가 NoTransitionError 또는 CanceledError 이고,
+	//@@ embedded 에러 != nil 일 경우만 에러 리턴, 나머지는 모두 nil 리턴 
 	return filterError(err)
 }
 
 // filterError filters the errors to allow NoTransitionError and CanceledError to not propagate for cases where embedded Err == nil.
-// @@ filterError : NoTransitionError와 CanceledError가 전파 되지 않도록 필터링
+//@@ 에러가 NoTransitionError 또는 CanceledError 이고,
+//@@ embedded 에러 != nil 일 경우만 에러 리턴, 나머지는 모두 nil 리턴 
 func filterError(errFromFSMEvent error) error {
 	if errFromFSMEvent != nil {
 		if noTransitionErr, ok := errFromFSMEvent.(*fsm.NoTransitionError); ok {

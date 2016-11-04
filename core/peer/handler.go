@@ -269,11 +269,20 @@ func (d *Handler) when(stateToCheck string) bool {
 }
 
 // HandleMessage handles the Openchain messages for the Peer.
+//@@ 수신된 Event 가 현재 State 에서 발생될 수 없는 것이면, 에러 처리
+//@@ handler.FSM 의 State 를 전이(transition)
 func (d *Handler) HandleMessage(msg *pb.Message) error {
 	peerLogger.Debugf("Handling Message of type: %s ", msg.Type)
 	if d.FSM.Cannot(msg.Type.String()) {
 		return fmt.Errorf("Peer FSM cannot handle message (%s) with payload size (%d) while in state: %s", msg.Type.String(), len(msg.Payload), d.FSM.Current())
 	}
+	//@@ ( 현재 상태 + event ) -> 다음 상태 결정
+	//@@ Event 전처리 함수 실행
+	//@@ 상태 전이가 완료되었다면, Event 후처리 함수 실행후 정상리턴
+	//@@ 상태전이 함수 정의 : State 진입 함수 + Event 후처리 함수
+	//@@ State 퇴출 함수 실행
+	//@@ 상태전이 함수 실행 ( State 진입 함수 + Event 후처리 함수 )
+	//@@ 상태전이 함수 실행결과 리턴
 	err := d.FSM.Event(msg.Type.String(), msg)
 	if err != nil {
 		if _, ok := err.(*fsm.NoTransitionError); !ok {
