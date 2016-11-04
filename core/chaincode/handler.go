@@ -322,6 +322,19 @@ func (handler *Handler) waitForKeepaliveTimer() <-chan time.Time {
 }
 
 // 체인코드와의 stream 설정 - 수신 및
+//@@ handler.ChatStream.Recv() 실행 : stream 에서 데이터 수신
+//@@ ( 통신 에러 및 Data 에러 ) 처리
+//@@ keep alive 인 경우, 다시 수신 시도
+//@@ keep alive timeout 발생시, KEEPALIVE 요청 송신
+//@@ handler.HandleMessage() 호출
+//@@      QUERY_COMPLETED : Tracking대상에서 삭제 -> Payload 암호화 -> handler.responseNotifier 로 msg 전달
+//@@      QUERY_ERROR : Tracking대상에서 삭제 -> handler.responseNotifier 로 msg 전달
+//@@      INVOKE_QUERY : chaincode 실행 & 응답 처리 
+//@@                              -> handler.nextState 채널로 ChaincodeMessage 송신 및 응답 처리
+//@@      수신된 Event 가 현재 State 에서 발생될 수 없는 것이면, 에러 처리
+//@@      handler.FSM 의 State 를 전이(transition)
+//@@ handler.nextState 채널에서 이벤트 발생 && Chaincode 로 응답을 보내줘야 한다면
+//@@ nsInfo.msg 을 handler.ChatStream 을 통해 전송
 func (handler *Handler) processStream() error {
 	defer handler.deregister()
 	msgAvail := make(chan *pb.ChaincodeMessage)
@@ -338,6 +351,7 @@ func (handler *Handler) processStream() error {
 		nsInfo = nil
 		if recv {
 			recv = false
+			//@@ handler.ChatStream.Recv() 실행 : stream 에서 데이터 수신
 			go func() {
 				var in2 *pb.ChaincodeMessage
 				in2, err = handler.ChatStream.Recv()
@@ -347,6 +361,7 @@ func (handler *Handler) processStream() error {
 		select {
 		case in = <-msgAvail:
 			// Defer the deregistering of the this handler.
+			//@@ ( 통신 에러 및 Data 에러 ) 처리
 			if err == io.EOF {
 				chaincodeLogger.Debugf("Received EOF, ending chaincode support stream, %s", err)
 				return err
@@ -366,6 +381,7 @@ func (handler *Handler) processStream() error {
 			// we can spin off another Recv again
 			recv = true
 
+			//@@ keep alive 인 경우, 다시 수신 시도 
 			if in.Type == pb.ChaincodeMessage_KEEPALIVE {
 				chaincodeLogger.Debug("Received KEEPALIVE Response")
 				// Received a keep alive message, we don't do anything with it for now
@@ -387,6 +403,8 @@ func (handler *Handler) processStream() error {
 			}
 
 			//TODO we could use this to hook into container lifecycle (kill the chaincode if not in use, etc)
+			//@@ keep alive timeout 발생시, KEEPALIVE 요청 송신
+			//@@ serialSend : 체인코드 메세지를 순차적으로 송신. (Lock 처리)
 			kaerr := handler.serialSend(&pb.ChaincodeMessage{Type: pb.ChaincodeMessage_KEEPALIVE})
 			if kaerr != nil {
 				chaincodeLogger.Errorf("Error sending keepalive, err=%s", kaerr)
@@ -397,8 +415,13 @@ func (handler *Handler) processStream() error {
 			continue
 		}
 
-		//@@ 수신한 msg 에 대한 처리
-		//@@
+		//@@ 수신한 ChaincodeMessage 에 대한 처리
+		//@@      QUERY_COMPLETED : Tracking대상에서 삭제 -> Payload 암호화 -> handler.responseNotifier 로 msg 전달
+		//@@      QUERY_ERROR : Tracking대상에서 삭제 -> handler.responseNotifier 로 msg 전달
+		//@@      INVOKE_QUERY : chaincode 실행 & 응답 처리 
+		//@@                              -> handler.nextState 채널로 ChaincodeMessage 송신 및 응답 처리
+		//@@      수신된 Event 가 현재 State 에서 발생될 수 없는 것이면, 에러 처리
+		//@@      handler.FSM 의 State 를 전이(transition)
 		err = handler.HandleMessage(in)
 		if err != nil {
 			chaincodeLogger.Errorf("[%s]Error handling message, ending stream: %s", shorttxid(in.Txid), err)
@@ -406,7 +429,7 @@ func (handler *Handler) processStream() error {
 		}
 
 		//@@ handler.nextState 채널에서 이벤트 발생 && Chaincode 로 응답을 보내줘야 한다면
-		//@@ nsInfo.msg 을 handler.ChatStream 을 통해 전송 
+		//@@ nsInfo.msg 을 handler.ChatStream 을 통해 전송
 		if nsInfo != nil && nsInfo.sendToCC {
 			chaincodeLogger.Debugf("[%s]sending state message %s", shorttxid(in.Txid), in.Type.String())
 			if err = handler.serialSend(in); err != nil {
@@ -418,13 +441,32 @@ func (handler *Handler) processStream() error {
 }
 
 // HandleChaincodeStream Main loop for handling the associated Chaincode stream
+//@@ handler.processStream() 실행
+//@@ 		handler.ChatStream.Recv() 실행 : stream 에서 데이터 수신
+//@@ 		( 통신 에러 및 Data 에러 ) 처리
+//@@ 		keep alive 인 경우, 다시 수신 시도
+//@@ 		keep alive timeout 발생시, KEEPALIVE 요청 송신
+//@@ 		수신한 ChaincodeMessage 에 대한 처리
+//@@ 				QUERY_COMPLETED : Tracking대상에서 삭제 -> Payload 암호화 -> handler.responseNotifier 로 msg 전달
+//@@ 				QUERY_ERROR : Tracking대상에서 삭제 -> handler.responseNotifier 로 msg 전달
+//@@ 				INVOKE_QUERY : chaincode 실행 & 응답 처리 
+//@@ 										-> handler.nextState 채널로 ChaincodeMessage 송신 및 응답 처리
+//@@ 				수신된 Event 가 현재 State 에서 발생될 수 없는 것이면, 에러 처리
+//@@ 				handler.FSM 의 State 를 전이(transition)
+//@@ 		handler.nextState 채널에서 이벤트 발생 && Chaincode 로 응답을 보내줘야 한다면
+//@@ 		nsInfo.msg 을 handler.ChatStream 을 통해 전송
 func HandleChaincodeStream(chaincodeSupport *ChaincodeSupport, ctxt context.Context, stream ccintf.ChaincodeStream) error {
 	deadline, ok := ctxt.Deadline()
 	chaincodeLogger.Debugf("Current context deadline = %s, ok = %v", deadline, ok)
+	//@@ ChaincodeSupportHandler 객체 생성/리턴
+	//@@ 대상 field : ChatStream, chaincodeSupport, nextState(chan), FSM {Events, Callbacks}
 	handler := newChaincodeSupportHandler(chaincodeSupport, stream)
+	//@@ 이건.. 너무 길어서 생략
 	return handler.processStream()
 }
 
+//@@ ChaincodeSupportHandler 객체 생성/리턴
+//@@ 대상 field : ChatStream, chaincodeSupport, nextState(chan), FSM {Events, Callbacks}
 func newChaincodeSupportHandler(chaincodeSupport *ChaincodeSupport, peerChatStream ccintf.ChaincodeStream) *Handler {
 	v := &Handler{
 		ChatStream: peerChatStream,
@@ -1402,7 +1444,11 @@ func (handler *Handler) initOrReady(txid string, initArgs [][]byte, tx *pb.Trans
 //@@ confidentiality check
 //@@ protos.Transaction 생성
 //@@ handler.chaincodeSupport.Launch()
+//@@       chaincode 실행 ( docker 일 경우 : vm.Start() )
+//@@       readyNotify 응답 처리 ( true : 정상, false : 에러 )
 //@@ handler.chaincodeSupport.Execute()
+//@@       handler.nextState 채널로 ChaincodeMessage 전송
+//@@       응답수신 대기 && 에러응답 처리
 func (handler *Handler) handleQueryChaincode(msg *pb.ChaincodeMessage) {
 	go func() {
 		// Check if this is the unique request from this chaincode txid
@@ -1506,41 +1552,59 @@ func (handler *Handler) handleQueryChaincode(msg *pb.ChaincodeMessage) {
 //@@ 수신한 ChaincodeMessage 에 대한 처리
 //@@ QUERY_COMPLETED : Tracking대상에서 삭제 -> Payload 암호화 -> handler.responseNotifier 로 msg 전달
 //@@ QUERY_ERROR : Tracking대상에서 삭제 -> handler.responseNotifier 로 msg 전달
-//@@ INVOKE_QUERY : 
+//@@ INVOKE_QUERY : chaincode 실행 & 응답 처리 
+//@@                         -> handler.nextState 채널로 ChaincodeMessage 송신 및 응답 처리
+//@@ 수신된 Event 가 현재 State 에서 발생될 수 없는 것이면, 에러 처리
+//@@ handler.FSM 의 State 를 전이(transition)
 func (handler *Handler) HandleMessage(msg *pb.ChaincodeMessage) error {
 	chaincodeLogger.Debugf("[%s]Handling ChaincodeMessage of type: %s in state %s", shorttxid(msg.Txid), msg.Type, handler.FSM.Current())
 
 	//QUERY_COMPLETED message can happen ONLY for Transaction_QUERY (stateless)
 	if msg.Type == pb.ChaincodeMessage_QUERY_COMPLETED {
 		chaincodeLogger.Debugf("[%s]HandleMessage- QUERY_COMPLETED. Notify", msg.Txid)
+		//@@ Tracking대상에서 삭제
 		handler.deleteIsTransaction(msg.Txid)
 		var err error
+		//@@ Payload 암호화 -> handler.responseNotifier 로 msg 전달
 		if msg.Payload, err = handler.encrypt(msg.Txid, msg.Payload); nil != err {
 			chaincodeLogger.Errorf("[%s]Failed to encrypt query result %s", msg.Txid, string(msg.Payload))
 			msg.Payload = []byte(fmt.Sprintf("Failed to encrypt query result %s", err.Error()))
 			msg.Type = pb.ChaincodeMessage_QUERY_ERROR
 		}
+		//@@ handler.responseNotifier 로 msg 전달
 		handler.notify(msg)
 		return nil
 	} else if msg.Type == pb.ChaincodeMessage_QUERY_ERROR {
 		chaincodeLogger.Debugf("[%s]HandleMessage- QUERY_ERROR (%s). Notify", msg.Txid, string(msg.Payload))
+		//@@ Tracking대상에서 삭제
 		handler.deleteIsTransaction(msg.Txid)
+		//@@ handler.responseNotifier 로 msg 전달
 		handler.notify(msg)
 		return nil
 	} else if msg.Type == pb.ChaincodeMessage_INVOKE_QUERY {
 		// Received request to query another chaincode from shim
 		chaincodeLogger.Debugf("[%s]HandleMessage- Received request to query another chaincode", msg.Txid)
+		//@@ handler.chaincodeSupport.Launch()
+		//@@       chaincode 실행 ( docker 일 경우 : vm.Start() )
+		//@@       readyNotify 응답 처리 ( true : 정상, false : 에러 )
+		//@@ handler.chaincodeSupport.Execute()
+		//@@       handler.nextState 채널로 ChaincodeMessage 전송
+		//@@       응답수신 대기 && 에러응답 처리
 		handler.handleQueryChaincode(msg)
 		return nil
 	}
+	//@@ 수신된 Event 가 현재 State 에서 발생될 수 없는 것이면, 아래 처리
 	if handler.FSM.Cannot(msg.Type.String()) {
 		// Check if this is a request from validator in query context
+		//@@ Event 가 PUT_STATE / DEL_STATE / INVOKE_CHAINCODE 이고,
+		//@@ Transaction 이 아니라면 체러 처리 
 		if msg.Type.String() == pb.ChaincodeMessage_PUT_STATE.String() || msg.Type.String() == pb.ChaincodeMessage_DEL_STATE.String() || msg.Type.String() == pb.ChaincodeMessage_INVOKE_CHAINCODE.String() {
 			// Check if this TXID is a transaction
 			if !handler.getIsTransaction(msg.Txid) {
 				payload := []byte(fmt.Sprintf("[%s]Cannot handle %s in query context", msg.Txid, msg.Type.String()))
 				chaincodeLogger.Errorf("[%s]Cannot handle %s in query context. Sending %s", msg.Txid, msg.Type.String(), pb.ChaincodeMessage_ERROR)
 				errMsg := &pb.ChaincodeMessage{Type: pb.ChaincodeMessage_ERROR, Payload: payload, Txid: msg.Txid}
+				//@@ serialSend : 체인코드 메세지를 순차적으로 송신. (Lock 처리) 
 				handler.serialSend(errMsg)
 				return fmt.Errorf("Cannot handle %s in query context", msg.Type.String())
 			}
@@ -1549,6 +1613,13 @@ func (handler *Handler) HandleMessage(msg *pb.ChaincodeMessage) error {
 		// Other errors
 		return fmt.Errorf("[%s]Chaincode handler validator FSM cannot handle message (%s) with payload size (%d) while in state: %s", msg.Txid, msg.Type.String(), len(msg.Payload), handler.FSM.Current())
 	}
+	//@@ ( 현재 상태 + event ) -> 다음 상태 결정
+	//@@ Event 전처리 함수 실행
+	//@@ 상태 전이가 완료되었다면, Event 후처리 함수 실행후 정상리턴
+	//@@ 상태전이 함수 정의 : State 진입 함수 + Event 후처리 함수
+	//@@ State 퇴출 함수 실행
+	//@@ 상태전이 함수 실행 ( State 진입 함수 + Event 후처리 함수 )
+	//@@ 상태전이 함수 실행결과 리턴
 	eventErr := handler.FSM.Event(msg.Type.String(), msg)
 	filteredErr := filterError(eventErr)
 	if filteredErr != nil {

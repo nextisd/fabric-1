@@ -770,6 +770,15 @@ func createQueryMessage(txid string, cMsg *pb.ChaincodeInput) (*pb.ChaincodeMess
 // Execute executes a transaction and waits for it to complete until a timeout value.
 // @@ 타임아웃 제한 시간내에 트랜잭션 실행 성공시에는 성공 response를 체인코드에 송신,
 // @@ 타임아웃을 넘겼을 경우는 에러를 송신.
+//@@ ChaincodeID 로 *chaincodeRTEnv 를 찾지 못하면 에러 처리
+//@@ pb.Transaction 으로부터 pb.ChaincodeMessage.SecurityContext(msg) 설정
+//@@ chrte.handler.sendExecuteMessage() 실행 --> response 채널 얻기
+//@@ 	Tx == Transaction : handler.nextState 채널로 ChaincodeMessage 전송
+//@@ 	Tx != Transaction : serialSend : 체인코드 메세지를 순차적으로 송신. (Lock 처리)
+//@@ 	response 채널 리턴
+//@@ select : response 채널 과 timeout 채널
+//@@ handler 에서 Txid 를 삭제
+//@@ response 리턴
 func (chaincodeSupport *ChaincodeSupport) Execute(ctxt context.Context, chaincode string, msg *pb.ChaincodeMessage, timeout time.Duration, tx *pb.Transaction) (*pb.ChaincodeMessage, error) {
 	chaincodeSupport.runningChaincodes.Lock()
 	//we expect the chaincode to be running... sanity check
@@ -806,5 +815,6 @@ func (chaincodeSupport *ChaincodeSupport) Execute(ctxt context.Context, chaincod
 	//@@ handler 에서 Txid 를 삭제
 	chrte.handler.deleteTxContext(msg.Txid)
 
+	//@@ response 리턴
 	return ccresp, err
 }

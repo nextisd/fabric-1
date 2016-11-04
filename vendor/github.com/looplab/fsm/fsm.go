@@ -222,11 +222,20 @@ func (f *FSM) Cannot(event string) bool {
 //
 // The last error should never occur in this situation and is a sign of an
 // internal bug.
+//@@ 입력인자인 event 에 따라, 상태를 전이함
+//@@ ( 현재 상태 + event ) -> 다음 상태 결정
+//@@ Event 전처리 함수 실행
+//@@ 상태 전이가 완료되었다면, Event 후처리 함수 실행후 정상리턴
+//@@ 상태전이 함수 정의 : State 진입 함수 + Event 후처리 함수
+//@@ State 퇴출 함수 실행
+//@@ 상태전이 함수 실행 ( State 진입 함수 + Event 후처리 함수 )
+//@@ 상태전이 함수 실행결과 리턴
 func (f *FSM) Event(event string, args ...interface{}) error {
 	if f.transition != nil {
 		return &InTransitionError{event}
 	}
 
+	//@@ ( 현재 상태 + event ) -> 다음 상태 결정
 	dst, ok := f.transitions[eKey{event, f.current}]
 	if !ok {
 		for ekey := range f.transitions {
@@ -239,34 +248,40 @@ func (f *FSM) Event(event string, args ...interface{}) error {
 
 	e := &Event{f, event, f.current, dst, nil, args, false, false}
 
+	//@@ Event 전처리 함수 실행
 	err := f.beforeEventCallbacks(e)
 	if err != nil {
 		return err
 	}
 
+	//@@ 상태 전이가 완료되었다면, Event 후처리 함수 실행후 정상리턴 
 	if f.current == dst {
 		f.afterEventCallbacks(e)
 		return &NoTransitionError{e.Err}
 	}
 
 	// Setup the transition, call it later.
+	//@@ 상태전이 함수 정의 : State 진입 함수 + Event 후처리 함수 
 	f.transition = func() {
 		f.current = dst
 		f.enterStateCallbacks(e)
 		f.afterEventCallbacks(e)
 	}
 
+	//@@ State 퇴출 함수 실행
 	err = f.leaveStateCallbacks(e)
 	if err != nil {
 		return err
 	}
 
 	// Perform the rest of the transition, if not asynchronous.
+	//@@ 상태전이 함수 실행 ( State 진입 함수 + Event 후처리 함수 )
 	err = f.Transition()
 	if err != nil {
 		return &InternalError{}
 	}
 
+	//@@ 상태전이 함수 실행결과 리턴
 	return e.Err
 }
 
