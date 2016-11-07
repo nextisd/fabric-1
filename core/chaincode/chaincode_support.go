@@ -743,7 +743,7 @@ func (chaincodeSupport *ChaincodeSupport) Deploy(context context.Context, t *pb.
 //@@ 		( 통신 에러 및 Data 에러 ) 처리
 //@@ 		keep alive 인 경우, 다시 수신 시도
 //@@ 		keep alive timeout 발생시, KEEPALIVE 요청 송신
-//@@ 		수신한 ChaincodeMessage 에 대한 처리
+//@@ 		handler.HandleMessage() 호출 : 수신한 ChaincodeMessage 에 대한 처리
 //@@ 			QUERY_COMPLETED : Tracking대상에서 삭제 -> Payload 암호화 -> handler.responseNotifier 로 msg 전달
 //@@ 			QUERY_ERROR : Tracking대상에서 삭제 -> handler.responseNotifier 로 msg 전달
 //@@ 			INVOKE_QUERY : chaincode 실행 & 응답 처리 
