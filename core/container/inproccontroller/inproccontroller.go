@@ -121,6 +121,7 @@ func (vm *InprocVM) Deploy(ctxt context.Context, ccid ccintf.CCID, args []string
 //@@ 			handler.FSM 의 State 를 전이(transition)
 //@@ 		handler.nextState 채널에서 이벤트 발생 && Chaincode 로 응답을 보내줘야 한다면
 //@@ 		nsInfo.msg 을 handler.ChatStream 을 통해 전송
+//@@ select : ccchan, ccsupportchan, ipc.stopChan --> channel close
 func (ipc *inprocContainer) launchInProc(ctxt context.Context, id string, args []string, env []string, ccSupport ccintf.CCSupport) error {
 	peerRcvCCSend := make(chan *pb.ChaincodeMessage)
 	ccRcvPeerSend := make(chan *pb.ChaincodeMessage)
@@ -237,6 +238,7 @@ func (vm *InprocVM) Start(ctxt context.Context, ccid ccintf.CCID, args []string,
 
 //Stop stops a system codechain
 //Stop함수는 시스템 체인코드를 정지시킴 (stopChan 채널로 빈 msg 전송)
+//instRegistry (Map) 에서 Chaincode삭제
 func (vm *InprocVM) Stop(ctxt context.Context, ccid ccintf.CCID, timeout uint, dontkill bool, dontremove bool) error {
 	path := ccid.ChaincodeSpec.ChaincodeID.Path
 
