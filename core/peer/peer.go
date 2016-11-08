@@ -612,6 +612,7 @@ func (p *Impl) chatWithPeer(address string) error {
 func (p *Impl) handleChat(ctx context.Context, stream ChatStream, initiatedStream bool) error {
 	deadline, ok := ctx.Deadline()
 	peerLogger.Debugf("Current context deadline = %s, ok = %v", deadline, ok)
+	//@@ 결국 NewPeerHandler() 실행 : 신규 Peer Handler (instance of HandlerFactory) 를 생성/리턴
 	handler, err := p.handlerFactory(p, stream, initiatedStream)
 	if err != nil {
 		return fmt.Errorf("Error creating handler during handleChat initiation: %s", err)
@@ -628,6 +629,8 @@ func (p *Impl) handleChat(ctx context.Context, stream ChatStream, initiatedStrea
 			peerLogger.Error(e.Error())
 			return e
 		}
+		//@@ 수신된 Event 가 현재 State 에서 발생될 수 없는 것이면, 에러 처리
+		//@@ handler.FSM 의 State 를 전이(transition)
 		err = handler.HandleMessage(in)
 		if err != nil {
 			peerLogger.Errorf("Error handling message: %s", err)

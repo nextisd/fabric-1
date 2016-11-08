@@ -65,10 +65,13 @@ func getInterestKey(interest pb.Interest) string {
 }
 
 //핸들러는 관심있는 이벤트을 등록.
+//@@ 전역변수 gEventProcessor 의 이벤트별 핸들러리스트에 등록
+//@@ handler 의 interestedEvents (map) 에 event 추가
 func (d *handler) register(iMsg []*pb.Interest) error {
 	// Could consider passing interest array to registerHandler
 	// and only lock once for entire array here
 	for _, v := range iMsg {
+		//@@ 전역변수 gEventProcessor 의 이벤트별 핸들러리스트에 등록
 		if err := registerHandler(v, d); err != nil {
 			producerLogger.Errorf("could not register %s: %s", v, err)
 			continue
@@ -80,8 +83,11 @@ func (d *handler) register(iMsg []*pb.Interest) error {
 }
 
 //기 등록된 관심이벤트를 해제.
+//@@ 전역변수 gEventProcessor 의 이벤트별 핸들러리스트에서 삭제
+//@@ handler 의 interestedEvents (map) 에서 event 삭제
 func (d *handler) deregister(iMsg []*pb.Interest) error {
 	for _, v := range iMsg {
+		//@@ 전역변수 gEventProcessor 의 이벤트별 핸들러리스트에서 삭제
 		if err := deRegisterHandler(v, d); err != nil {
 			producerLogger.Errorf("could not deregister %s", v)
 			continue
@@ -106,16 +112,25 @@ func (d *handler) deregisterAll() {
 // 이벤트 메세지를 수신시,
 // 등록이나 등록 해제와 관련된 경우는 핸들러의 등록 및 등록해제 펑션을 수행하고,
 // 그외 실제 이벤트 메세지의 경우는, 해당 이벤트를 chatserver객체로 보낸다.
+//@@ Event_Register    수신 : 전역변수 gEventProcessor 의 이벤트별 핸들러리스트에 등록
+//@@									 handler 의 interestedEvents (map) 에 event 추가
+//@@ Event_Unregister 수신 : 전역변수 gEventProcessor 의 이벤트별 핸들러리스트에서 삭제
+//@@									 handler 의 interestedEvents (map) 에서 event 삭제
+//@@ ChatStream 으로 받은 msg 를 그대로 다시 돌려보냄?? --> 이상타!!
 func (d *handler) HandleMessage(msg *pb.Event) error {
 	//producerLogger.Debug("Handling Event")
 	switch msg.Event.(type) {
 	case *pb.Event_Register:
 		eventsObj := msg.GetRegister()
+		//@@ 전역변수 gEventProcessor 의 이벤트별 핸들러리스트에 등록
+		//@@ handler 의 interestedEvents (map) 에 event 추가
 		if err := d.register(eventsObj.Events); err != nil {
 			return fmt.Errorf("Could not register events %s", err)
 		}
 	case *pb.Event_Unregister:
 		eventsObj := msg.GetUnregister()
+		//@@ 전역변수 gEventProcessor 의 이벤트별 핸들러리스트에서 삭제
+		//@@ handler 의 interestedEvents (map) 에서 event 삭제
 		if err := d.deregister(eventsObj.Events); err != nil {
 			return fmt.Errorf("Could not unregister events %s", err)
 		}
@@ -124,6 +139,7 @@ func (d *handler) HandleMessage(msg *pb.Event) error {
 		return fmt.Errorf("Invalide type from client %T", msg.Event)
 	}
 	//TODO return supported events.. for now just return the received msg
+	//@@ ChatStream 으로 받은 msg 를 그대로 다시 돌려보냄?? --> 이상타!!
 	if err := d.ChatStream.Send(msg); err != nil {
 		return fmt.Errorf("Error sending response to %v:  %s", msg, err)
 	}

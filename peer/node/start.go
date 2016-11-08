@@ -200,7 +200,7 @@ func serve(args []string) error {
 		//@@ Chat service 호출시 새로운 handler 를 생성할 수 있는 (handler factory function) 를 가진 peer 리턴
 		//@@ validator 와 다른점 : validator 는 engine 생성후 handler factory func. 을 engine 에서 가져왔는데,
 		//@@			  peer 는 입력인자를 그대로 peer 에 세팅 ( chatWithSomePeers() 호출도 동일 )
-		//@@ NewPeerHandler() : Peer handler (HandlerFactory 의 인스턴스) 를 생성, 리턴
+		//@@ NewPeerHandler() : 신규 Peer Handler (instance of HandlerFactory) 를 생성/리턴
 		peerServer, err = peer.NewPeerWithHandler(secHelperFunc, peer.NewPeerHandler)
 	}
 

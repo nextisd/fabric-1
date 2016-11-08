@@ -50,6 +50,14 @@ func NewEventsServer(bufferSize uint, timeout int) *EventsServer {
 }
 
 // Chat implementation of the the Chat bidi streaming RPC function
+//@@ stream 에서 받은 event를 처리하는 handler 객체 생성 (ChatStream = stream)
+//@@ stream에서 Recv()
+//@@ handler.HandleMessage 호출
+//@@ 	Event_Register    수신 : 전역변수 gEventProcessor 의 이벤트별 핸들러리스트에 등록
+//@@										 handler 의 interestedEvents (map) 에 event 추가
+//@@ 	Event_Unregister 수신 : 전역변수 gEventProcessor 의 이벤트별 핸들러리스트에서 삭제
+//@@										 handler 의 interestedEvents (map) 에서 event 삭제
+//@@ 	ChatStream 으로 받은 msg 를 그대로 다시 돌려보냄?? --> 이상타!!
 func (p *EventsServer) Chat(stream pb.Events_ChatServer) error {
 	//새로운 이벤트 핸들러 생성
 	handler, err := newEventHandler(stream)
@@ -69,6 +77,11 @@ func (p *EventsServer) Chat(stream pb.Events_ChatServer) error {
 			producerLogger.Error(e.Error())
 			return e
 		}
+		//@@ Event_Register    수신 : 전역변수 gEventProcessor 의 이벤트별 핸들러리스트에 등록
+		//@@									 handler 의 interestedEvents (map) 에 event 추가
+		//@@ Event_Unregister 수신 : 전역변수 gEventProcessor 의 이벤트별 핸들러리스트에서 삭제
+		//@@									 handler 의 interestedEvents (map) 에서 event 삭제
+		//@@ ChatStream 으로 받은 msg 를 그대로 다시 돌려보냄?? --> 이상타!!
 		err = handler.HandleMessage(in)
 		if err != nil {
 			producerLogger.Errorf("Error handling message: %s", err)
