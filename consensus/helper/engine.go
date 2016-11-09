@@ -69,6 +69,12 @@ func (eng *EngineImpl) GetHandlerFactory() peer.HandlerFactory {
 // ProcessTransactionMsg processes a Message in context of a Transaction
 //
 // eng.ProcessTransactionMsg() : 트랜잭션의 컨텍스트에 있는 메시지를 실행
+//@@ Tx Type == Transaction_CHAINCODE_QUERY
+//@@		chaincode.Execute() 호출
+//@@ Tx Type != Transaction_CHAINCODE_QUERY
+//@@		Response_SUCCESS msg 생성
+//@@		consenter 가 없으면 리턴
+//@@		consenter 가 있으면 eng.consenter.RecvMsg() 호출
 func (eng *EngineImpl) ProcessTransactionMsg(msg *pb.Message, tx *pb.Transaction) (response *pb.Response) {
 	//TODO: Do we always verify security, or can we supply a flag on the invoke ot this functions so to bypass check for locally generated transactions?
 	//
@@ -85,6 +91,40 @@ func (eng *EngineImpl) ProcessTransactionMsg(msg *pb.Message, tx *pb.Transaction
 		cxt := context.Background()
 		//query will ignore events as these are not stored on ledger (and query can report
 		//"event" data synchronously anyway)
+		//@@ ledger (blockchain) 관리 객체 얻어옴 (객체는 전역 1개)
+		//@@ Confidentiality check
+		//@@ CHAINCODE_DEPLOY 인 경우
+		//@@		chain.Deploy(ctxt, t) 호출
+		//@@			Dup Check
+		//@@			VMCProcess() 호출 : 내부에서 vm.Deploy() 실행
+		//@@		chain.Launch(ctxt, t) 호출
+		//@@			launchAndWaitForRegister() 실행
+		//@@				container.StartImageReq 생성후 VMCProcesS() 실행 ( 내부 : vm.Start() )
+		//@@				readyNotify 채널에서 true 가 오면 정상, false 가 오면 실패
+		//@@			sendInitOrReady() 실행
+		//@@				handler.nextState 채널로 ChaincodeMessage 전송 & responseNotifier 생성
+		//@@				응답수신 대기 && 에러응답 처리
+		//@@ CHAINCODE_INVOKE  또는 CHAINCODE_QUERY 인 경우
+		//@@		chain.Launch(ctxt, t) 호출
+		//@@			launchAndWaitForRegister() 실행
+		//@@				container.StartImageReq 생성후 VMCProcesS() 실행 ( 내부 : vm.Start() )
+		//@@				readyNotify 채널에서 true 가 오면 정상, false 가 오면 실패
+		//@@			sendInitOrReady() 실행
+		//@@				handler.nextState 채널로 ChaincodeMessage 전송 & responseNotifier 생성
+		//@@				응답수신 대기 && 에러응답 처리
+		//@@			ChaincodeID, CtorMsg, err 리턴
+		//@@		INVOKE 또는 QUERY 용 Tx Msg 생성
+		//@@		chain.Execute(ctxt, chaincode, ccMsg, timeout, t) 호출
+		//@@			ChaincodeID 로 *chaincodeRTEnv 를 찾지 못하면 에러 처리
+		//@@			pb.Transaction 으로부터 pb.ChaincodeMessage.SecurityContext(msg) 설정
+		//@@			chrte.handler.sendExecuteMessage() 실행 --> response 채널 얻기
+		//@@ 			Tx == Transaction : handler.nextState 채널로 ChaincodeMessage 전송
+		//@@ 			Tx != Transaction : serialSend : 체인코드 메세지를 순차적으로 송신. (Lock 처리)
+		//@@ 			response 채널 리턴
+		//@@			select : response 채널 과 timeout 채널
+		//@@			handler 에서 Txid 를 삭제
+		//@@			response 리턴
+		//@@		return resp.Payload, resp.ChaincodeEvent,err
 		result, _, err := chaincode.Execute(cxt, chaincode.GetChain(chaincode.DefaultChain), tx)
 		if err != nil {
 			response = &pb.Response{Status: pb.Response_FAILURE,
@@ -118,6 +158,8 @@ func (eng *EngineImpl) ProcessTransactionMsg(msg *pb.Message, tx *pb.Transaction
 		//
 		// TODO : 위의 request들을 queue에다가 넣을건가??
 		// consenter가 메시지를 핸들링하는 동안 REST API 처리는 지연될 수 있음.
+		//@@ 메시지 type을 CONSENSUS 로 변경하고, VP들에게 Broadcast.
+		//@@ CONSENSUS msg 일 경우, Tx 을 추출하여 go channel 로 전송
 		err := eng.consenter.RecvMsg(msg, eng.peerEndpoint.ID)
 		if err != nil {
 			response = &pb.Response{Status: pb.Response_FAILURE, Msg: []byte(err.Error())}

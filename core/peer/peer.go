@@ -499,7 +499,10 @@ func (p *Impl) Unicast(msg *pb.Message, receiverHandle *pb.PeerID) error {
 }
 
 // SendTransactionsToPeer forwards transactions to the specified peer address.
+//@@ peer 와의 client connection 연결
+//@@ peer 에게 "/protos.Peer/ProcessTransaction" 로 요청송신/ 응답수신
 func (p *Impl) SendTransactionsToPeer(peerAddress string, transaction *pb.Transaction) (response *pb.Response) {
+	//@@ peer 와의 client connection 연결
 	conn, err := NewPeerClientConnectionWithAddress(peerAddress)
 	if err != nil {
 		return &pb.Response{Status: pb.Response_FAILURE, Msg: []byte(fmt.Sprintf("Error creating client to peer address=%s:  %s", peerAddress, err))}
@@ -507,6 +510,7 @@ func (p *Impl) SendTransactionsToPeer(peerAddress string, transaction *pb.Transa
 	defer conn.Close()
 	serverClient := pb.NewPeerClient(conn)
 	peerLogger.Debugf("Sending TX to Peer: %s", peerAddress)
+	//@@ peer 에게 "/protos.Peer/ProcessTransaction" 로 요청송신/ 응답수신
 	response, err = serverClient.ProcessTransaction(context.Background(), transaction)
 	if err != nil {
 		return &pb.Response{Status: pb.Response_FAILURE, Msg: []byte(fmt.Sprintf("Error calling ProcessTransaction on remote peer at address=%s:  %s", peerAddress, err))}
@@ -515,6 +519,7 @@ func (p *Impl) SendTransactionsToPeer(peerAddress string, transaction *pb.Transa
 }
 
 // sendTransactionsToLocalEngine send the transaction to the local engine (This Peer is a validator)
+//@@ CHAIN_TRANSACTION msg 생성
 func (p *Impl) sendTransactionsToLocalEngine(transaction *pb.Transaction) *pb.Response {
 
 	peerLogger.Debugf("Marshalling transaction %s to send to local engine", transaction.Type)
@@ -524,6 +529,7 @@ func (p *Impl) sendTransactionsToLocalEngine(transaction *pb.Transaction) *pb.Re
 	}
 
 	var response *pb.Response
+	//@@ CHAIN_TRANSACTION msg 생성
 	msg := &pb.Message{Type: pb.Message_CHAIN_TRANSACTION, Payload: data, Timestamp: util.CreateUtcTimestamp()}
 	peerLogger.Debugf("Sending message %s with timestamp %v to local engine", msg.Type, msg.Timestamp)
 	response = p.engine.ProcessTransactionMsg(msg, transaction)
@@ -640,11 +646,19 @@ func (p *Impl) handleChat(ctx context.Context, stream ChatStream, initiatedStrea
 }
 
 //ExecuteTransaction executes transactions decides to do execute in dev or prod mode
+//@@ validator 인 경우
+//@@		|
+//@@		|
+//@@ validator 가 아닌 경우
+//@@		peer 와의 client connection 연결
+//@@		peer 에게 "/protos.Peer/ProcessTransaction" 로 요청송신/ 응답수신
 func (p *Impl) ExecuteTransaction(transaction *pb.Transaction) (response *pb.Response) {
 	if p.isValidator {
 		response = p.sendTransactionsToLocalEngine(transaction)
 	} else {
 		peerAddresses := p.discHelper.GetRandomNodes(1)
+		//@@ peer 와의 client connection 연결
+		//@@ peer 에게 "/protos.Peer/ProcessTransaction" 로 요청송신/ 응답수신
 		response = p.SendTransactionsToPeer(peerAddresses[0], transaction)
 	}
 	return response

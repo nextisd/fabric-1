@@ -31,6 +31,40 @@ import (
 
 //Execute - execute transaction or a query
 // @@ 트랜잭션 실행 또는 쿼리
+//@@ ledger (blockchain) 관리 객체 얻어옴 (객체는 전역 1개)
+//@@ Confidentiality check
+//@@ CHAINCODE_DEPLOY 인 경우
+//@@		chain.Deploy(ctxt, t) 호출
+//@@			Dup Check
+//@@			VMCProcess() 호출 : 내부에서 vm.Deploy() 실행
+//@@		chain.Launch(ctxt, t) 호출
+//@@			launchAndWaitForRegister() 실행
+//@@				container.StartImageReq 생성후 VMCProcesS() 실행 ( 내부 : vm.Start() )
+//@@				readyNotify 채널에서 true 가 오면 정상, false 가 오면 실패
+//@@			sendInitOrReady() 실행
+//@@				handler.nextState 채널로 ChaincodeMessage 전송 & responseNotifier 생성
+//@@				응답수신 대기 && 에러응답 처리
+//@@ CHAINCODE_INVOKE  또는 CHAINCODE_QUERY 인 경우
+//@@		chain.Launch(ctxt, t) 호출
+//@@			launchAndWaitForRegister() 실행
+//@@				container.StartImageReq 생성후 VMCProcesS() 실행 ( 내부 : vm.Start() )
+//@@				readyNotify 채널에서 true 가 오면 정상, false 가 오면 실패
+//@@			sendInitOrReady() 실행
+//@@				handler.nextState 채널로 ChaincodeMessage 전송 & responseNotifier 생성
+//@@				응답수신 대기 && 에러응답 처리
+//@@			ChaincodeID, CtorMsg, err 리턴
+//@@		INVOKE 또는 QUERY 용 Tx Msg 생성
+//@@		chain.Execute(ctxt, chaincode, ccMsg, timeout, t) 호출
+//@@			ChaincodeID 로 *chaincodeRTEnv 를 찾지 못하면 에러 처리
+//@@			pb.Transaction 으로부터 pb.ChaincodeMessage.SecurityContext(msg) 설정
+//@@			chrte.handler.sendExecuteMessage() 실행 --> response 채널 얻기
+//@@ 			Tx == Transaction : handler.nextState 채널로 ChaincodeMessage 전송
+//@@ 			Tx != Transaction : serialSend : 체인코드 메세지를 순차적으로 송신. (Lock 처리)
+//@@ 			response 채널 리턴
+//@@			select : response 채널 과 timeout 채널
+//@@			handler 에서 Txid 를 삭제
+//@@			response 리턴
+//@@		return resp.Payload, resp.ChaincodeEvent,err
 func Execute(ctxt context.Context, chain *ChaincodeSupport, t *pb.Transaction) ([]byte, *pb.ChaincodeEvent, error) {
 	var err error
 
@@ -43,6 +77,7 @@ func Execute(ctxt context.Context, chain *ChaincodeSupport, t *pb.Transaction) (
 
 	if secHelper := chain.getSecHelper(); nil != secHelper {
 		var err error
+		//@@ Confidentiality check
 		t, err = secHelper.TransactionPreExecution(t)
 		// Note that t is now decrypted and is a deep clone of the original input t
 		if nil != err {
@@ -51,6 +86,12 @@ func Execute(ctxt context.Context, chain *ChaincodeSupport, t *pb.Transaction) (
 	}
 	// @@ 만약 deploy 라면,
 	if t.Type == pb.Transaction_CHAINCODE_DEPLOY {
+		//@@ ChaincodeDeploymentSpec 생성 ( Tx.Payload -> cds )
+		//@@ ChaincodeID 로 *chaincodeRTEnv 찾아서 있으면 에러
+		//@@ 입력된 chaincodeID에 속하는 arguments와 환경 변수를 get
+		//@@ (args 에는 Path, ChaincodeName, peer.address 만 있음)
+		//@@ CreateImageReq 생성 ( tar.gz 파일 형식 )
+		//@@ VMCProcess() 호출 : 내부에서 vm.Deploy() 실행
 		_, err := chain.Deploy(ctxt, t)
 		if err != nil {
 			return nil, nil, fmt.Errorf("Failed to deploy chaincode spec(%s)", err)
@@ -59,6 +100,26 @@ func Execute(ctxt context.Context, chain *ChaincodeSupport, t *pb.Transaction) (
 		//launch and wait for ready
 		//@@ 트랜잭션의 시작을 마킹하고, 렛저에 체인코드 런치, 그리고 트랜잭션 종료를 마킹.
 		markTxBegin(ledger, t)
+		//@@ Ledger 객체 생성 ( Ledger = ledger.blockchain + state.State + currentID )
+		//@@ ChaincodeID 로 Tx 검색 ( Deploy 일 때는, ChaincodeID == TxID 인 것 같네?? )
+		//@@ 컨테이너가 시스템 체인코드 컨테이거나, dev 모드라면 컨테이너를 실행시킨다.
+		//@@ ChaincodeSupport : 피어에서 체인코드와의 인터페이싱을 책임지는 객체
+		//@@-----------------------------------------------------------------------------------------
+		//@@ launchAndWaitForRegister() 실행
+		//@@ 이미 실행되었다면 return true, nil
+		//@@ chaincodeSupport 에 readyNotify 채널을 가진 chaincodeRTEnv 생성/등록
+		//@@ container.StartImageReq 생성후 VMCProcesS() 실행 ( 내부 : vm.Start() )
+		//@@ readyNotify 채널에서 true 가 오면 정상, false 가 오면 실패
+		//@@ 에러처리 : chaincodeSupport.Stop() (vm.Stop() 실행 (에러 체크 X) && runningChaincodes 에서 삭제)
+		//@@-----------------------------------------------------------------------------------------
+		//@@ sendInitOrReady() 실행
+		//@@ handler 가 등록되어 있지 않다면 에러!! (실행되지 않았다는 것과 동치임)
+		//@@ transactionContext 생성, ChaincodeMessage 생성 (SecurityContext 처리 포함)
+		//@@ handler.nextState 채널로 ChaincodeMessage 전송 & responseNotifier 생성
+		//@@ 응답수신 대기 && 에러응답 처리
+		//@@ handler.txCtxs (map[string]*transactionContext) 에서 txid 삭제
+		//@@-----------------------------------------------------------------------------------------
+		//@@ ChaincodeID, CtorMsg, err 리턴
 		_, _, err = chain.Launch(ctxt, t)
 		if err != nil {
 			markTxFinish(ledger, t, false)
@@ -69,6 +130,26 @@ func Execute(ctxt context.Context, chain *ChaincodeSupport, t *pb.Transaction) (
 		// @@ chain.Launch -> chain.Execute
 	} else if t.Type == pb.Transaction_CHAINCODE_INVOKE || t.Type == pb.Transaction_CHAINCODE_QUERY {
 		//will launch if necessary (and wait for ready)
+		//@@ Ledger 객체 생성 ( Ledger = ledger.blockchain + state.State + currentID )
+		//@@ ChaincodeID 로 Tx 검색 ( Deploy 일 때는, ChaincodeID == TxID 인 것 같네?? )
+		//@@ 컨테이너가 시스템 체인코드 컨테이거나, dev 모드라면 컨테이너를 실행시킨다.
+		//@@ ChaincodeSupport : 피어에서 체인코드와의 인터페이싱을 책임지는 객체
+		//@@-----------------------------------------------------------------------------------------
+		//@@ launchAndWaitForRegister() 실행
+		//@@ 이미 실행되었다면 return true, nil
+		//@@ chaincodeSupport 에 readyNotify 채널을 가진 chaincodeRTEnv 생성/등록
+		//@@ container.StartImageReq 생성후 VMCProcesS() 실행 ( 내부 : vm.Start() )
+		//@@ readyNotify 채널에서 true 가 오면 정상, false 가 오면 실패
+		//@@ 에러처리 : chaincodeSupport.Stop() (vm.Stop() 실행 (에러 체크 X) && runningChaincodes 에서 삭제)
+		//@@-----------------------------------------------------------------------------------------
+		//@@ sendInitOrReady() 실행
+		//@@ handler 가 등록되어 있지 않다면 에러!! (실행되지 않았다는 것과 동치임)
+		//@@ transactionContext 생성, ChaincodeMessage 생성 (SecurityContext 처리 포함)
+		//@@ handler.nextState 채널로 ChaincodeMessage 전송 & responseNotifier 생성
+		//@@ 응답수신 대기 && 에러응답 처리
+		//@@ handler.txCtxs (map[string]*transactionContext) 에서 txid 삭제
+		//@@-----------------------------------------------------------------------------------------
+		//@@ ChaincodeID, CtorMsg, err 리턴
 		cID, cMsg, err := chain.Launch(ctxt, t)
 		if err != nil {
 			return nil, nil, fmt.Errorf("Failed to launch chaincode spec(%s)", err)
@@ -90,6 +171,7 @@ func Execute(ctxt context.Context, chain *ChaincodeSupport, t *pb.Transaction) (
 			return nil, nil, fmt.Errorf("Failed to retrieve chaincode spec(%s)", err)
 		}
 
+		//@@ INVOKE 또는 QUERY 용 Tx Msg 생성
 		var ccMsg *pb.ChaincodeMessage
 		if t.Type == pb.Transaction_CHAINCODE_INVOKE {
 			ccMsg, err = createTransactionMessage(t.Txid, cMsg)
@@ -104,6 +186,15 @@ func Execute(ctxt context.Context, chain *ChaincodeSupport, t *pb.Transaction) (
 		}
 
 		markTxBegin(ledger, t)
+		//@@ ChaincodeID 로 *chaincodeRTEnv 를 찾지 못하면 에러 처리
+		//@@ pb.Transaction 으로부터 pb.ChaincodeMessage.SecurityContext(msg) 설정
+		//@@ chrte.handler.sendExecuteMessage() 실행 --> response 채널 얻기
+		//@@ 	Tx == Transaction : handler.nextState 채널로 ChaincodeMessage 전송
+		//@@ 	Tx != Transaction : serialSend : 체인코드 메세지를 순차적으로 송신. (Lock 처리)
+		//@@ 	response 채널 리턴
+		//@@ select : response 채널 과 timeout 채널
+		//@@ handler 에서 Txid 를 삭제
+		//@@ response 리턴
 		resp, err := chain.Execute(ctxt, chaincode, ccMsg, timeout, t)
 		if err != nil {
 			// Rollback transaction

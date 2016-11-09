@@ -106,12 +106,15 @@ func newNoops(c consensus.Stack) consensus.Consenter {
 // i.RecvMsg() : consenter.RecvMsg() 구현, 메시지 수신시마다 gRPC로 부터 호출됨
 // 	Message_CHAIN_TRANSACTION : 유저에게 response 메시지를 먼저 보내주고, consentor.RecvMsg(msg) 호출(e.g. external deploy request)
 // 	Message_CONSENSUS : consenter.RecvMsg(msg) 바로 호출
+//@@ 메시지 type을 CONSENSUS 로 변경하고, VP들에게 Broadcast.
+//@@ CONSENSUS msg 일 경우, Tx 을 추출하여 go channel 로 전송
 func (i *Noops) RecvMsg(msg *pb.Message, senderHandle *pb.PeerID) error {
 	if logger.IsEnabledFor(logging.DEBUG) {
 		logger.Debugf("Handling Message of type: %s ", msg.Type)
 	}
 	if msg.Type == pb.Message_CHAIN_TRANSACTION {
 		// VP들에게 CONSENSUS 메시지를 Broadcast
+		//@@ 메시지 type을 CONSENSUS 로 변경하고, VP들에게 Broadcast.
 		if err := i.broadcastConsensusMsg(msg); nil != err {
 			return err
 		}
@@ -131,7 +134,7 @@ func (i *Noops) RecvMsg(msg *pb.Message, senderHandle *pb.PeerID) error {
 	return nil
 }
 
-// i.broadcastConsensusMsg() : CONSENSUS 메시지를 VP들에게 Broadcast.
+// i.broadcastConsensusMsg() : 메시지 type을 CONSENSUS 로 변경하고, VP들에게 Broadcast.
 func (i *Noops) broadcastConsensusMsg(msg *pb.Message) error {
 	t := &pb.Transaction{}
 	if err := proto.Unmarshal(msg.Payload, t); err != nil {
@@ -181,6 +184,10 @@ func (i *Noops) canProcessBlock(tx *pb.Transaction) bool {
 }
 
 // i.handleChannels() : tx 채널 상태를 확인후 블록생성 및 전파(to NVPs)
+// tx 수신 : size 에 의한 processBlock() 호출
+// timeout 수신 : time-limit 에 의한 processBlock() 호출
+//@@ processBlock() 설명
+//@@		tx실행, 블록생성, 네트워크에 전파
 func (i *Noops) handleChannels() {
 	// Noops is a singleton object and only exits when peer exits, so we
 	// don't need a condition to exit this loop
@@ -214,7 +221,7 @@ func (i *Noops) handleChannels() {
 	}
 }
 
-// i.processBlock() : tx실행, 블록생성, 네트워크에 전파까지 실행.
+// i.processBlock() : tx실행, 블록생성, 네트워크에 전파 (NVP대상)
 func (i *Noops) processBlock() error {
 	// 타이머 종료
 	i.timer.Stop()

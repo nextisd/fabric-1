@@ -670,6 +670,7 @@ func (x *peerChatClient) Recv() (*Message, error) {
 	return m, nil
 }
 
+//@@ peer 에게 "/protos.Peer/ProcessTransaction" 로 요청송신/ 응답수신
 func (c *peerClient) ProcessTransaction(ctx context.Context, in *Transaction, opts ...grpc.CallOption) (*Response, error) {
 	out := new(Response)
 	err := grpc.Invoke(ctx, "/protos.Peer/ProcessTransaction", in, out, c.cc, opts...)
