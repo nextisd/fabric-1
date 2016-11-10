@@ -73,8 +73,10 @@ func (eng *EngineImpl) GetHandlerFactory() peer.HandlerFactory {
 //@@		chaincode.Execute() 호출
 //@@ Tx Type != Transaction_CHAINCODE_QUERY
 //@@		Response_SUCCESS msg 생성
-//@@		consenter 가 없으면 리턴
+//@@		consenter 가 없으면 리턴 ( Tx 결과는 나중에 다른 consenter로부터 수신 )
 //@@		consenter 가 있으면 eng.consenter.RecvMsg() 호출
+//@@			메시지 type을 CONSENSUS 로 변경하고, VP들에게 Broadcast.
+//@@			CONSENSUS msg 일 경우, Tx 을 추출하여 go channel 로 전송
 func (eng *EngineImpl) ProcessTransactionMsg(msg *pb.Message, tx *pb.Transaction) (response *pb.Response) {
 	//TODO: Do we always verify security, or can we supply a flag on the invoke ot this functions so to bypass check for locally generated transactions?
 	//

@@ -212,6 +212,11 @@ func (s *Server) errorf(format string, a ...interface{}) {
 // RegisterService register a service and its implementation to the gRPC
 // server. Called from the IDL generated code. This must be called before
 // invoking Serve.
+//@@ ServiceDesc.HandlerType (interface) 이 구현되어 있는지 확인, 없으면 에러 리턴
+//@@ s.register(sd, ss) 호출
+//@@		service struct 를 생성하여, Server.m (map[string]*service) 에 insert
+//@@		service.server = ss , service.mdata = ServiceDesc.Metadata
+//@@		ServiceDesc 에 있는 []MethodDesc, []StreamDesc 를 service 의 map 에 insert
 func (s *Server) RegisterService(sd *ServiceDesc, ss interface{}) {
 	ht := reflect.TypeOf(sd.HandlerType).Elem()
 	st := reflect.TypeOf(ss)
@@ -221,6 +226,9 @@ func (s *Server) RegisterService(sd *ServiceDesc, ss interface{}) {
 	s.register(sd, ss)
 }
 
+//@@ service struct 를 생성하여, Server.m (map[string]*service) 에 insert
+//@@ service.server = ss , service.mdata = ServiceDesc.Metadata
+//@@ ServiceDesc 에 있는 []MethodDesc, []StreamDesc 를 service 의 map 에 insert
 func (s *Server) register(sd *ServiceDesc, ss interface{}) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

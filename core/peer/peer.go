@@ -288,6 +288,22 @@ func (p *Impl) Chat(stream pb.Peer_ChatServer) error {
 
 // ProcessTransaction implementation of the ProcessTransaction RPC function
 // ProcessTransaction() RPC함수 ProcessTransaction 적용
+//@@ VP 이고, 보안이 필요하면 Tx서명을 검증
+//@@ p.ExecuteTransaction(tx) 호출/리턴
+//@@		validator 인 경우, p.sendTransactionsToLocalEngine() 호출
+//@@			CHAIN_TRANSACTION msg 생성
+//@@			p.engine.ProcessTransactionMsg() 호출
+//@@				Tx Type == Transaction_CHAINCODE_QUERY
+//@@					chaincode.Execute() 호출
+//@@				Tx Type != Transaction_CHAINCODE_QUERY
+//@@					Response_SUCCESS msg 생성
+//@@					consenter 가 없으면 리턴 ( Tx 결과는 나중에 다른 consenter로부터 수신 )
+//@@					consenter 가 있으면 eng.consenter.RecvMsg() 호출
+//@@						메시지 type을 CONSENSUS 로 변경하고, VP들에게 Broadcast.
+//@@						CONSENSUS msg 일 경우, Tx 을 추출하여 go channel 로 전송
+//@@		validator 가 아닌 경우, p.SendTransactionsToPeer() 호출
+//@@			peer 와의 client connection 연결
+//@@			peer 에게 "/protos.Peer/ProcessTransaction" 로 요청송신/ 응답수신
 func (p *Impl) ProcessTransaction(ctx context.Context, tx *pb.Transaction) (response *pb.Response, err error) {
 	peerLogger.Debugf("ProcessTransaction processing transaction txid = %s", tx.Txid)
 	// Need to validate the Tx's signature if we are a validator.
@@ -305,6 +321,20 @@ func (p *Impl) ProcessTransaction(ctx context.Context, tx *pb.Transaction) (resp
 		}
 
 	}
+	//@@ validator 인 경우, p.sendTransactionsToLocalEngine() 호출
+	//@@		CHAIN_TRANSACTION msg 생성
+	//@@		p.engine.ProcessTransactionMsg() 호출
+	//@@			Tx Type == Transaction_CHAINCODE_QUERY
+	//@@				chaincode.Execute() 호출
+	//@@			Tx Type != Transaction_CHAINCODE_QUERY
+	//@@				Response_SUCCESS msg 생성
+	//@@				consenter 가 없으면 리턴 ( Tx 결과는 나중에 다른 consenter로부터 수신 )
+	//@@				consenter 가 있으면 eng.consenter.RecvMsg() 호출
+	//@@					메시지 type을 CONSENSUS 로 변경하고, VP들에게 Broadcast.
+	//@@					CONSENSUS msg 일 경우, Tx 을 추출하여 go channel 로 전송
+	//@@ validator 가 아닌 경우, p.SendTransactionsToPeer() 호출
+	//@@		peer 와의 client connection 연결
+	//@@		peer 에게 "/protos.Peer/ProcessTransaction" 로 요청송신/ 응답수신
 	return p.ExecuteTransaction(tx), err
 }
 
@@ -520,6 +550,15 @@ func (p *Impl) SendTransactionsToPeer(peerAddress string, transaction *pb.Transa
 
 // sendTransactionsToLocalEngine send the transaction to the local engine (This Peer is a validator)
 //@@ CHAIN_TRANSACTION msg 생성
+//@@ p.engine.ProcessTransactionMsg() 호출
+//@@		Tx Type == Transaction_CHAINCODE_QUERY
+//@@			chaincode.Execute() 호출
+//@@		Tx Type != Transaction_CHAINCODE_QUERY
+//@@			Response_SUCCESS msg 생성
+//@@			consenter 가 없으면 리턴 ( Tx 결과는 나중에 다른 consenter로부터 수신 )
+//@@			consenter 가 있으면 eng.consenter.RecvMsg() 호출
+//@@				메시지 type을 CONSENSUS 로 변경하고, VP들에게 Broadcast.
+//@@				CONSENSUS msg 일 경우, Tx 을 추출하여 go channel 로 전송
 func (p *Impl) sendTransactionsToLocalEngine(transaction *pb.Transaction) *pb.Response {
 
 	peerLogger.Debugf("Marshalling transaction %s to send to local engine", transaction.Type)
@@ -532,6 +571,14 @@ func (p *Impl) sendTransactionsToLocalEngine(transaction *pb.Transaction) *pb.Re
 	//@@ CHAIN_TRANSACTION msg 생성
 	msg := &pb.Message{Type: pb.Message_CHAIN_TRANSACTION, Payload: data, Timestamp: util.CreateUtcTimestamp()}
 	peerLogger.Debugf("Sending message %s with timestamp %v to local engine", msg.Type, msg.Timestamp)
+	//@@ Tx Type == Transaction_CHAINCODE_QUERY
+	//@@		chaincode.Execute() 호출
+	//@@ Tx Type != Transaction_CHAINCODE_QUERY
+	//@@		Response_SUCCESS msg 생성
+	//@@		consenter 가 없으면 리턴 ( Tx 결과는 나중에 다른 consenter로부터 수신 )
+	//@@		consenter 가 있으면 eng.consenter.RecvMsg() 호출
+	//@@			메시지 type을 CONSENSUS 로 변경하고, VP들에게 Broadcast.
+	//@@			CONSENSUS msg 일 경우, Tx 을 추출하여 go channel 로 전송
 	response = p.engine.ProcessTransactionMsg(msg, transaction)
 
 	return response
@@ -646,14 +693,32 @@ func (p *Impl) handleChat(ctx context.Context, stream ChatStream, initiatedStrea
 }
 
 //ExecuteTransaction executes transactions decides to do execute in dev or prod mode
-//@@ validator 인 경우
-//@@		|
-//@@		|
-//@@ validator 가 아닌 경우
+//@@ validator 인 경우, p.sendTransactionsToLocalEngine() 호출
+//@@		CHAIN_TRANSACTION msg 생성
+//@@		p.engine.ProcessTransactionMsg() 호출
+//@@			Tx Type == Transaction_CHAINCODE_QUERY
+//@@				chaincode.Execute() 호출
+//@@			Tx Type != Transaction_CHAINCODE_QUERY
+//@@				Response_SUCCESS msg 생성
+//@@				consenter 가 없으면 리턴 ( Tx 결과는 나중에 다른 consenter로부터 수신 )
+//@@				consenter 가 있으면 eng.consenter.RecvMsg() 호출
+//@@					메시지 type을 CONSENSUS 로 변경하고, VP들에게 Broadcast.
+//@@					CONSENSUS msg 일 경우, Tx 을 추출하여 go channel 로 전송
+//@@ validator 가 아닌 경우, p.SendTransactionsToPeer() 호출
 //@@		peer 와의 client connection 연결
 //@@		peer 에게 "/protos.Peer/ProcessTransaction" 로 요청송신/ 응답수신
 func (p *Impl) ExecuteTransaction(transaction *pb.Transaction) (response *pb.Response) {
 	if p.isValidator {
+		//@@ CHAIN_TRANSACTION msg 생성
+		//@@ p.engine.ProcessTransactionMsg() 호출
+		//@@		Tx Type == Transaction_CHAINCODE_QUERY
+		//@@			chaincode.Execute() 호출
+		//@@		Tx Type != Transaction_CHAINCODE_QUERY
+		//@@			Response_SUCCESS msg 생성
+		//@@			consenter 가 없으면 리턴 ( Tx 결과는 나중에 다른 consenter로부터 수신 )
+		//@@			consenter 가 있으면 eng.consenter.RecvMsg() 호출
+		//@@				메시지 type을 CONSENSUS 로 변경하고, VP들에게 Broadcast.
+		//@@				CONSENSUS msg 일 경우, Tx 을 추출하여 go channel 로 전송
 		response = p.sendTransactionsToLocalEngine(transaction)
 	} else {
 		peerAddresses := p.discHelper.GetRandomNodes(1)

@@ -41,6 +41,27 @@ var systemChaincodes = []*api.SystemChaincode{
 //
 // RegisterSysCCs() : fabric에 등록된 시스템체인코드들을 등록처리
 // 현재까지는, 시스템체인코드도 유저 체인코드처럼 deploy되고 launch(execute)되어야 함.
+//@@ systemChaincodes 에 있는 개별 SystemChaincode 에 대해, api.RegisterSysCC() 호출
+//@@		security 설정되어 있으면 return nil
+//@@		!syscc.Enabled || !isWhitelisted(syscc) : 사용할 수 없음 --> return nil
+//@@		inproccontroller.Register() 호출
+//@@			전역변수 typeRegistry ( map[string]*inprocContainer ) 에 system chaincode 등록
+//@@		ChaincodeSpec 생성
+//@@		deploySysCC() 호출
+//@@			buildSysCC() 호출
+//@@				chaincodeDeploymentSpec 생성/리턴
+//@@			protos.NewChaincodeDeployTransaction() 호출
+//@@				체인코드 delpoy용 트랜잭션 생성
+//@@			chaincode.Execute() 호출
+//@@				ChaincodeID 로 *chaincodeRTEnv 를 찾지 못하면 에러 처리
+//@@				pb.Transaction 으로부터 pb.ChaincodeMessage.SecurityContext(msg) 설정
+//@@				chrte.handler.sendExecuteMessage() 실행 --> response 채널 얻기
+//@@					Tx == Transaction : handler.nextState 채널로 ChaincodeMessage 전송
+//@@					Tx != Transaction : serialSend : 체인코드 메세지를 순차적으로 송신. (Lock 처리)
+//@@					response 채널 리턴
+//@@				select : response 채널 과 timeout 채널
+//@@				handler 에서 Txid 를 삭제
+//@@				response 리턴
 func RegisterSysCCs() {
 	for _, sysCC := range systemChaincodes {
 		api.RegisterSysCC(sysCC)

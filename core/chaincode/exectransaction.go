@@ -238,6 +238,41 @@ func Execute(ctxt context.Context, chain *ChaincodeSupport, t *pb.Transaction) (
 //succeeded, array element will be nil. returns []byte of state hash or
 //error
 // @@ 복수개의 트랜잭션을 실행할 때, array를 이용하여 건바이 건으로 실행하고 그 응답 역시 array를 이용하여 리턴.
+//@@ Tx Array 를 받아서, 개별 Tx 마다 chaincode.Execute() 호출
+//@@		ledger (blockchain) 관리 객체 얻어옴 (객체는 전역 1개)
+//@@		Confidentiality check
+//@@		CHAINCODE_DEPLOY 인 경우
+//@@			chain.Deploy(ctxt, t) 호출
+//@@				Dup Check
+//@@				VMCProcess() 호출 : 내부에서 vm.Deploy() 실행
+//@@			chain.Launch(ctxt, t) 호출
+//@@				launchAndWaitForRegister() 실행
+//@@					container.StartImageReq 생성후 VMCProcesS() 실행 ( 내부 : vm.Start() )
+//@@					readyNotify 채널에서 true 가 오면 정상, false 가 오면 실패
+//@@				sendInitOrReady() 실행
+//@@					handler.nextState 채널로 ChaincodeMessage 전송 & responseNotifier 생성
+//@@					응답수신 대기 && 에러응답 처리
+//@@		CHAINCODE_INVOKE  또는 CHAINCODE_QUERY 인 경우
+//@@			chain.Launch(ctxt, t) 호출
+//@@				launchAndWaitForRegister() 실행
+//@@					container.StartImageReq 생성후 VMCProcesS() 실행 ( 내부 : vm.Start() )
+//@@					readyNotify 채널에서 true 가 오면 정상, false 가 오면 실패
+//@@				sendInitOrReady() 실행
+//@@					handler.nextState 채널로 ChaincodeMessage 전송 & responseNotifier 생성
+//@@					응답수신 대기 && 에러응답 처리
+//@@				ChaincodeID, CtorMsg, err 리턴
+//@@			INVOKE 또는 QUERY 용 Tx Msg 생성
+//@@			chain.Execute(ctxt, chaincode, ccMsg, timeout, t) 호출
+//@@				ChaincodeID 로 *chaincodeRTEnv 를 찾지 못하면 에러 처리
+//@@				pb.Transaction 으로부터 pb.ChaincodeMessage.SecurityContext(msg) 설정
+//@@				chrte.handler.sendExecuteMessage() 실행 --> response 채널 얻기
+//@@					Tx == Transaction : handler.nextState 채널로 ChaincodeMessage 전송
+//@@					Tx != Transaction : serialSend : 체인코드 메세지를 순차적으로 송신. (Lock 처리)
+//@@					response 채널 리턴
+//@@				select : response 채널 과 timeout 채널
+//@@				handler 에서 Txid 를 삭제
+//@@				response 리턴
+//@@			return resp.Payload, resp.ChaincodeEvent,err
 func ExecuteTransactions(ctxt context.Context, cname ChainName, xacts []*pb.Transaction) (succeededTXs []*pb.Transaction, stateHash []byte, ccevents []*pb.ChaincodeEvent, txerrs []error, err error) {
 	var chain = GetChain(cname) // @@ 체인 찾기
 	if chain == nil {
@@ -249,6 +284,40 @@ func ExecuteTransactions(ctxt context.Context, cname ChainName, xacts []*pb.Tran
 	ccevents = make([]*pb.ChaincodeEvent, len(xacts))
 	var succeededTxs = make([]*pb.Transaction, 0)
 	for i, t := range xacts {
+		//@@ ledger (blockchain) 관리 객체 얻어옴 (객체는 전역 1개)
+		//@@ Confidentiality check
+		//@@ CHAINCODE_DEPLOY 인 경우
+		//@@		chain.Deploy(ctxt, t) 호출
+		//@@			Dup Check
+		//@@			VMCProcess() 호출 : 내부에서 vm.Deploy() 실행
+		//@@		chain.Launch(ctxt, t) 호출
+		//@@			launchAndWaitForRegister() 실행
+		//@@				container.StartImageReq 생성후 VMCProcesS() 실행 ( 내부 : vm.Start() )
+		//@@				readyNotify 채널에서 true 가 오면 정상, false 가 오면 실패
+		//@@			sendInitOrReady() 실행
+		//@@				handler.nextState 채널로 ChaincodeMessage 전송 & responseNotifier 생성
+		//@@				응답수신 대기 && 에러응답 처리
+		//@@ CHAINCODE_INVOKE  또는 CHAINCODE_QUERY 인 경우
+		//@@		chain.Launch(ctxt, t) 호출
+		//@@			launchAndWaitForRegister() 실행
+		//@@				container.StartImageReq 생성후 VMCProcesS() 실행 ( 내부 : vm.Start() )
+		//@@				readyNotify 채널에서 true 가 오면 정상, false 가 오면 실패
+		//@@			sendInitOrReady() 실행
+		//@@				handler.nextState 채널로 ChaincodeMessage 전송 & responseNotifier 생성
+		//@@				응답수신 대기 && 에러응답 처리
+		//@@			ChaincodeID, CtorMsg, err 리턴
+		//@@		INVOKE 또는 QUERY 용 Tx Msg 생성
+		//@@		chain.Execute(ctxt, chaincode, ccMsg, timeout, t) 호출
+		//@@			ChaincodeID 로 *chaincodeRTEnv 를 찾지 못하면 에러 처리
+		//@@			pb.Transaction 으로부터 pb.ChaincodeMessage.SecurityContext(msg) 설정
+		//@@			chrte.handler.sendExecuteMessage() 실행 --> response 채널 얻기
+		//@@ 			Tx == Transaction : handler.nextState 채널로 ChaincodeMessage 전송
+		//@@ 			Tx != Transaction : serialSend : 체인코드 메세지를 순차적으로 송신. (Lock 처리)
+		//@@ 			response 채널 리턴
+		//@@			select : response 채널 과 timeout 채널
+		//@@			handler 에서 Txid 를 삭제
+		//@@			response 리턴
+		//@@		return resp.Payload, resp.ChaincodeEvent,err
 		_, ccevents[i], txerrs[i] = Execute(ctxt, chain, t)
 		if txerrs[i] == nil { // @@ loop돌면서 tx 처리
 			succeededTxs = append(succeededTxs, t)

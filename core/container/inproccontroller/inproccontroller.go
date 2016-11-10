@@ -45,6 +45,7 @@ var (
 
 //Register registers system chaincode with given path. The deploy should be called to initialize
 //Register함수는 주어진 경로에 시스템 체인코드를 등록함. 초기화를 위해 deploy를 호출해야함.
+//@@ 전역변수 typeRegistry ( map[string]*inprocContainer ) 에 system chaincode 등록
 func Register(path string, cc shim.Chaincode) error {
 	tmp := typeRegistry[path]
 	if tmp != nil {

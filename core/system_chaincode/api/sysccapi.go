@@ -64,6 +64,26 @@ type SystemChaincode struct {
 // RegisterSysCC registers the given system chaincode with the peer
 //
 // RegisterSysCC() : 피어에 시스템 체인코드 등록
+//@@ security 설정되어 있으면 return nil
+//@@ !syscc.Enabled || !isWhitelisted(syscc) : 사용할 수 없음 --> return nil
+//@@ inproccontroller.Register() 호출
+//@@		전역변수 typeRegistry ( map[string]*inprocContainer ) 에 system chaincode 등록
+//@@ ChaincodeSpec 생성
+//@@ deploySysCC() 호출
+//@@		buildSysCC() 호출
+//@@			chaincodeDeploymentSpec 생성/리턴
+//@@		protos.NewChaincodeDeployTransaction() 호출
+//@@			체인코드 delpoy용 트랜잭션 생성
+//@@		chaincode.Execute() 호출
+//@@			ChaincodeID 로 *chaincodeRTEnv 를 찾지 못하면 에러 처리
+//@@			pb.Transaction 으로부터 pb.ChaincodeMessage.SecurityContext(msg) 설정
+//@@			chrte.handler.sendExecuteMessage() 실행 --> response 채널 얻기
+//@@				Tx == Transaction : handler.nextState 채널로 ChaincodeMessage 전송
+//@@				Tx != Transaction : serialSend : 체인코드 메세지를 순차적으로 송신. (Lock 처리)
+//@@				response 채널 리턴
+//@@			select : response 채널 과 timeout 채널
+//@@			handler 에서 Txid 를 삭제
+//@@			response 리턴
 func RegisterSysCC(syscc *SystemChaincode) error {
 	if peer.SecurityEnabled() {
 		sysccLogger.Warning(fmt.Sprintf("Currently system chaincode does support security(%s,%s)", syscc.Name, syscc.Path))
@@ -76,6 +96,7 @@ func RegisterSysCC(syscc *SystemChaincode) error {
 
 	// core/container/inproccontroller/inproccontroller.go
 	// Register() : 주어진 경로에 시스템 체인코드를 등록함. 초기화를 위해 deploy를 호출해야함
+	//@@ 전역변수 typeRegistry ( map[string]*inprocContainer ) 에 system chaincode 등록
 	err := inproccontroller.Register(syscc.Path, syscc.Chaincode)
 	if err != nil {
 		errStr := fmt.Sprintf("could not register (%s,%v): %s", syscc.Path, syscc, err)
@@ -86,6 +107,20 @@ func RegisterSysCC(syscc *SystemChaincode) error {
 	chaincodeID := &protos.ChaincodeID{Path: syscc.Path, Name: syscc.Name}
 	spec := protos.ChaincodeSpec{Type: protos.ChaincodeSpec_Type(protos.ChaincodeSpec_Type_value["GOLANG"]), ChaincodeID: chaincodeID, CtorMsg: &protos.ChaincodeInput{Args: syscc.InitArgs}}
 
+	//@@ buildSysCC() 호출
+	//@@		chaincodeDeploymentSpec 생성/리턴
+	//@@ protos.NewChaincodeDeployTransaction() 호출
+	//@@		체인코드 delpoy용 트랜잭션 생성
+	//@@	 chaincode.Execute() 호출
+	//@@		ChaincodeID 로 *chaincodeRTEnv 를 찾지 못하면 에러 처리
+	//@@		pb.Transaction 으로부터 pb.ChaincodeMessage.SecurityContext(msg) 설정
+	//@@		chrte.handler.sendExecuteMessage() 실행 --> response 채널 얻기
+	//@@			Tx == Transaction : handler.nextState 채널로 ChaincodeMessage 전송
+	//@@			Tx != Transaction : serialSend : 체인코드 메세지를 순차적으로 송신. (Lock 처리)
+	//@@			response 채널 리턴
+	//@@		select : response 채널 과 timeout 채널
+	//@@		handler 에서 Txid 를 삭제
+	//@@		response 리턴
 	if deployErr := deploySysCC(context.Background(), &spec); deployErr != nil {
 		errStr := fmt.Sprintf("deploy chaincode failed: %s", deployErr)
 		sysccLogger.Error(errStr)
@@ -113,8 +148,23 @@ func buildSysCC(context context.Context, spec *protos.ChaincodeSpec) (*protos.Ch
 // deployLocal deploys the supplied chaincode image to the local peer
 //
 // deploySysCC() : 로컬 피어에 체인코드 이미지를 deploy.
+//@@ buildSysCC() 호출
+//@@		chaincodeDeploymentSpec 생성/리턴
+//@@ protos.NewChaincodeDeployTransaction() 호출
+//@@		체인코드 delpoy용 트랜잭션 생성
+//@@	 chaincode.Execute() 호출
+//@@		ChaincodeID 로 *chaincodeRTEnv 를 찾지 못하면 에러 처리
+//@@		pb.Transaction 으로부터 pb.ChaincodeMessage.SecurityContext(msg) 설정
+//@@		chrte.handler.sendExecuteMessage() 실행 --> response 채널 얻기
+//@@			Tx == Transaction : handler.nextState 채널로 ChaincodeMessage 전송
+//@@			Tx != Transaction : serialSend : 체인코드 메세지를 순차적으로 송신. (Lock 처리)
+//@@			response 채널 리턴
+//@@		select : response 채널 과 timeout 채널
+//@@		handler 에서 Txid 를 삭제
+//@@		response 리턴
 func deploySysCC(ctx context.Context, spec *protos.ChaincodeSpec) error {
 	// First build and get the deployment spec
+	//@@ chaincodeDeploymentSpec 생성/리턴
 	chaincodeDeploymentSpec, err := buildSysCC(ctx, spec)
 
 	if err != nil {

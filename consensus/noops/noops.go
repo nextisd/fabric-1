@@ -184,10 +184,16 @@ func (i *Noops) canProcessBlock(tx *pb.Transaction) bool {
 }
 
 // i.handleChannels() : tx 채널 상태를 확인후 블록생성 및 전파(to NVPs)
-// tx 수신 : size 에 의한 processBlock() 호출
-// timeout 수신 : time-limit 에 의한 processBlock() 호출
+//@@ tx 수신 : size 에 의한 processBlock() 호출
+//@@ timeout 수신 : time-limit 에 의한 processBlock() 호출
 //@@ processBlock() 설명
-//@@		tx실행, 블록생성, 네트워크에 전파
+//@@		i.stack.ExecTxs() 호출
+//@@			[]txs 의 모든 트랜잭션에 대해 개별로 chaincode.Execute() 처리.
+//@@			모든 execution을 실행한 후, candidate global state hash와 error를 리턴.
+//@@			리턴하는 error : Tx 에러 아니고, Ledger 관련 에러
+//@@		StateHash 처리 에러에 따라, Tx Batch commit/rollback
+//@@		신규 블록정보 데이터 및 그 사이 발생한 state delta 확인
+//@@		신규 생성된 블록을 NVP들에게 Broadcast 처리
 func (i *Noops) handleChannels() {
 	// Noops is a singleton object and only exits when peer exits, so we
 	// don't need a condition to exit this loop
@@ -204,6 +210,13 @@ func (i *Noops) handleChannels() {
 					logger.Debug("Process block due to size")
 				}
 				// tx실행, 블록생성, 네트워크에 전파
+				//@@ i.stack.ExecTxs() 호출
+				//@@		[]txs 의 모든 트랜잭션에 대해 개별로 chaincode.Execute() 처리.
+				//@@		모든 execution을 실행한 후, candidate global state hash와 error를 리턴.
+				//@@		리턴하는 error : Tx 에러 아니고, Ledger 관련 에러
+				//@@ StateHash 처리 에러에 따라, Tx Batch commit/rollback
+				//@@ 신규 블록정보 데이터 및 그 사이 발생한 state delta 확인
+				//@@ 신규 생성된 블록을 NVP들에게 Broadcast 처리
 				if err := i.processBlock(); nil != err {
 					logger.Error(err.Error())
 				}
@@ -214,6 +227,13 @@ func (i *Noops) handleChannels() {
 				logger.Debug("Process block due to time")
 			}
 			// tx실행, 블록생성, 네트워크에 전파
+			//@@ i.stack.ExecTxs() 호출
+			//@@		[]txs 의 모든 트랜잭션에 대해 개별로 chaincode.Execute() 처리.
+			//@@		모든 execution을 실행한 후, candidate global state hash와 error를 리턴.
+			//@@		리턴하는 error : Tx 에러 아니고, Ledger 관련 에러
+			//@@ StateHash 처리 에러에 따라, Tx Batch commit/rollback
+			//@@ 신규 블록정보 데이터 및 그 사이 발생한 state delta 확인
+			//@@ 신규 생성된 블록을 NVP들에게 Broadcast 처리
 			if err := i.processBlock(); nil != err {
 				logger.Error(err.Error())
 			}
@@ -222,6 +242,13 @@ func (i *Noops) handleChannels() {
 }
 
 // i.processBlock() : tx실행, 블록생성, 네트워크에 전파 (NVP대상)
+//@@ i.stack.ExecTxs() 호출
+//@@		[]txs 의 모든 트랜잭션에 대해 개별로 chaincode.Execute() 처리.
+//@@		모든 execution을 실행한 후, candidate global state hash와 error를 리턴.
+//@@		리턴하는 error : Tx 에러 아니고, Ledger 관련 에러
+//@@ StateHash 처리 에러에 따라, Tx Batch commit/rollback
+//@@ 신규 블록정보 데이터 및 그 사이 발생한 state delta 확인
+//@@ 신규 생성된 블록을 NVP들에게 Broadcast 처리
 func (i *Noops) processBlock() error {
 	// 타이머 종료
 	i.timer.Stop()
@@ -237,6 +264,11 @@ func (i *Noops) processBlock() error {
 	var err error
 
 	// 블록에 들어갈 트랜잭션들을 state/ledger에 반영(tx-batch execute/commit)
+	//@@ i.stack.ExecTxs() 호출
+	//@@		[]txs 의 모든 트랜잭션에 대해 개별로 chaincode.Execute() 처리.
+	//@@		모든 execution을 실행한 후, candidate global state hash와 error를 리턴.
+	//@@		리턴하는 error : Tx 에러 아니고, Ledger 관련 에러
+	//@@ StateHash 처리 에러에 따라, Tx Batch commit/rollback
 	if err = i.processTransactions(); nil != err {
 		return err
 	}
@@ -250,6 +282,11 @@ func (i *Noops) processBlock() error {
 }
 
 // i.processTransactions() : 트랜잭션들을 트랜잭션 배치 처리 실행(state/ledger에 반영)
+//@@ i.stack.ExecTxs() 호출
+//@@		[]txs 의 모든 트랜잭션에 대해 개별로 chaincode.Execute() 처리.
+//@@		모든 execution을 실행한 후, candidate global state hash와 error를 리턴.
+//@@		리턴하는 error : Tx 에러 아니고, Ledger 관련 에러
+//@@ StateHash 처리 에러에 따라, Tx Batch commit/rollback
 func (i *Noops) processTransactions() error {
 	timestamp := util.CreateUtcTimestamp()
 	if logger.IsEnabledFor(logging.DEBUG) {
@@ -271,6 +308,9 @@ func (i *Noops) processTransactions() error {
 	// 정상 처리시 current state hash를 리턴.
 	// tx 처리중 에러 발생시 tx array에 대응되는 에러도 리턴하지만, 에러가 tx batch의 commit에 영향을 주지는 못함.
 	// tx 에러에 대한 처리는 플러그인에서 정의해야 함.
+	//@@ []txs 의 모든 트랜잭션에 대해 개별로 chaincode.Execute() 처리.
+	//@@ 모든 execution을 실행한 후, candidate global state hash와 error를 리턴.
+	//@@ 리턴하는 error : Tx 에러 아니고, Ledger 관련 에러
 	_, err := i.stack.ExecTxs(timestamp, txarr)
 
 	//consensus does not need to understand transaction errors, errors here are
@@ -279,7 +319,7 @@ func (i *Noops) processTransactions() error {
 	// 컨센서스에서 tx 에러에 대해 이해할 필요는 없음.
 	// 여기 발생한 에러들은 실제 ledger에서의 에러이고 복구불가일수도 있음.
 
-	// tx 처리중 에러 발생시 트랜잭션 배치 롤백 후 에러 리턴
+	// StateHash 처리중 에러 발생시 트랜잭션 배치 롤백 후 에러 리턴
 	if err != nil {
 		logger.Debugf("Rolling back TX batch with timestamp: %v", timestamp)
 		i.stack.RollbackTxBatch(timestamp)
@@ -288,7 +328,7 @@ func (i *Noops) processTransactions() error {
 	if logger.IsEnabledFor(logging.DEBUG) {
 		logger.Debugf("Committing TX batch with timestamp: %v", timestamp)
 	}
-	// tx 정상처리시 트랜잭션 배치 커밋.
+	// StateHash 정상처리시 트랜잭션 배치 커밋.
 	if _, err := i.stack.CommitTxBatch(timestamp, nil); err != nil {
 		logger.Debugf("Rolling back TX batch with timestamp: %v", timestamp)
 		i.stack.RollbackTxBatch(timestamp)

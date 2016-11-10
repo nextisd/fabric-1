@@ -204,8 +204,9 @@ func (h *Helper) BeginTxBatch(id interface{}) error {
 // one-by-one. If all the executions are successful, it returns
 // the candidate global state hash, and nil error array.
 //
-// h.ExecTxs() : @txs 에 리스팅된 모든 트랜잭션들을 하나 하나씩 execute 처리.
-// 모든 execution이 성공하면, candidate global state hash와 nil error를 리턴.
+// h.ExecTxs() : []txs 의 모든 트랜잭션에 대해 개별로 chaincode.Execute() 처리.
+// 모든 execution을 실행한 후, candidate global state hash와 error를 리턴.
+// 리턴하는 error : Tx 에러 아니고, Ledger 관련 에러
 func (h *Helper) ExecTxs(id interface{}, txs []*pb.Transaction) ([]byte, error) {
 	// TODO id is currently ignored, fix once the underlying implementation accepts id
 	// TODO @id는 현재는 무시됨, 아래 코드에서 처리 수정 예정.
@@ -216,6 +217,41 @@ func (h *Helper) ExecTxs(id interface{}, txs []*pb.Transaction) ([]byte, error) 
 	//
 	// secHelper는 ChaincodeSupport 생성중에 세팅됨, 그래서 이 과정이 필요 없음
 	// cxt := context.WithValue(context.Background(), "security", h.coordinator.GetSecHelper())
+	//@@ Tx Array 를 받아서, 개별 Tx 마다 chaincode.Execute() 호출
+	//@@		ledger (blockchain) 관리 객체 얻어옴 (객체는 전역 1개)
+	//@@		Confidentiality check
+	//@@		CHAINCODE_DEPLOY 인 경우
+	//@@			chain.Deploy(ctxt, t) 호출
+	//@@				Dup Check
+	//@@				VMCProcess() 호출 : 내부에서 vm.Deploy() 실행
+	//@@			chain.Launch(ctxt, t) 호출
+	//@@				launchAndWaitForRegister() 실행
+	//@@					container.StartImageReq 생성후 VMCProcesS() 실행 ( 내부 : vm.Start() )
+	//@@					readyNotify 채널에서 true 가 오면 정상, false 가 오면 실패
+	//@@				sendInitOrReady() 실행
+	//@@					handler.nextState 채널로 ChaincodeMessage 전송 & responseNotifier 생성
+	//@@					응답수신 대기 && 에러응답 처리
+	//@@		CHAINCODE_INVOKE  또는 CHAINCODE_QUERY 인 경우
+	//@@			chain.Launch(ctxt, t) 호출
+	//@@				launchAndWaitForRegister() 실행
+	//@@					container.StartImageReq 생성후 VMCProcesS() 실행 ( 내부 : vm.Start() )
+	//@@					readyNotify 채널에서 true 가 오면 정상, false 가 오면 실패
+	//@@				sendInitOrReady() 실행
+	//@@					handler.nextState 채널로 ChaincodeMessage 전송 & responseNotifier 생성
+	//@@					응답수신 대기 && 에러응답 처리
+	//@@				ChaincodeID, CtorMsg, err 리턴
+	//@@			INVOKE 또는 QUERY 용 Tx Msg 생성
+	//@@			chain.Execute(ctxt, chaincode, ccMsg, timeout, t) 호출
+	//@@				ChaincodeID 로 *chaincodeRTEnv 를 찾지 못하면 에러 처리
+	//@@				pb.Transaction 으로부터 pb.ChaincodeMessage.SecurityContext(msg) 설정
+	//@@				chrte.handler.sendExecuteMessage() 실행 --> response 채널 얻기
+	//@@					Tx == Transaction : handler.nextState 채널로 ChaincodeMessage 전송
+	//@@					Tx != Transaction : serialSend : 체인코드 메세지를 순차적으로 송신. (Lock 처리)
+	//@@					response 채널 리턴
+	//@@				select : response 채널 과 timeout 채널
+	//@@				handler 에서 Txid 를 삭제
+	//@@				response 리턴
+	//@@			return resp.Payload, resp.ChaincodeEvent,err
 	succeededTxs, res, ccevents, txerrs, err := chaincode.ExecuteTransactions(context.Background(), chaincode.DefaultChain, txs)
 
 	h.curBatch = append(h.curBatch, succeededTxs...) // TODO, remove after issue 579

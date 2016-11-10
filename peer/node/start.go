@@ -312,6 +312,38 @@ func serve(args []string) error {
 
 //@@ registerChaincodeSupport 는 ChaincodeSupport 인스턴스 생성하고 gRPC 서버에 등록
 //@@ system chaincode 를 local peer 에 deploy (build 포함)
+//@@ 상세 설명 (아래)
+//@@ ChaincodeSupport 인스턴스 생성
+//@@ system_chaincode.RegisterSysCCs() 호출
+//@@		systemChaincodes 에 있는 개별 SystemChaincode 에 대해, api.RegisterSysCC() 호출
+//@@			security 설정되어 있으면 return nil
+//@@			!syscc.Enabled || !isWhitelisted(syscc) : 사용할 수 없음 --> return nil
+//@@			inproccontroller.Register() 호출
+//@@				전역변수 typeRegistry ( map[string]*inprocContainer ) 에 system chaincode 등록
+//@@			ChaincodeSpec 생성
+//@@			deploySysCC() 호출
+//@@				buildSysCC() 호출
+//@@					chaincodeDeploymentSpec 생성/리턴
+//@@				protos.NewChaincodeDeployTransaction() 호출
+//@@					체인코드 delpoy용 트랜잭션 생성
+//@@				chaincode.Execute() 호출
+//@@					ChaincodeID 로 *chaincodeRTEnv 를 찾지 못하면 에러 처리
+//@@					pb.Transaction 으로부터 pb.ChaincodeMessage.SecurityContext(msg) 설정
+//@@					chrte.handler.sendExecuteMessage() 실행 --> response 채널 얻기
+//@@						Tx == Transaction : handler.nextState 채널로 ChaincodeMessage 전송
+//@@						Tx != Transaction : serialSend : 체인코드 메세지를 순차적으로 송신. (Lock 처리)
+//@@						response 채널 리턴
+//@@					select : response 채널 과 timeout 채널
+//@@					handler 에서 Txid 를 삭제
+//@@					response 리턴
+//@@ pb.RegisterChaincodeSupportServer() 호출
+//@@		service 와 그 구현을 gRPC 서버에 등록. 반드시 service invoke 전에 호출되어야 함
+//@@			s.RegisterService(&_ChaincodeSupport_serviceDesc, srv) 호출
+//@@				ServiceDesc.HandlerType (interface) 이 구현되어 있는지 확인, 없으면 에러 리턴
+//@@				s.register(sd, ss) 호출
+//@@					service struct 를 생성하여, Server.m (map[string]*service) 에 insert
+//@@					service.server = ss , service.mdata = ServiceDesc.Metadata
+//@@					ServiceDesc 에 있는 []MethodDesc, []StreamDesc 를 service 의 map 에 insert
 func registerChaincodeSupport(chainname chaincode.ChainName, grpcServer *grpc.Server,
 	secHelper crypto.Peer) {
 
@@ -344,9 +376,36 @@ func registerChaincodeSupport(chainname chaincode.ChainName, grpcServer *grpc.Se
 	//@@ fabric 에 등록된 system chaincode 에 대한 hook
 	//@@ note : chaincode 는 여전히 deploy 되어야 함. (user chaincode 와 동일)
 	//@@ register -> build -> deploy to local peer
+	//@@ systemChaincodes 에 있는 개별 SystemChaincode 에 대해, api.RegisterSysCC() 호출
+	//@@		security 설정되어 있으면 return nil
+	//@@		!syscc.Enabled || !isWhitelisted(syscc) : 사용할 수 없음 --> return nil
+	//@@		inproccontroller.Register() 호출
+	//@@			전역변수 typeRegistry ( map[string]*inprocContainer ) 에 system chaincode 등록
+	//@@		ChaincodeSpec 생성
+	//@@		deploySysCC() 호출
+	//@@			buildSysCC() 호출
+	//@@				chaincodeDeploymentSpec 생성/리턴
+	//@@			protos.NewChaincodeDeployTransaction() 호출
+	//@@				체인코드 delpoy용 트랜잭션 생성
+	//@@			chaincode.Execute() 호출
+	//@@				ChaincodeID 로 *chaincodeRTEnv 를 찾지 못하면 에러 처리
+	//@@				pb.Transaction 으로부터 pb.ChaincodeMessage.SecurityContext(msg) 설정
+	//@@				chrte.handler.sendExecuteMessage() 실행 --> response 채널 얻기
+	//@@					Tx == Transaction : handler.nextState 채널로 ChaincodeMessage 전송
+	//@@					Tx != Transaction : serialSend : 체인코드 메세지를 순차적으로 송신. (Lock 처리)
+	//@@					response 채널 리턴
+	//@@				select : response 채널 과 timeout 채널
+	//@@				handler 에서 Txid 를 삭제
+	//@@				response 리턴
 	system_chaincode.RegisterSysCCs()
 
 	//@@ service 와 그 구현을 gRPC 서버에 등록. 반드시 service invoke 전에 호출되어야 함
+	//@@		s.RegisterService(&_ChaincodeSupport_serviceDesc, srv) 호출
+	//@@			ServiceDesc.HandlerType (interface) 이 구현되어 있는지 확인, 없으면 에러 리턴
+	//@@			s.register(sd, ss) 호출
+	//@@				service struct 를 생성하여, Server.m (map[string]*service) 에 insert
+	//@@				service.server = ss , service.mdata = ServiceDesc.Metadata
+	//@@				ServiceDesc 에 있는 []MethodDesc, []StreamDesc 를 service 의 map 에 insert
 	pb.RegisterChaincodeSupportServer(grpcServer, ccSrv)
 }
 

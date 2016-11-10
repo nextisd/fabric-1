@@ -504,6 +504,12 @@ type ChaincodeSupportServer interface {
 	Register(ChaincodeSupport_RegisterServer) error
 }
 
+//@@ s.RegisterService(&_ChaincodeSupport_serviceDesc, srv) 호출
+//@@		ServiceDesc.HandlerType (interface) 이 구현되어 있는지 확인, 없으면 에러 리턴
+//@@		s.register(sd, ss) 호출
+//@@			service struct 를 생성하여, Server.m (map[string]*service) 에 insert
+//@@			service.server = ss , service.mdata = ServiceDesc.Metadata
+//@@			ServiceDesc 에 있는 []MethodDesc, []StreamDesc 를 service 의 map 에 insert
 func RegisterChaincodeSupportServer(s *grpc.Server, srv ChaincodeSupportServer) {
 	s.RegisterService(&_ChaincodeSupport_serviceDesc, srv)
 }
