@@ -43,6 +43,8 @@ func pathExists(path string) (bool, error) {
 }
 
 //ValidateSpec validates the java chaincode specs
+//@@ URL Parse : String -> URL structure.
+//@@ 현재, URL 이 아닌 경우는 그냥 성공
 func (javaPlatform *Platform) ValidateSpec(spec *pb.ChaincodeSpec) error {
 	url, err := url.Parse(spec.ChaincodeID.Path)
 	if err != nil || url == nil {

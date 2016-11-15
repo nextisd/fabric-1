@@ -63,6 +63,8 @@ type InprocVM struct {
 }
 
 // 체인코드 인스턴스 생성 및 instRegistry (Map) 에 등록
+//@@ instRegistry (Map) 에 등록되어 있다면 warning --> 하지만 정상 리턴
+//@@ inprocContainer 생성 및 instRegistry ( map[string]*inprocContainer ) 에 추가
 func (vm *InprocVM) getInstance(ctxt context.Context, ipctemplate *inprocContainer, ccid ccintf.CCID, args []string, env []string) (*inprocContainer, error) {
 	ipc := instRegistry[ccid.ChaincodeSpec.ChaincodeID.Name]
 	//@@ instRegistry (Map) 에 등록되어 있다면 warning --> 하지만 정상 리턴
@@ -80,6 +82,8 @@ func (vm *InprocVM) getInstance(ctxt context.Context, ipctemplate *inprocContain
 //Deploy verifies chaincode is registered and creates an instance for it. Currently only one instance can be created
 //Deploy함수는 체인코드 등록여부검증 및 해당 체인코드의 인스턴스를 생성함.
 //현재는 한개의 인스턴스만 생성 가능.
+//@@ typeRegistry ( map[string]*inprocContainer ) 에 존재하는지 확인
+//@@ inprocContainer 생성 및 instRegistry ( map[string]*inprocContainer ) 에 추가
 func (vm *InprocVM) Deploy(ctxt context.Context, ccid ccintf.CCID, args []string, env []string, attachstdin bool, attachstdout bool, reader io.Reader) error {
 	path := ccid.ChaincodeSpec.ChaincodeID.Path
 
@@ -104,7 +108,7 @@ func (vm *InprocVM) Deploy(ctxt context.Context, ccid ccintf.CCID, args []string
 
 //@@ peerRcvCCSend, peerRcvCCSend 채널 생성
 //@@ StartInProc() 실행
-//@@ 	"REGISTER 요청" 송신
+//@@ 	peer 로 "REGISTER 요청" 송신 ( handler.ChatStream.Send() 실행 (Lock 처리) )
 //@@ 	stream.Recv() 호출 : stream 에서 메시지 수신 ( + 에러처리 )
 //@@ 	handler.nextState 에서 들어온 메시지 처리 : handler.FSM 의 State 를 전이(transition)
 //@@ HandleChaincodeStream() 실행
@@ -140,9 +144,10 @@ func (ipc *inprocContainer) launchInProc(ctxt context.Context, id string, args [
 		}
 		// shim.StartInProc() : 시스템 체인코드 bootstrap entry point, chaincode용 API는 아님
 		//@@ StartInProc() 실행
-		//@@ 	"REGISTER 요청" 송신
-		//@@ 	stream.Recv() 호출 : stream 에서 메시지 수신 ( + 에러처리 )
-		//@@ 	handler.nextState 에서 들어온 메시지 처리 : handler.FSM 의 State 를 전이(transition)
+		//@@		chatWithPeer() 호출
+		//@@			peer 로 "REGISTER 요청" 송신 ( handler.ChatStream.Send() 실행 (Lock 처리) )
+		//@@			stream.Recv() 호출 : stream 에서 메시지 수신 ( + 에러처리 )
+		//@@			handler.nextState 에서 들어온 메시지 처리 : handler.FSM 의 State 를 전이(transition)
 		err := shim.StartInProc(env, args, ipc.chaincode, ccRcvPeerSend, peerRcvCCSend)
 		if err != nil {
 			err = fmt.Errorf("chaincode-support ended with err: %s", err)
@@ -196,6 +201,32 @@ func (ipc *inprocContainer) launchInProc(ctxt context.Context, id string, args [
 
 //Start starts a previously registered system codechain
 //Start함수는 사전에 등록된 시스템 체인코드를 실행함.
+//@@ vm.getInstance() 호출
+//@@		instRegistry (Map) 에 등록되어 있다면 warning --> 하지만 정상 리턴
+//@@		inprocContainer 생성 및 instRegistry ( map[string]*inprocContainer ) 에 추가
+//@@ launchInProc() 호출
+//@@		peerRcvCCSend, peerRcvCCSend 채널 생성
+//@@		StartInProc() 실행
+//@@			chatWithPeer() 호출
+//@@ 			peer 로 "REGISTER 요청" 송신 ( handler.ChatStream.Send() 실행 (Lock 처리) )
+//@@ 			stream.Recv() 호출 : stream 에서 메시지 수신 ( + 에러처리 )
+//@@ 			handler.nextState 에서 들어온 메시지 처리 : handler.FSM 의 State 를 전이(transition)
+//@@		HandleChaincodeStream() 실행
+//@@ 		handler.processStream() 실행
+//@@ 			handler.ChatStream.Recv() 실행 : stream 에서 데이터 수신
+//@@ 			( 통신 에러 및 Data 에러 ) 처리
+//@@ 			keep alive 인 경우, 다시 수신 시도
+//@@ 			keep alive timeout 발생시, KEEPALIVE 요청 송신
+//@@ 			handler.HandleMessage() 호출 : 수신한 ChaincodeMessage 에 대한 처리
+//@@ 				QUERY_COMPLETED : Tracking대상에서 삭제 -> Payload 암호화 -> handler.responseNotifier 로 msg 전달
+//@@ 				QUERY_ERROR : Tracking대상에서 삭제 -> handler.responseNotifier 로 msg 전달
+//@@ 				INVOKE_QUERY : chaincode 실행 & 응답 처리 
+//@@ 										-> handler.nextState 채널로 ChaincodeMessage 송신 및 응답 처리
+//@@ 				수신된 Event 가 현재 State 에서 발생될 수 없는 것이면, 에러 처리
+//@@ 				handler.FSM 의 State 를 전이(transition)
+//@@ 			handler.nextState 채널에서 이벤트 발생 && Chaincode 로 응답을 보내줘야 한다면
+//@@ 			nsInfo.msg 을 handler.ChatStream 을 통해 전송
+//@@		select : ccchan, ccsupportchan, ipc.stopChan --> channel close
 func (vm *InprocVM) Start(ctxt context.Context, ccid ccintf.CCID, args []string, env []string, attachstdin bool, attachstdout bool, reader io.Reader) error {
 	path := ccid.ChaincodeSpec.ChaincodeID.Path
 
@@ -205,7 +236,8 @@ func (vm *InprocVM) Start(ctxt context.Context, ccid ccintf.CCID, args []string,
 		return fmt.Errorf(fmt.Sprintf("%s not registered", path))
 	}
 
-	// 체인코드 인스턴스 생성 및 instRegistry (Map) 에 등록
+	//@@ instRegistry (Map) 에 등록되어 있다면 warning --> 하지만 정상 리턴
+	//@@ inprocContainer 생성 및 instRegistry ( map[string]*inprocContainer ) 에 추가
 	ipc, err := vm.getInstance(ctxt, ipctemplate, ccid, args, env)
 
 	if err != nil {
@@ -231,6 +263,28 @@ func (vm *InprocVM) Start(ctxt context.Context, ccid ccintf.CCID, args []string,
 				inprocLogger.Criticalf("caught panic from chaincode  %s", ccid.ChaincodeSpec.ChaincodeID.Name)
 			}
 		}()
+		//@@ peerRcvCCSend, peerRcvCCSend 채널 생성
+		//@@ StartInProc() 실행
+		//@@		chatWithPeer() 호출
+		//@@ 		peer 로 "REGISTER 요청" 송신 ( handler.ChatStream.Send() 실행 (Lock 처리) )
+		//@@ 		stream.Recv() 호출 : stream 에서 메시지 수신 ( + 에러처리 )
+		//@@ 		handler.nextState 에서 들어온 메시지 처리 : handler.FSM 의 State 를 전이(transition)
+		//@@ HandleChaincodeStream() 실행
+		//@@ 	handler.processStream() 실행
+		//@@ 		handler.ChatStream.Recv() 실행 : stream 에서 데이터 수신
+		//@@ 		( 통신 에러 및 Data 에러 ) 처리
+		//@@ 		keep alive 인 경우, 다시 수신 시도
+		//@@ 		keep alive timeout 발생시, KEEPALIVE 요청 송신
+		//@@ 		handler.HandleMessage() 호출 : 수신한 ChaincodeMessage 에 대한 처리
+		//@@ 			QUERY_COMPLETED : Tracking대상에서 삭제 -> Payload 암호화 -> handler.responseNotifier 로 msg 전달
+		//@@ 			QUERY_ERROR : Tracking대상에서 삭제 -> handler.responseNotifier 로 msg 전달
+		//@@ 			INVOKE_QUERY : chaincode 실행 & 응답 처리 
+		//@@ 									-> handler.nextState 채널로 ChaincodeMessage 송신 및 응답 처리
+		//@@ 			수신된 Event 가 현재 State 에서 발생될 수 없는 것이면, 에러 처리
+		//@@ 			handler.FSM 의 State 를 전이(transition)
+		//@@ 		handler.nextState 채널에서 이벤트 발생 && Chaincode 로 응답을 보내줘야 한다면
+		//@@ 		nsInfo.msg 을 handler.ChatStream 을 통해 전송
+		//@@ select : ccchan, ccsupportchan, ipc.stopChan --> channel close
 		ipc.launchInProc(ctxt, ccid.ChaincodeSpec.ChaincodeID.Name, args, env, ccSupport)
 	}()
 
@@ -240,6 +294,10 @@ func (vm *InprocVM) Start(ctxt context.Context, ccid ccintf.CCID, args []string,
 //Stop stops a system codechain
 //Stop함수는 시스템 체인코드를 정지시킴 (stopChan 채널로 빈 msg 전송)
 //instRegistry (Map) 에서 Chaincode삭제
+//@@ typeRegistry ( map[string]*inprocContainer ) 에 존재하는지 확인
+//@@ instRegistry ( map[string]*inprocContainer ) 에 존재하는지 확인
+//@@ inprocContainer 의 stopChan 로 빈 structure 전송
+//@@ instRegistry ( map[string]*inprocContainer ) 에서 삭제
 func (vm *InprocVM) Stop(ctxt context.Context, ccid ccintf.CCID, timeout uint, dontkill bool, dontremove bool) error {
 	path := ccid.ChaincodeSpec.ChaincodeID.Path
 

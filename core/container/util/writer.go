@@ -121,7 +121,12 @@ func WriteFolderToTarPackage(tw *tar.Writer, srcPath string, excludeDir string, 
 
 //WriteGopathSrc tars up files under gopath src
 //
-//WriteGopathSrc() : gopath 경로의 소스 코드들을 tar로 묶음
+//@@ WriteGopathSrc() : $GOPATH/src 경로의 소스 코드들을 tar로 묶음
+//@@ WriteFolderToTarPackage() 호출
+//@@		rootDirectory : $GOPATH/src, excludeDir 는 제외
+//@@		대상 파일 : "*.c", "*.h", "*.go", "*.yaml", "*.json"
+//@@ viper.GetBool("peer.tls.enabled") == true 인 경우
+//@@		peer 의 TLS Cert 를 tar 에 추가 
 func WriteGopathSrc(tw *tar.Writer, excludeDir string) error {
 	gopath := os.Getenv("GOPATH")
 	// Only take the first element of GOPATH
@@ -130,13 +135,15 @@ func WriteGopathSrc(tw *tar.Writer, excludeDir string) error {
 	rootDirectory := filepath.Join(gopath, "src")
 	vmLogger.Infof("rootDirectory = %s", rootDirectory)
 
+	//@@ rootDirectory : $GOPATH/src, excludeDir 는 제외
+	//@@ 대상 파일 : "*.c", "*.h", "*.go", "*.yaml", "*.json"
 	if err := WriteFolderToTarPackage(tw, rootDirectory, excludeDir, includeFileTypes, nil); err != nil {
 		vmLogger.Errorf("Error writing folder to tar package %s", err)
 		return err
 	}
 
 	// Add the certificates to tar
-	// 인증서를 tar에 추가함
+	//@@ peer 의 TLS Cert 를 tar 에 추가
 	if viper.GetBool("peer.tls.enabled") {
 		err := WriteFileToPackage(viper.GetString("peer.tls.cert.file"), "src/certs/cert.pem", tw)
 		if err != nil {

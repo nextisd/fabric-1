@@ -59,6 +59,10 @@ func computeHash(contents []byte, hash []byte) []byte {
 //hashFilesInDir computes h=hash(h,file bytes) for each file in a directory
 //Directory entries are traversed recursively. In the end a single
 //hash value is returned for the entire directory structure
+//@@ rootDir/dir 아래에 있는 모든 file 에 대해 다음 수행
+//@@		directory 면, 그 안에 있는 파일에 대해 recursive 하게 수행
+//@@		file 이면, 읽어서 hash 를 구함 ( hash 는 파일마다 새로 계산 )
+//@@ 마지막 hash 리턴
 func hashFilesInDir(rootDir string, dir string, hash []byte, tw *tar.Writer) ([]byte, error) {
 	currentDir := filepath.Join(rootDir, dir)
 	logger.Debugf("hashFiles %s", currentDir)
@@ -115,6 +119,14 @@ func isCodeExist(tmppath string) error {
 	return nil
 }
 
+//@@ $GOPATH 의 첫번째 path 찾기
+//@@ $GOPATH/_usercode_ 디렉토리 생성
+//@@ $GOPATH/_usercode_ 내에 임시 디렉토리 생성
+//@@ 환경변수 GOPATH 변경 ( $GOPATH/_usercode_ 내에 생성한 임시 디렉토리 )
+//@@ cmd.Start() 호출 : 명령 "go get <path>" 실행 ( 실행결과는 모름 <> cmd.Run() )
+//@@ cmd.Wait() 호출 : go 루틴으로 명령실행결과 를 done 채널로 보냄
+//@@ "go get <path>" timeout 체크 ( core.yaml : chaincode.deploytimeout )
+//@@ "go get <path>" 결과 에러 체크 & 리턴
 func getCodeFromHTTP(path string) (codegopath string, err error) {
 	codegopath = ""
 	err = nil
@@ -137,14 +149,17 @@ func getCodeFromHTTP(path string) (codegopath string, err error) {
 		return
 	}
 	// Only take the first element of GOPATH
+	//@@ $GOPATH 의 첫번째 path 찾기
 	gopath := filepath.SplitList(origgopath)[0]
 
 	// Define a new gopath in which to download the code
 	newgopath := filepath.Join(gopath, "_usercode_")
 
 	//ignore errors.. _usercode_ might exist. TempDir will catch any other errors
+	//@@ $GOPATH/_usercode_ 디렉토리 생성
 	os.Mkdir(newgopath, 0755)
 
+	//@@ $GOPATH/_usercode_ 내에 임시 디렉토리 생성
 	if codegopath, err = ioutil.TempDir(newgopath, ""); err != nil {
 		err = fmt.Errorf("could not create tmp dir under %s(%s)", newgopath, err)
 		return
@@ -161,9 +176,11 @@ func getCodeFromHTTP(path string) (codegopath string, err error) {
 	//     . more secure
 	//     . as we are not downloading OBC, private, password-protected OBC repo's become non-issue
 
+	//@@ 환경변수 GOPATH 변경 ( $GOPATH/_usercode_ 내에 생성한 임시 디렉토리 )
 	env[gopathenvIndex] = "GOPATH=" + codegopath + string(os.PathListSeparator) + origgopath
 
 	// Use a 'go get' command to pull the chaincode from the given repo
+	//@@ 명령 "go get <path>" 실행 ( 실행결과는 모름 <> cmd.Run() )
 	logger.Debugf("go get %s", path)
 	cmd := exec.Command("go", "get", path)
 	cmd.Env = env
@@ -175,11 +192,13 @@ func getCodeFromHTTP(path string) (codegopath string, err error) {
 
 	// Create a go routine that will wait for the command to finish
 	done := make(chan error, 1)
+	//@@ go 루틴으로 명령실행결과 를 done 채널로 보냄
 	go func() {
 		done <- cmd.Wait()
 	}()
 
 	select {
+	//@@ "go get <path>" timeout 체크 ( core.yaml : chaincode.deploytimeout )
 	case <-time.After(time.Duration(viper.GetInt("chaincode.deploytimeout")) * time.Millisecond):
 		// If pulling repos takes too long, we should give up
 		// (This can happen if a repo is private and the git clone asks for credentials)
@@ -188,6 +207,7 @@ func getCodeFromHTTP(path string) (codegopath string, err error) {
 		} else {
 			err = errors.New("Getting chaincode took too long")
 		}
+	//@@ "go get <path>" 결과 에러 체크 & 리턴
 	case err = <-done:
 		// If we're here, the 'go get' command must have finished
 		if err != nil {
@@ -197,6 +217,7 @@ func getCodeFromHTTP(path string) (codegopath string, err error) {
 	return
 }
 
+//@@ $GOPATH 의 첫번째 path 리턴
 func getCodeFromFS(path string) (codegopath string, err error) {
 	logger.Debugf("getCodeFromFS %s", path)
 	gopath := os.Getenv("GOPATH")
@@ -216,6 +237,20 @@ func getCodeFromFS(path string) (codegopath string, err error) {
 //by the user is equivalent to the path. This method will treat the name
 //as codebytes and compute the hash from it. ie, user cannot run the chaincode
 //with the same (name, ctor, args)
+//@@ codegopath 를 구함 ( path 처음이 "http://" 또는 "https://" 경우 ishttp = true )
+//@@ 	ishttp == true 인 경우, getCodeFromHTTP() 호출
+//@@			$GOPATH/_usercode_/임시디렉토리 리턴
+//@@ 	ishttp != true 인 경우, getCodeFromFS() 호출
+//@@			$GOPATH 의 첫번째 path 리턴
+//@@ codegopath/src/path 존재여부 체크 ( path 에서 http:// 등은 제외 )
+//@@ util.GenerateHashFromSignature() 호출
+//@@		sha3.ShakeSum256(ctorbytes) 호출 : ctorbytes 의 hash 리턴
+//@@ hashFilesInDir() 호출
+//@@		rootDir/dir 아래에 있는 모든 file 에 대해 다음 수행
+//@@			directory 면, 그 안에 있는 파일에 대해 recursive 하게 수행
+//@@			file 이면, 읽어서 hash 를 구함 ( hash 는 파일마다 새로 계산 )
+//@@		마지막 hash 리턴
+//@@ hash hex string 리턴
 func generateHashcode(spec *pb.ChaincodeSpec, tw *tar.Writer) (string, error) {
 	if spec == nil {
 		return "", fmt.Errorf("Cannot generate hashcode from nil spec")
@@ -250,12 +285,21 @@ func generateHashcode(spec *pb.ChaincodeSpec, tw *tar.Writer) (string, error) {
 	if strings.HasPrefix(path, "http://") {
 		ishttp = true
 		actualcodepath = path[7:]
+		//@@ $GOPATH 의 첫번째 path 찾기
+		//@@ $GOPATH/_usercode_ 디렉토리 생성
+		//@@ $GOPATH/_usercode_ 내에 임시 디렉토리 생성
+		//@@ 환경변수 GOPATH 변경 ( $GOPATH/_usercode_ 내에 생성한 임시 디렉토리 )
+		//@@ cmd.Start() 호출 : 명령 "go get <path>" 실행 ( 실행결과는 모름 <> cmd.Run() )
+		//@@ cmd.Wait() 호출 : go 루틴으로 명령실행결과 를 done 채널로 보냄
+		//@@ "go get <path>" timeout 체크 ( core.yaml : chaincode.deploytimeout )
+		//@@ "go get <path>" 결과 에러 체크 & 리턴
 		codegopath, err = getCodeFromHTTP(actualcodepath)
 	} else if strings.HasPrefix(path, "https://") {
 		ishttp = true
 		actualcodepath = path[8:]
 		codegopath, err = getCodeFromHTTP(actualcodepath)
 	} else {
+		//@@ $GOPATH 의 첫번째 path 리턴
 		actualcodepath = path
 		codegopath, err = getCodeFromFS(path)
 	}
@@ -264,6 +308,7 @@ func generateHashcode(spec *pb.ChaincodeSpec, tw *tar.Writer) (string, error) {
 		return "", fmt.Errorf("Error getting code %s", err)
 	}
 
+	//@@ codegopath/src/path 존재여부 체크 ( path 에서 http:// 등은 제외 )
 	tmppath := filepath.Join(codegopath, "src", actualcodepath)
 	if err = isCodeExist(tmppath); err != nil {
 		return "", fmt.Errorf("code does not exist %s", err)
@@ -272,9 +317,14 @@ func generateHashcode(spec *pb.ChaincodeSpec, tw *tar.Writer) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("Error marshalling constructor: %s", err)
 	}
+	//@@ sha3.ShakeSum256(ctorbytes) 호출 : ctorbytes 의 hash 리턴
 	hash := util.GenerateHashFromSignature(actualcodepath, ctorbytes)
 
-	hash, err = hashFilesInDir(filepath.Join(codegopath, "src"), actualcodepath, hash, tw)
+	//@@ rootDir/dir 아래에 있는 모든 file 에 대해 다음 수행
+	//@@		directory 면, 그 안에 있는 파일에 대해 recursive 하게 수행
+	//@@		file 이면, 읽어서 hash 를 구함 ( hash 는 파일마다 새로 계산 )
+	//@@ 마지막 hash 리턴
+ 	hash, err = hashFilesInDir(filepath.Join(codegopath, "src"), actualcodepath, hash, tw)
 	if err != nil {
 		return "", fmt.Errorf("Could not get hashcode for %s - %s\n", path, err)
 	}

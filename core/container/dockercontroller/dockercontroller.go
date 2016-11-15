@@ -103,6 +103,10 @@ func getDockerHostConfig() *docker.HostConfig {
 	return hostConfig
 }
 
+//@@ docker config 생성
+//@@ docker option 생성
+//@@ CreateContainer() 호출
+//@@		docker HTTP 에 container 생성 요청송신/응답수신
 func (vm *DockerVM) createContainer(ctxt context.Context, client *docker.Client, imageID string, containerID string, args []string, env []string, attachstdin bool, attachstdout bool) error {
 	config := docker.Config{Cmd: args, Image: imageID, Env: env, AttachStdin: attachstdin, AttachStdout: attachstdout}
 	copts := docker.CreateContainerOptions{Name: containerID, Config: &config, HostConfig: getDockerHostConfig()}
@@ -115,6 +119,9 @@ func (vm *DockerVM) createContainer(ctxt context.Context, client *docker.Client,
 	return nil
 }
 
+//@@ Image Build Option 생성
+//@@ BuildImage() 호출
+//@@		docker HTTP 에 Image 생성 요청송신/응답처리
 func (vm *DockerVM) deployImage(client *docker.Client, ccid ccintf.CCID, args []string, env []string, attachstdin bool, attachstdout bool, reader io.Reader) error {
 	id, _ := vm.GetVMName(ccid)
 	outputbuf := bytes.NewBuffer(nil)
@@ -142,10 +149,20 @@ func (vm *DockerVM) deployImage(client *docker.Client, ccid ccintf.CCID, args []
 //talk to docker daemon using docker Client and build the image
 //
 //vm.Deploy() : tar.gz파일 내부의 Dockerfile을 기초로 도커 이미지를 생성
+//@@ NewDockerClient() 호출
+//@@		docker 로 요청보내는 Client 생성 ( session 연결 포함 )
+//@@ vm.deployImage() 호출
+//@@		Image Build Option 생성
+//@@		BuildImage() 호출
+//@@			docker HTTP 에 Image 생성 요청송신/응답처리
+//@@		에러 리턴 ( 정상이면 nil )
 func (vm *DockerVM) Deploy(ctxt context.Context, ccid ccintf.CCID, args []string, env []string, attachstdin bool, attachstdout bool, reader io.Reader) error {
 	client, err := cutil.NewDockerClient()
 	switch err {
 	case nil:
+		//@@ Image Build Option 생성
+		//@@ BuildImage() 호출
+		//@@		docker HTTP 에 Image 생성 요청송신/응답처리
 		if err = vm.deployImage(client, ccid, args, env, attachstdin, attachstdout, reader); err != nil {
 			return err
 		}
@@ -158,6 +175,27 @@ func (vm *DockerVM) Deploy(ctxt context.Context, ccid ccintf.CCID, args []string
 //Start starts a container using a previously created docker image
 //
 // vm.Start() : 사전에 생성한 docker image로 컨테이너를 구동시킴.
+//@@ NewDockerClient() 호출
+//@@		docker 로 요청보내는 Client 생성 ( session 연결 포함 )
+//@@ stopInternal() 호출
+//@@		StopContainer() 호출
+//@@			docker HTTP 에 Container 중지 요청전송/응답에러리턴 (정상이면 nil)
+//@@		dontkill == false : KillContainer() 호출
+//@@			docker HTTP 에 Container Kill 요청전송/응답에러리턴 (정상이면 nil)
+//@@		dontremove == false : RemoveContainer() 호출
+//@@			docker HTTP 에 Container 삭제 요청전송/응답에러리턴 (정상이면 nil)
+//@@		에러 리턴
+//@@ createContainer() 호출
+//@@		docker config 생성
+//@@		docker option 생성
+//@@		CreateContainer() 호출
+//@@			docker HTTP 에 container 생성 요청송신/응답수신
+//@@ Image 가 없어서 실패할 경우 deployImage() 호출 ( 다시 createContainer() 호출 )
+//@@		Image Build Option 생성
+//@@		BuildImage() 호출
+//@@			docker HTTP 에 Image 생성 요청송신/응답처리
+//@@ StartContainer() 호출
+//@@		docker HTTP 에 Container 시작 요청전송/응답에러리턴 (정상이면 nil)
 func (vm *DockerVM) Start(ctxt context.Context, ccid ccintf.CCID, args []string, env []string, attachstdin bool, attachstdout bool, reader io.Reader) error {
 	imageID, _ := vm.GetVMName(ccid)
 	client, err := cutil.NewDockerClient()
@@ -171,9 +209,20 @@ func (vm *DockerVM) Start(ctxt context.Context, ccid ccintf.CCID, args []string,
 	//stop,force remove if necessary
 	//컨테이너를 강제로 종료시킴, 필요시 삭제할것.
 	dockerLogger.Debugf("Cleanup container %s", containerID)
+	//@@ StopContainer() 호출
+	//@@		docker HTTP 에 Container 중지 요청전송/응답에러리턴 (정상이면 nil)
+	//@@ dontkill == false : KillContainer() 호출
+	//@@		docker HTTP 에 Container Kill 요청전송/응답에러리턴 (정상이면 nil)
+	//@@ dontremove == false : RemoveContainer() 호출
+	//@@		docker HTTP 에 Container 삭제 요청전송/응답에러리턴 (정상이면 nil)
+	//@@ 에러 리턴
 	vm.stopInternal(ctxt, client, containerID, 0, false, false)
 
 	dockerLogger.Debugf("Start container %s", containerID)
+	//@@ docker config 생성
+	//@@ docker option 생성
+	//@@ CreateContainer() 호출
+	//@@		docker REST 에 container 생성 요청송신/응답수신
 	err = vm.createContainer(ctxt, client, imageID, containerID, args, env, attachstdin, attachstdout)
 	if err != nil {
 		//if image not found try to create image and retry
@@ -181,11 +230,18 @@ func (vm *DockerVM) Start(ctxt context.Context, ccid ccintf.CCID, args []string,
 		if err == docker.ErrNoSuchImage {
 			if reader != nil {
 				dockerLogger.Debugf("start-could not find image ...attempt to recreate image %s", err)
+				//@@ Image Build Option 생성
+				//@@ BuildImage() 호출
+				//@@		docker HTTP 에 Image 생성 요청송신/응답처리
 				if err = vm.deployImage(client, ccid, args, env, attachstdin, attachstdout, reader); err != nil {
 					return err
 				}
 
 				dockerLogger.Debug("start-recreated image successfully")
+				//@@ docker config 생성
+				//@@ docker option 생성
+				//@@ CreateContainer() 호출
+				//@@		docker REST 에 container 생성 요청송신/응답수신
 				if err = vm.createContainer(ctxt, client, imageID, containerID, args, env, attachstdin, attachstdout); err != nil {
 					dockerLogger.Errorf("start-could not recreate container post recreate image: %s", err)
 					return err
@@ -215,6 +271,16 @@ func (vm *DockerVM) Start(ctxt context.Context, ccid ccintf.CCID, args []string,
 //Stop stops a running chaincode
 //
 // vm.Stop() : 실행중인 체인코드를 정지시킴
+//@@ NewDockerClient() 호출
+//@@		docker 로 요청보내는 Client 생성 ( session 연결 포함 )
+//@@ stopInternal() 호출
+//@@		StopContainer() 호출
+//@@			docker HTTP 에 Container 중지 요청전송/응답에러리턴 (정상이면 nil)
+//@@		dontkill == false : KillContainer() 호출
+//@@			docker HTTP 에 Container Kill 요청전송/응답에러리턴 (정상이면 nil)
+//@@		dontremove == false : RemoveContainer() 호출
+//@@			docker HTTP 에 Container 삭제 요청전송/응답에러리턴 (정상이면 nil)
+//@@		에러 리턴
 func (vm *DockerVM) Stop(ctxt context.Context, ccid ccintf.CCID, timeout uint, dontkill bool, dontremove bool) error {
 	id, _ := vm.GetVMName(ccid)
 	client, err := cutil.NewDockerClient()
@@ -224,11 +290,25 @@ func (vm *DockerVM) Stop(ctxt context.Context, ccid ccintf.CCID, timeout uint, d
 	}
 	id = strings.Replace(id, ":", "_", -1)
 
+	//@@ StopContainer() 호출
+	//@@		docker HTTP 에 Container 중지 요청전송/응답에러리턴 (정상이면 nil)
+	//@@ dontkill == false : KillContainer() 호출
+	//@@		docker HTTP 에 Container Kill 요청전송/응답에러리턴 (정상이면 nil)
+	//@@ dontremove == false : RemoveContainer() 호출
+	//@@		docker HTTP 에 Container 삭제 요청전송/응답에러리턴 (정상이면 nil)
+	//@@ 에러 리턴
 	err = vm.stopInternal(ctxt, client, id, timeout, dontkill, dontremove)
 
 	return err
 }
 
+//@@ StopContainer() 호출
+//@@		docker HTTP 에 Container 중지 요청전송/응답에러리턴 (정상이면 nil)
+//@@ dontkill == false : KillContainer() 호출
+//@@		docker HTTP 에 Container Kill 요청전송/응답에러리턴 (정상이면 nil)
+//@@ dontremove == false : RemoveContainer() 호출
+//@@		docker HTTP 에 Container 삭제 요청전송/응답에러리턴 (정상이면 nil)
+//@@ 에러 리턴
 func (vm *DockerVM) stopInternal(ctxt context.Context, client *docker.Client, id string, timeout uint, dontkill bool, dontremove bool) error {
 	err := client.StopContainer(id, timeout)
 	if err != nil {
@@ -258,6 +338,10 @@ func (vm *DockerVM) stopInternal(ctxt context.Context, client *docker.Client, id
 //Destroy destroys an image
 //
 // vm.Destroy() : 도커 이미지를 삭제
+//@@ NewDockerClient() 호출
+//@@		docker 로 요청보내는 Client 생성 ( session 연결 포함 )
+//@@ RemoveImageExtended() 호출
+//@@		docker HTTP 에 Container 삭제 요청전송/응답에러리턴 (정상이면 nil)
 func (vm *DockerVM) Destroy(ctxt context.Context, ccid ccintf.CCID, force bool, noprune bool) error {
 	id, _ := vm.GetVMName(ccid)
 	client, err := cutil.NewDockerClient()
