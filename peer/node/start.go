@@ -327,15 +327,11 @@ func serve(args []string) error {
 //@@				protos.NewChaincodeDeployTransaction() 호출
 //@@					체인코드 delpoy용 트랜잭션 생성
 //@@				chaincode.Execute() 호출
-//@@					ChaincodeID 로 *chaincodeRTEnv 를 찾지 못하면 에러 처리
-//@@					pb.Transaction 으로부터 pb.ChaincodeMessage.SecurityContext(msg) 설정
-//@@					chrte.handler.sendExecuteMessage() 실행 --> response 채널 얻기
-//@@						Tx == Transaction : handler.nextState 채널로 ChaincodeMessage 전송
-//@@						Tx != Transaction : serialSend : 체인코드 메세지를 순차적으로 송신. (Lock 처리)
-//@@						response 채널 리턴
-//@@					select : response 채널 과 timeout 채널
-//@@					handler 에서 Txid 를 삭제
-//@@					response 리턴
+//@@					너무 길어서 생략 : core/chaincode/exectransaction.go 참조
+//@@					DEPLOY : 내부에서 vm.Deploy() 실행, Register 요청송신/응답처리
+//@@					INVOKE / QUERY :내부에서 vm.Start() 실행
+//@@						INVOKE : NextState 으로 msg 전송 후 응답처리 (time-out 포함)
+//@@						QUERY : chaincode msg 전송 후 응답처리
 //@@ pb.RegisterChaincodeSupportServer() 호출
 //@@		service 와 그 구현을 gRPC 서버에 등록. 반드시 service invoke 전에 호출되어야 함
 //@@			s.RegisterService(&_ChaincodeSupport_serviceDesc, srv) 호출
@@ -388,15 +384,11 @@ func registerChaincodeSupport(chainname chaincode.ChainName, grpcServer *grpc.Se
 	//@@			protos.NewChaincodeDeployTransaction() 호출
 	//@@				체인코드 delpoy용 트랜잭션 생성
 	//@@			chaincode.Execute() 호출
-	//@@				ChaincodeID 로 *chaincodeRTEnv 를 찾지 못하면 에러 처리
-	//@@				pb.Transaction 으로부터 pb.ChaincodeMessage.SecurityContext(msg) 설정
-	//@@				chrte.handler.sendExecuteMessage() 실행 --> response 채널 얻기
-	//@@					Tx == Transaction : handler.nextState 채널로 ChaincodeMessage 전송
-	//@@					Tx != Transaction : serialSend : 체인코드 메세지를 순차적으로 송신. (Lock 처리)
-	//@@					response 채널 리턴
-	//@@				select : response 채널 과 timeout 채널
-	//@@				handler 에서 Txid 를 삭제
-	//@@				response 리턴
+	//@@				너무 길어서 생략 : core/chaincode/exectransaction.go 참조
+	//@@				DEPLOY : 내부에서 vm.Deploy() 실행, Register 요청송신/응답처리
+	//@@				INVOKE / QUERY :내부에서 vm.Start() 실행
+	//@@					INVOKE : NextState 으로 msg 전송 후 응답처리 (time-out 포함)
+	//@@					QUERY : chaincode msg 전송 후 응답처리
 	system_chaincode.RegisterSysCCs()
 
 	//@@ service 와 그 구현을 gRPC 서버에 등록. 반드시 service invoke 전에 호출되어야 함
