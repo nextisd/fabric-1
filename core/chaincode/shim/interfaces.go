@@ -30,7 +30,7 @@ type Chaincode interface {
 	// established, allowing the chaincode to initialize its internal data
 	// @@ REST API 상에서는 Deploy method에 대응. 체인코드 컨테이너가 생성된 후, Deploy 트랜잭션으로부터 호출된다.
 	// @@ 체인코드의 내부 데이터 초기 구성에 필요.
-	Init(stub ChaincodeStubInterface, function string, args []string) ([]byte, error)
+	Init(stub ChaindcodeStubInterface, function string, args []string) ([]byte, error)
 
 	// Invoke is called for every Invoke transactions. The chaincode may change
 	// its state variables
